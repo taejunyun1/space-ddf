@@ -26,12 +26,24 @@ const SHOW_SLUGS = [
   'lost-topophilia',
   'hugging-world',
   'make-it-slow',
-  'kahye'  
+  'kahye',
+  'seokwoo'
 
 ]
 
 /** 슬러그별 메타(여기서 개별 수정) */
 const SHOW_META = {
+   seokwoo: {
+    title: '<구르는 그리고 커지는> 남석우 개인전',
+    dateRange: '2025.10.21 – 11.02',
+    credits: ['Artists 남석우', 'Graphic 유수산', 'Support 광주문화재단', 'Archive 정한결'],
+    body : `
+`,
+
+    description: `
+    `,
+  },
+
     kahye: {
     title: '<데자뷰뷰자데 Déjà-vuVuja-de> 신가혜 개인전',
     dateRange: '2025.09.09 – 09.21',
