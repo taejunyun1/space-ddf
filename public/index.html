@@ -1,17 +1,174 @@
-<!DOCTYPE html>
-<html lang="">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
-    <title><%= htmlWebpackPlugin.options.title %></title>
-  </head>
-  <body>
-    <noscript>
-      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
-    </noscript>
-    <div id="app"></div>
-    <!-- built files will be auto injected -->
-  </body>
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1, viewport-fit=cover"
+/>
+  <title>Space DDF — 대안 예술 공간</title>
+  <meta name="description" content="스페이스 DDF는 광주 충장로의 대안 예술 공간으로 전시, 워크숍, 프로젝트를 통해 시각예술과 미디어아트 등의 실험을 지원합니다." />
+  <meta name="keywords" content="스페이스 DDF, Space DDF, 전시, 대안공간, 광주, contemporary art, 미디어아트" />
+  <link rel="canonical" href="https://www.example.com/" />
+
+  <!-- robots -->
+  <meta name="robots" content="index, follow" />
+  <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ko_KR" />
+  <meta property="og:site_name" content="Space DDF" />
+  <meta property="og:title" content="Space DDF — 대안 예술 공간" />
+  <meta property="og:description" content="광주 충장로의 대안 예술 공간. 전시·워크숍·프로젝트를 통해 실험적 활동을 지원합니다." />
+  <meta property="og:url" content="https://www.example.com/" />
+  <meta property="og:image" content="https://www.example.com/og-default.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Space DDF — 대안 예술 공간" />
+  <meta name="twitter:description" content="광주 충장로의 대안 예술 공간. 전시·워크숍·프로젝트를 통해 실험적 활동을 지원합니다." />
+  <meta name="twitter:image" content="https://www.example.com/og-default.jpg" />
+
+  <!-- PWA/브랜드 -->
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="theme-color" content="#000000" />
+
+  <!-- 폰트 최적화: preconnect + font-display -->
+  <link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR&family=Noto+Sans+KR:wght@100..900&family=Noto+Serif+KR:wght@200..900&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+
+  <style>
+    @font-face {
+      font-family: 'SUIT-Regular';
+      src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_suit@1.0/SUIT-Regular.woff2') format('woff2');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'D2Coding';
+      src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/noonfonts_three@1.0/D2Coding.woff') format('woff');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+
+html {
+  -webkit-text-size-adjust: 100%; /* 또는 100%/none로 테스트 */
+  text-size-adjust: 100%;
+}
+
+    body { font-family: 'SUIT-Regular', system-ui, -apple-system, Segoe UI, Noto Sans KR, Roboto, 'Apple SD Gothic Neo', sans-serif; margin: 0; }
+    .code-block { font-family: 'D2Coding', ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 18px; margin: 0 0 10px; font-weight: 700; }
+    @media (max-width: 1024px) { .code-block { font-size: 14px; } }
+    h1,h3{ margin-top: 0; }
+    figure{ margin: 0; }
+    li{ padding: 6px 0; }
+    span{ font-size: 10px; }
+    a{ color: inherit; text-decoration: none; }
+    p{ line-height:1.6; hyphens: auto; word-break: break-word; }
+    .intro-kr{ font-size: 14px; }
+
+    .body-text {
+        font-family: "Noto Serif KR", serif;
+  font-optical-sizing: auto;
+    }
+
+html { -webkit-text-size-adjust: none; 
+  width: 100%;
+}
+
+
+/* ==========================================================================
+   Global Lightbox & Gallery Overrides
+   Target: vue-easy-lightbox (공통 접두사 .vel-*)
+   파일 위치 예: src/styles/lightbox.css  (main.js 에서 전역 import)
+   ========================================================================== */
+
+/* ---------- 1) Lightbox Backdrop / Layer ---------- */
+
+/* 라이트박스 전체 레이어 */
+.vel-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9999 !important;
+  background: rgba(10, 10, 11, 0.92) !important; /* 더 어두운 배경 */
+  backdrop-filter: saturate(140%) blur(2px);      /* 약한 블러 */
+}
+
+/* 고해상도 디스플레이에서 약간 더 선명하게 */
+@media (min-resolution: 2dppx) {
+  .vel-img,
+  .vel-img img,
+  .vel-img-wrap img {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+    /* vue-easy-lightbox toolbar 숨기기 */
+.vel-toolbar,
+.vel__toolbar,
+.vel-actions {
+  display: none !important;
+}
+.vel-icon-rotate,
+.vel-icon-zoom,
+.vel-icon-download,
+.vel-icon-fullscreen {
+  display: none !important;
+}
+
+  </style>
+
+  <!-- 구조화 데이터: 조직 + 웹사이트 (JSON-LD) -->
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"Organization",
+    "name":"Space DDF",
+    "url":"https://www.example.com/",
+    "logo":"https://www.example.com/apple-touch-icon.png",
+    "sameAs":[
+      "https://www.instagram.com/space.ddf"
+    ],
+    "address":{
+      "@type":"PostalAddress",
+      "addressCountry":"KR",
+      "addressLocality":"Gwangju",
+      "streetAddress":"동구 충장로46-4 1층"
+    },
+    "contactPoint":[{
+      "@type":"ContactPoint",
+      "email":"space.ddf@gmail.com",
+      "contactType":"customer support",
+      "availableLanguage":["ko","en"]
+    }]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"WebSite",
+    "name":"Space DDF",
+    "url":"https://www.example.com/",
+    "potentialAction":{
+      "@type":"SearchAction",
+      "target":"https://www.example.com/search?q={query}",
+      "query-input":"required name=query"
+    }
+  }
+  </script>
+
+  <!-- 번들 -->
+  <script defer src="/js/chunk-vendors.57cf9e7c.js"></script>
+  <script defer src="/js/app.6a01d719.js"></script>
+  <link href="/css/app.3ec9b3aa.css" rel="stylesheet" />
+</head>
+<body>
+  <div id="app"></div>
+</body>
 </html>
