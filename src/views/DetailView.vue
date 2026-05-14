@@ -1,17 +1,12 @@
 <template>
-  <!-- 좌 85% / 우 15% -->
   <article class="detail-wrap">
-    <!-- 본문(좌측) -->
     <div class="main">
       <header class="detail-head">
         <h1 class="detail-title chip">{{ item?.title }}</h1>
       </header>
 
-      <!-- 상단: 포스터(좌) + 크레딧(우) / 하단: 본문 -->
       <section class="content-grid">
-        <!-- 1행: 포스터 + 크레딧 -->
         <div class="poster-row">
-          <!-- 포스터 -->
           <figure
             v-if="item?.hero"
             class="poster"
@@ -24,62 +19,100 @@
             <img :src="item.hero" :alt="item.title" />
           </figure>
 
-          <!-- 크레딧 -->
           <div
             v-if="item?.credits?.length || item?.dateRange || item?.location"
             class="credit-block"
           >
-            <p v-if="item?.dateRange" class="detail-date chip date-chip" style="margin-top:0">
+            <p
+              v-if="item?.dateRange"
+              class="detail-date chip date-chip"
+              style="margin-top:0"
+            >
               {{ item?.dateRange }}
             </p>
-            <p v-for="(c,i) in (item?.credits || [])" :key="i" class="credit-line">
-              {{ c }}
-            </p>
+
+            <p
+              v-for="(c, i) in (item?.credits || [])"
+              :key="i"
+              class="credit-line"
+              v-html="formatCreditLine(c)"
+            ></p>
+
             <p v-if="item?.location" class="location-line">
               <strong>Location</strong> · {{ item.location }}
             </p>
           </div>
         </div>
 
-        <!-- 2행: 본문 텍스트 -->
         <div class="text-row">
           <div v-if="item?.body?.length" class="body-block">
-            <p v-for="(para,i) in item.body" :key="'body'+i" class="body-text">{{ para }}</p>
+            <p
+              v-for="(para, i) in item.body"
+              :key="'body' + i"
+              class="body-text"
+            >
+              {{ para }}
+            </p>
           </div>
+
           <div v-if="descriptionParas.length" class="desc-block">
-            <p v-for="(d,i) in descriptionParas" :key="'desc'+i" class="desc-text">{{ d }}</p>
+            <p
+              v-for="(d, i) in descriptionParas"
+              :key="'desc' + i"
+              class="desc-text"
+            >
+              {{ d }}
+            </p>
           </div>
         </div>
       </section>
 
-      <!-- 갤러리 -->
       <section v-if="item?.gallery?.length" class="gallery">
         <figure
-          v-for="(g,i) in item.gallery"
+          v-for="(g, i) in item.gallery"
           :key="i"
           class="gal-item"
           role="button"
           tabindex="0"
-          :aria-label="`${item.title} 갤러리 이미지 ${i+1} 크게 보기`"
+          :aria-label="`${item.title} 갤러리 이미지 ${i + 1} 크게 보기`"
           @click="openLightbox(item?.hero ? i + 1 : i)"
           @keyup.enter="openLightbox(item?.hero ? i + 1 : i)"
         >
-          <img :src="typeof g==='string' ? g : g.src" :alt="(typeof g==='object' && g.alt) || item.title" />
-          <figcaption v-if="typeof g==='object' && g.caption">{{ g.caption }}</figcaption>
+          <img
+            :src="typeof g === 'string' ? g : g.src"
+            :alt="(typeof g === 'object' && g.alt) || item.title"
+          />
+          <figcaption v-if="typeof g === 'object' && g.caption">
+            {{ g.caption }}
+          </figcaption>
         </figure>
       </section>
     </div>
 
-    <!-- 사이드 -->
     <aside class="side">
       <div class="sticky-wrap">
-        <div class="panel list-section">
+        <div
+          class="panel list-section"
+          :class="{
+            'is-bottom': sideAtBottom,
+            'can-scroll': sideCanScroll
+          }"
+        >
           <div class="code-block panel-wrap">
-            <div><h3 class="panel-title" style="font-size:18px">{{ typeLabel }}</h3></div>
-            <div><RouterLink class="back-link" to="/">← Back to Home</RouterLink></div>
+            <div>
+              <h3 class="panel-title">{{ typeLabel }}</h3>
+            </div>
+
+            <div>
+              <RouterLink class="back-link" to="/">← Back to Home</RouterLink>
+            </div>
           </div>
 
-          <ul class="item-list side-list">
+          <ul
+            ref="sideListRef"
+            class="item-list side-list"
+            @scroll.passive="updateSideListState"
+          >
             <li v-for="it in sideList" :key="it.slug">
               <RouterLink
                 :to="makeTo(it)"
@@ -89,19 +122,35 @@
               >
                 <div class="title side-title">{{ it.title }}</div>
                 <div class="date side-date">{{ it.dateRange }}</div>
+                <div class="meta side-meta">
+                  {{ formatSideCredits(it) }}
+                </div>
               </RouterLink>
             </li>
           </ul>
+
+          <button
+            v-if="sideCanScroll"
+            type="button"
+            class="scroll-control-btn"
+            :class="{ 'is-up': sideAtBottom }"
+            :aria-label="sideAtBottom ? `${typeLabel} 목록 위로 이동` : `${typeLabel} 목록 아래로 이동`"
+            @click="scrollSideList"
+          >
+            {{ sideAtBottom ? '↑' : '↓' }}
+          </button>
         </div>
       </div>
     </aside>
   </article>
 
-  <!-- 라이트박스 -->
   <vue-easy-lightbox
     :visible="lightboxVisible"
     :index="lightboxIndex"
-    :imgs="[ ...(item?.hero ? [item.hero] : []), ...((item?.gallery || []).map(g => (typeof g==='string' ? g : g.src))) ]"
+    :imgs="[
+      ...(item?.hero ? [item.hero] : []),
+      ...((item?.gallery || []).map(g => (typeof g === 'string' ? g : g.src)))
+    ]"
     :maskClosable="true"
     :escDisabled="false"
     :downloadButton="false"
@@ -110,7 +159,15 @@
 </template>
 
 <script setup>
-import { ref, computed, watchEffect } from 'vue'
+import {
+  ref,
+  computed,
+  watchEffect,
+  watch,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+} from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useContentStore } from '@/stores/content'
 import VueEasyLightbox from 'vue-easy-lightbox'
@@ -126,172 +183,656 @@ const store = useContentStore()
 
 const type = computed(() => {
   if (props.type) return props.type
+
   const name = route.name?.toString() || ''
   return name.includes('project') ? 'project' : 'show'
 })
+
 const slug = computed(() => props.slug || route.params.slug)
 
 const item = computed(() => {
   const s = slug.value
-  return type.value === 'project' ? store.projectBySlug(s) : store.showBySlug(s)
+
+  return type.value === 'project'
+    ? store.projectBySlug(s)
+    : store.showBySlug(s)
 })
 
 const collection = computed(() =>
-  type.value === 'project' ? store.projectsSortedDesc : store.showsSortedDesc
+  type.value === 'project'
+    ? store.projectsSortedDesc
+    : store.showsSortedDesc
 )
+
 const sideList = computed(() => collection.value || [])
-const typeLabel = computed(() => (type.value === 'project' ? 'Project' : 'Show'))
-const makeTo = (it) => (type.value === 'project' ? `/projects/${it.slug}` : `/shows/${it.slug}`)
+
+const typeLabel = computed(() =>
+  type.value === 'project' ? 'Project' : 'Show'
+)
+
+const makeTo = (it) =>
+  type.value === 'project'
+    ? `/projects/${it.slug}`
+    : `/shows/${it.slug}`
+
+function formatSideCredits(it) {
+  if (!it) return ''
+
+  if (Array.isArray(it.credits)) {
+    return it.credits
+      .map(c => String(c || '').trim())
+      .filter(Boolean)
+      .join(', ')
+  }
+
+  return it.meta || it.summary || ''
+}
 
 watchEffect(() => {
   if (!slug.value) return
+
   if (!item.value) {
-    const target = router.hasRoute && router.hasRoute('not-found') ? { name: 'not-found' } : { path: '/' }
+    const target =
+      router.hasRoute && router.hasRoute('not-found')
+        ? { name: 'not-found' }
+        : { path: '/' }
+
     router.replace(target)
   }
 })
 
 const descriptionParas = computed(() => {
   const d = item.value?.description ?? item.value?.desc
+
   if (!d) return []
+
   return Array.isArray(d) ? d : [d]
 })
 
 const lightboxVisible = ref(false)
 const lightboxIndex = ref(0)
-const openLightbox = (i) => { lightboxIndex.value = i; lightboxVisible.value = true }
+
+const openLightbox = (i) => {
+  lightboxIndex.value = i
+  lightboxVisible.value = true
+}
+
+/* ===== 사이드 리스트 스크롤 상태 ===== */
+const sideListRef = ref(null)
+const sideAtBottom = ref(false)
+const sideCanScroll = ref(false)
+
+function updateSideListState(event = null) {
+  const target = event?.currentTarget || sideListRef.value
+
+  if (!target) return
+
+  const threshold = 4
+  const canScroll = target.scrollHeight > target.clientHeight + threshold
+  const atBottom =
+    canScroll &&
+    target.scrollTop + target.clientHeight >= target.scrollHeight - threshold
+
+  sideCanScroll.value = canScroll
+  sideAtBottom.value = atBottom
+}
+
+function scrollSideList() {
+  const target = sideListRef.value
+
+  if (!target) return
+
+  if (sideAtBottom.value) {
+    target.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    })
+  } else {
+    target.scrollBy({
+      top: Math.max(target.clientHeight * 0.8, 180),
+      behavior: 'smooth',
+    })
+  }
+}
+
+watch(
+  () => [sideList.value.length, type.value, slug.value],
+  async () => {
+    await nextTick()
+    updateSideListState()
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  nextTick(() => {
+    updateSideListState()
+  })
+
+  window.addEventListener('resize', updateSideListState)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', updateSideListState)
+})
+
+/**
+ * 크레딧 문자열 내의 URL을 <a> 태그로 변환합니다.
+ * 예: "Homepage www.taejunyun.com"
+ */
+function formatCreditLine(text) {
+  if (!text) return ''
+
+  const urlRegex = /(\b(https?:\/\/\S+|www\.\S+)\b)/g
+  const parts = text.split(/\s+/)
+  const lastPart = parts[parts.length - 1]
+
+  if (lastPart.match(urlRegex)) {
+    const url = lastPart
+    let href = url
+
+    if (!href.match(/^https?:\/\//i)) {
+      href = 'http://' + href
+    }
+
+    const prefix = parts.slice(0, parts.length - 1).join(' ')
+    const separator = prefix ? ' ' : ''
+
+    return `${prefix}${separator}<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`
+  }
+
+  return text
+}
 </script>
 
 <style scoped>
-/* ===== 레이아웃: 좌 본문(유동) / 우 사이드(고정) ===== */
-.detail-wrap{
-  --gap:20px; --line:#1C1C1C; --muted:#666;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 400px;  /* 본문 유동 + 사이드 고정 */
-  gap:var(--gap);
-  padding:24px 20px 60px;
-  padding-top:60px;
-  width:100%;
-  margin:0;
-  box-sizing:border-box;
+/* ===== 레이아웃: 좌 본문 / 우 사이드 ===== */
+.detail-wrap {
+  --gap: 20px;
+  --line: #1C1C1C;
+  --muted: #666;
 
-  /* 가로 스크롤 방지 */
+  /*
+    사이드 리스트 1개 항목의 기준 높이.
+    credits까지 보여주기 때문에 기존보다 넉넉하게 잡음.
+  */
+  --side-row-h: 78px;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: var(--gap);
+
+  width: 100%;
+  margin: 0;
+  padding: 60px 20px 60px;
+
+  box-sizing: border-box;
   overflow-x: clip;
 }
-.detail-wrap > *{ min-width:0; } /* 그리드 자식 축소 허용 */
 
-/* 부모(main-content)가 overflow로 잘리는 걸 방지 */
-:global(.main-content){ overflow-x: clip; }
+.detail-wrap > * {
+  min-width: 0;
+}
 
-/* ===== 좌/우 영역 배치 ===== */
-.detail-wrap .main{ grid-column:1; min-width:0; }
-.detail-wrap .side{ grid-column:2; align-self:start; justify-self:end; }
+:global(.main-content) {
+  overflow-x: clip;
+}
 
-/* 데스크탑에서만 사이드 고정폭 */
-@media (min-width:1281px){
-  .side{ min-width:400px; }
+/* ===== 좌/우 영역 ===== */
+.detail-wrap .main {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.detail-wrap .side {
+  grid-column: 2;
+  align-self: start;
+  justify-self: end;
+}
+
+@media (min-width: 1281px) {
+  .side {
+    min-width: 400px;
+  }
 }
 
 /* ===== 본문 내부 그리드 ===== */
-.content-grid{
-  display:grid;
-  grid-template-rows:auto auto; 
-  gap:18px;
-  min-width:0;
+.content-grid {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: 18px;
+  min-width: 0;
 }
 
-/* 1행: 포스터 + 크레딧 */
-.poster-row{
-  display:grid;
-  grid-template-columns:clamp(220px,32vw,360px) minmax(0,1fr);
-  gap:18px;
-  align-items:start;
-  min-width:0;
-}
-.poster{ margin:0; border:1px solid #e6e6e6; background:#fff; cursor:zoom-in; }
-.poster img{ display:block; width:100%; height:auto; object-fit:cover; }
-
-/* 크레딧 */
-.date-chip{ color:#666; }
-.credit-line{ color:#666; margin:4px 0; line-height:1.4; }
-.location-line{ color:#4b5563; margin-top:6px; }
-
-/* 2행: 텍스트 */
-.text-row{ min-width:0; }
-.body-block{ display:grid; gap:12px; margin-top:2px; }
-.body-text{ margin:0; white-space:pre-line; word-break:break-word; }
-.desc-block{ display:grid; gap:10px; }
-.desc-text{ line-height:1.6; white-space:pre-line; word-break:break-word; margin-top:0; }
-
-/* 갤러리 */
-.gallery{
-  margin-top:25px;
-  display:grid;
-  grid-template-columns:repeat(3, minmax(0,1fr));
-  gap:12px;
-  min-width:0;
-}
-.gal-item{ margin:0; cursor:zoom-in; }
-.gal-item img{ width:100%; height:100%; display:block; object-fit:cover; }
-.gal-item figcaption{ margin-top:6px; font-size:12px; color:#6b7280; }
-
-/* ===== 반응형 ===== */
-/* 중간 화면: 갤러리 2열 */
-@media (max-width:1200px){
-  .gallery{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+/* ===== 1행: 포스터 + 크레딧 ===== */
+.poster-row {
+  display: grid;
+  grid-template-columns: clamp(220px, 32vw, 360px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+  min-width: 0;
 }
 
-/* 작은 화면: 사이드 아래로 + 한 칼럼 고정 */
-@media (max-width:1280px){
-  .detail-wrap{
-    grid-template-columns:1fr !important;
-    grid-template-areas:none;
-  }
-  .detail-wrap .side{
-    grid-column:1;
-    justify-self:stretch;   /* 가로 꽉 */
-    width:auto;
-    min-width:0;            /* 고정폭 제거 */
-  }
-  .sticky-wrap{ position:static; }
-  .poster-row{ grid-template-columns:1fr; gap:12px; }
-  .title.side-title{ font-size:14px; }
-  .date.side-date{ font-size:11px; }
+.poster {
+  margin: 0;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  cursor: zoom-in;
 }
 
-/* 더 작은 화면: 갤러리 1열 */
-@media (max-width:600px){
-  .gallery{ grid-template-columns:1fr; }
+.poster img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 }
-.detail-title{
+
+/* ===== 크레딧 ===== */
+.date-chip {
+  color: #666;
+}
+
+.credit-line {
+  color: #666;
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.credit-line :deep(a) {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.credit-block .credit-line a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.location-line {
+  color: #4b5563;
+  margin-top: 6px;
+}
+
+/* ===== 2행: 텍스트 ===== */
+.text-row {
+  min-width: 0;
+}
+
+.body-block {
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+}
+
+.body-text {
+  margin: 0;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.desc-block {
+  display: grid;
+  gap: 10px;
+}
+
+.desc-text {
+  line-height: 1.6;
+  white-space: pre-line;
+  word-break: break-word;
+  margin-top: 0;
+}
+
+/* ===== 갤러리 ===== */
+.gallery {
+  margin-top: 25px;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+
+  min-width: 0;
+}
+
+.gal-item {
+  margin: 0;
+  cursor: zoom-in;
+}
+
+.gal-item img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.gal-item figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.detail-title {
   font-size: 22px;
 }
 
 /* ===== 사이드 ===== */
-.sticky-wrap{ position:sticky; top:24px; display:grid; }
-.panel.list-section{}
-.panel-wrap{ display:flex; justify-content:space-between; align-items:center; margin:0 0 10px; gap:8px; min-width:0; }
-.panel-title{ font-weight:700; margin:0; }
-.back-link{ font-size:13px; text-decoration:underline; }
-
-.item-list.side-list{ list-style:none; padding:0; margin:0; border-top:1px solid var(--line); min-width:0; }
-.side-item.row{
-  padding:12px 0; border-bottom:1px solid var(--line);
-  display:grid; grid-template-columns:minmax(0,1fr) auto; row-gap:4px;
-  color:inherit; text-decoration:none; min-width:0;
+.sticky-wrap {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  width: 100%;
 }
-.side-item.row:hover .title{ text-decoration:underline; }
-.title.side-title{
-  font-weight:600; font-size:16px; line-height:1.35;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
-}
-.date.side-date{ color:var(--muted); font-size:13px; justify-self:end; align-self:start; }
-.side-item.active .title{ font-weight:700; text-decoration:underline; }
 
-/* 미디어 요소 안전장치 */
-.detail-wrap :where(img,video,canvas,svg,iframe){
-  max-inline-size:100%;
-  block-size:auto;
-  display:block;
+.panel.list-section {
+  position: relative;
+
+  width: 100%;
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-wrap {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  margin: 0 0 10px;
+  gap: 8px;
+
+  min-width: 0;
+}
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.back-link {
+  font-size: 13px;
+  text-decoration: underline;
+}
+
+/* ===== 사이드 리스트: 최대 5개 높이 + 내부 스크롤 ===== */
+.item-list.side-list {
+  width: 100%;
+  min-width: 0;
+
+  list-style: none;
+  padding: 0 0 36px;
+  margin: 0;
+
+  border-top: 1px solid var(--line);
+
+  /*
+    한 번에 최대 5개 항목 정도만 보이게.
+    버튼 공간 때문에 padding-bottom 36px를 더함.
+  */
+  max-height: calc(var(--side-row-h) * 5 + 36px + 1px);
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+
+/* 스크롤 가능할 때만 하단 흐림 효과 */
+.panel.list-section.can-scroll::before {
+  content: "";
+
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  height: 44px;
+
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0),
+    rgba(255, 255, 255, 0.96)
+  );
+
+  pointer-events: none;
+  z-index: 2;
+}
+
+.panel.list-section.can-scroll.is-bottom::before {
+  height: 28px;
+  opacity: 0.65;
+}
+
+/* 스크롤바 */
+.item-list.side-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.item-list.side-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.item-list.side-list::-webkit-scrollbar-thumb {
+  background: #BDBDBD;
+  border-radius: 999px;
+}
+
+.item-list.side-list::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+
+.item-list.side-list {
+  scrollbar-width: thin;
+  scrollbar-color: #BDBDBD transparent;
+}
+
+/* ===== 사이드 리스트 항목 ===== */
+.side-item.row {
+
+  padding: 10px 0;
+
+  border-bottom: 1px solid var(--line);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 4px;
+
+  color: inherit;
+  text-decoration: none;
+
+  min-width: 0;
+}
+
+.side-item.row:hover .title {
+  text-decoration: underline;
+}
+
+.title.side-title {
+  grid-column: 1 / 2;
+
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.35;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+}
+
+.date.side-date {
+  grid-column: 2 / 3;
+
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+
+  justify-self: end;
+  align-self: start;
+
+  white-space: nowrap;
+}
+
+.meta.side-meta {
+  grid-column: 1 / 3;
+
+  min-width: 0;
+
+  color: #444;
+  font-size: 12px;
+  line-height: 1.4;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-item.active .title {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* ===== 아래/위 이동 버튼 ===== */
+.scroll-control-btn {
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+
+  transform: translateX(-50%);
+
+  width: 22px;
+  height: 22px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  margin: 0;
+
+  font-family: 'D2Coding', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+
+  color: #1C1C1C;
+  background: rgba(255, 255, 255, 0.94);
+
+  border: 1px solid #1C1C1C;
+  border-radius: 999px;
+
+  cursor: pointer;
+  z-index: 4;
+
+  transition:
+    transform 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.scroll-control-btn:hover {
+  color: #fff;
+  background: #1C1C1C;
+  transform: translateX(-50%) translateY(1px);
+}
+
+.scroll-control-btn:active {
+  transform: translateX(-50%) translateY(3px);
+}
+
+.scroll-control-btn:focus-visible {
+  outline: 2px solid #1C1C1C;
+  outline-offset: 3px;
+}
+
+.scroll-control-btn.is-up {
+  color: #fff;
+  background: #1C1C1C;
+}
+
+.scroll-control-btn.is-up:hover {
+  color: #1C1C1C;
+  background: #fff;
+}
+
+/* ===== 미디어 요소 안전장치 ===== */
+.detail-wrap :where(img, video, canvas, svg, iframe) {
+  max-inline-size: 100%;
+  block-size: auto;
+  display: block;
+}
+
+/* ===== 반응형 ===== */
+@media (max-width: 1200px) {
+  .gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 작은 화면: 사이드 아래로 내려감 */
+@media (max-width: 1280px) {
+  .detail-wrap {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: none;
+  }
+
+  .detail-wrap .side {
+    grid-column: 1;
+    justify-self: stretch;
+    width: auto;
+    min-width: 0;
+  }
+
+  .sticky-wrap {
+    position: static;
+  }
+
+  .poster-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .title.side-title {
+    font-size: 14px;
+  }
+
+  .date.side-date {
+    font-size: 11px;
+  }
+
+  .meta.side-meta {
+    font-size: 11px;
+  }
+}
+
+/* 더 작은 화면 */
+@media (max-width: 600px) {
+  .gallery {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-wrap {
+    padding: 56px 14px 44px;
+  }
+
+  .panel-wrap {
+    align-items: flex-start;
+  }
+
+  .panel-title {
+    font-size: 16px;
+  }
+
+  .back-link {
+    font-size: 12px;
+  }
+
+  .item-list.side-list {
+    max-height: calc(var(--side-row-h) * 5 + 36px + 1px);
+  }
 }
 </style>

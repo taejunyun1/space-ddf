@@ -1,7 +1,8 @@
+# 모든 검색엔진에 전체 페이지 수집 허용
 User-agent: *
 Allow: /
 
-# 주요 검색엔진별 수집 허용
+# 주요 검색엔진 명시 허용
 User-agent: Googlebot
 Allow: /
 
@@ -11,14 +12,11 @@ Allow: /
 User-agent: Googlebot-Mobile
 Allow: /
 
-User-agent: Yeti  # 네이버
+User-agent: Yeti
 Allow: /
 
 User-agent: Bingbot
 Allow: /
 
-# 사이트맵 명시 (절대경로로)
-Sitemap: https://www.example.com/sitemap.xml
-
-# (선택) 크롤링 간격 제한 해제 - 서버가 충분히 빠를 때만 사용
-Crawl-delay: 1
+# 사이트맵
+Sitemap: https://www.spaceddf.xyz/sitemap.xml

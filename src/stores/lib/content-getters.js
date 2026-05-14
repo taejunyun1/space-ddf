@@ -1,70 +1,128 @@
 // src/stores/lib/content-getters.js
 import { compareByRangeAsc } from './content-helpers'
 
+const safeArray = (value) => (Array.isArray(value) ? value : [])
+
+const sortByRangeAsc = (items) => {
+  return [...safeArray(items)].sort(compareByRangeAsc)
+}
+
+const sortByRangeDesc = (items) => {
+  return [...safeArray(items)].sort((a, b) => compareByRangeAsc(b, a))
+}
+
+const getItemKind = (item) => {
+  return item?._kind || item?.type || null
+}
+
+const getItemLink = (item) => {
+  if (!item?.slug) return '/shows'
+
+  const kind = getItemKind(item)
+
+  if (kind === 'project') {
+    return `/projects/${item.slug}`
+  }
+
+  return `/shows/${item.slug}`
+}
+
+const getItemMeta = (item) => {
+  if (!item) return ''
+
+  if (Array.isArray(item.credits)) {
+    return item.credits.join(', ')
+  }
+
+  return item.meta || ''
+}
+
 export const contentGetters = {
   // 단건 조회
-  projectBySlug: (state) => (slug) =>
-    (state.projects || []).find(p => p.slug === slug) || null,
-  showBySlug: (state) => (slug) =>
-    (state.shows || []).find(s => s.slug === slug) || null,
-
-  // 기본 정렬(오름차순: 과거→미래)
-  projectsSorted: (state) =>
-    [...(state.projects || [])].sort(compareByRangeAsc),
-  showsSorted: (state) =>
-    [...(state.shows || [])].sort(compareByRangeAsc),
-
-  // 최신순(내림차순)
-  projectsSortedDesc() {
-    return [...(this.projects || [])].sort((a, b) => -compareByRangeAsc(a, b))
-  },
-  showsSortedDesc() {
-    return [...(this.shows || [])].sort((a, b) => -compareByRangeAsc(a, b))
+  projectBySlug: (state) => (slug) => {
+    return safeArray(state.projects).find((project) => project.slug === slug) || null
   },
 
-  // ✅ 합치기 (_kind는 actions/빌더에서 이미 주입)
-  allItems() {
-    return [...(this.projects || []), ...(this.shows || [])]
+  showBySlug: (state) => (slug) => {
+    return safeArray(state.shows).find((show) => show.slug === slug) || null
   },
 
-  // 합쳐서 정렬
+  // 기본 정렬: 과거 → 미래
+  projectsSorted: (state) => {
+    return sortByRangeAsc(state.projects)
+  },
+
+  showsSorted: (state) => {
+    return sortByRangeAsc(state.shows)
+  },
+
+  // 최신순: 미래/최신 → 과거
+  projectsSortedDesc: (state) => {
+    return sortByRangeDesc(state.projects)
+  },
+
+  showsSortedDesc: (state) => {
+    return sortByRangeDesc(state.shows)
+  },
+
+  // 전체 아이템
+  allItems: (state) => {
+    return [
+      ...safeArray(state.projects),
+      ...safeArray(state.shows),
+    ]
+  },
+
+  // 전체 정렬
   allSortedByDate() {
-    return [...this.allItems].sort(compareByRangeAsc)
+    return sortByRangeAsc(this.allItems)
   },
+
   allSortedByDateDesc() {
-    return [...this.allItems].sort((a, b) => -compareByRangeAsc(a, b))
+    return sortByRangeDesc(this.allItems)
   },
 
   // 최신 1건
   recent() {
-    const arr = this.allSortedByDateDesc
-    return arr.length ? arr[0] : null
+    return this.allSortedByDateDesc[0] || null
   },
 
   // 편의 게터
-  metaOf: () => (item) =>
-    item ? (Array.isArray(item.credits) ? item.credits.join(', ') : (item.meta || '')) : '',
+  metaOf: () => getItemMeta,
 
-  thumbOf: (state) => (item) =>
-    item?.thumb || state.defaultThumb,
-
-  heroOf: (state) => (item) =>
-    item?.hero || item?.thumb || state.defaultHero,
-
-  // ✅ 링크는 _kind 기준
-  linkOf: () => (item) => {
-    if (!item) return '/shows'
-    const kind = item._kind || item.type
-    return kind === 'project' ? `/projects/${item.slug}` : `/shows/${item.slug}`
+  thumbOf: (state) => (item) => {
+    return item?.thumb || state.defaultThumb
   },
 
-  // Recent 편의
-  recentMeta()  { return this.metaOf(this.recent)  },
-  recentThumb() { return this.thumbOf(this.recent) },
-  recentHero()  { return this.heroOf(this.recent)  },
-  recentLink()  { return this.linkOf(this.recent)  },
+  heroOf: (state) => (item) => {
+    return item?.hero || item?.thumb || state.defaultHero
+  },
 
-  // (옵션) 디버그
-  recentProject() { return this.projectsSortedDesc[0] || null },
-  recentShow()    { return this.showsSortedDesc[0] || null },
+  linkOf: () => getItemLink,
+
+  // Recent 편의
+  recentMeta() {
+    return this.metaOf(this.recent)
+  },
+
+  recentThumb() {
+    return this.thumbOf(this.recent)
+  },
+
+  recentHero() {
+    return this.heroOf(this.recent)
+  },
+
+  recentLink() {
+    return this.linkOf(this.recent)
+  },
+
+  // 디버그 / 개발용
+  recentProject() {
+    return this.projectsSortedDesc[0] || null
+  },
+
+  recentShow() {
+    return this.showsSortedDesc[0] || null
+  },
 }
