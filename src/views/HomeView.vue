@@ -1,32 +1,9 @@
 <template>
   <div class="home-wrap">
     <section class="col-left">
-      <h3 class="code-block">Location</h3>
+      <h3 class="code-block">Calendar</h3>
 
-      <figure class="map-box">
-        <iframe
-          class="map-iframe"
-          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3262.2521703589455!2d126.90988227667317!3d35.150331258953756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x35718dcb0676ea25%3A0xe52a9bee2121a68e!2z7Iqk7Y6Y7J207IqkIOuUlOuUlOyXkO2UhA!5e0!3m2!1sko!2skr!4v1754984708875!5m2!1sko!2skr"
-          loading="lazy"
-          allowfullscreen
-          referrerpolicy="no-referrer-when-downgrade"
-          title="스페이스 디디에프 위치 지도"
-        ></iframe>
-      </figure>
-
-      <div class="place-info">
-        <div>
-          <div class="place-name">스페이스 디디에프</div>
-          <div class="contact">
-            <a href="mailto:space.ddf@gmail.com" aria-label="이메일로 문의하기">
-              Space.ddf@gmail.com
-            </a>
-          </div>
-        </div>
-
-        <div class="addr">광주광역시 동구 충장로46-4 1층 스페이스 디디에프</div>
-        <div class="hours">운영시간 11:00~18:00 / 월요일 및 공휴일 휴관</div>
-      </div>
+      <CalendarComponent class="calendar-card" />
     </section>
 
     <section class="col-center">
@@ -52,10 +29,7 @@
     </section>
 
     <aside class="col-right">
-      <div
-        class="list-section"
-        :class="{ 'is-bottom': projectAtBottom }"
-      >
+      <div class="list-section" :class="{ 'is-bottom': projectAtBottom }">
         <h3 class="code-block">Project</h3>
 
         <ul
@@ -92,10 +66,7 @@
 
       <div class="divider"></div>
 
-      <div
-        class="list-section"
-        :class="{ 'is-bottom': showAtBottom }"
-      >
+      <div class="list-section" :class="{ 'is-bottom': showAtBottom }">
         <h3 class="code-block">Show</h3>
 
         <ul
@@ -138,6 +109,7 @@ import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useContentStore } from '@/stores/content'
 import RecentComponent from '@/components/RecentComponent.vue'
+import CalendarComponent from '@/components/CalendarComponent.vue'
 
 const store = useContentStore()
 
@@ -236,6 +208,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+
 *,
 *::before,
 *::after {
@@ -246,9 +219,10 @@ onBeforeUnmount(() => {
 .home-wrap {
   --line: #1C1C1C;
   --muted: #666;
-  --gap: clamp(16px, 1.6vw, 28px);
+  --gap: clamp(20px, 2vw, 32px);
   --page-x: clamp(18px, 3.5vw, 56px);
-  --visual-max: 560px;
+  --top-card-height: 640px;
+  --bottom-list-height: 360px;
 
   width: 100%;
   max-width: 100vw;
@@ -257,12 +231,14 @@ onBeforeUnmount(() => {
   margin: 0;
 
   display: grid;
-  grid-template-columns:
-    minmax(260px, 0.9fr)
-    minmax(320px, 1.15fr)
-    minmax(280px, 0.85fr);
-  grid-template-areas: "left center right";
-  gap: var(--gap);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "left center"
+    "right right";
+
+  column-gap: var(--gap);
+  row-gap: 34px;
 
   align-items: start;
 
@@ -276,36 +252,17 @@ onBeforeUnmount(() => {
   max-width: 100%;
 }
 
+/* ===== 상단 좌우 영역 ===== */
 .col-left {
   grid-area: left;
-
   display: flex;
   flex-direction: column;
-  align-items: center;
 }
 
 .col-center {
   grid-area: center;
-
-  display: flex;
-  justify-content: center;
-}
-
-/* ===== 오른쪽 컬럼 ===== */
-.col-right {
-  grid-area: right;
-
   display: flex;
   flex-direction: column;
-  gap: 16px;
-
-  min-width: 0;
-  max-width: 100%;
-
-  height: calc(100vh - 120px);
-  min-height: 0;
-
-  overflow: hidden;
 }
 
 /* ===== 섹션 타이틀 ===== */
@@ -320,96 +277,58 @@ onBeforeUnmount(() => {
   letter-spacing: -0.02em;
 }
 
-.col-left > .code-block,
-.col-center :deep(.code-block) {
-  max-width: var(--visual-max);
+/* ===== Calendar / Recent 카드 높이 통일 ===== */
+.calendar-card,
+.recent-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+
+  height: var(--top-card-height);
 }
 
-/* ===== 왼쪽 지도 ===== */
-.map-box {
-  width: 100%;
-  max-width: var(--visual-max);
-  margin: 0;
-
-  aspect-ratio: 4 / 5;
-
-  border: 1px solid var(--line);
+.calendar-card {
   overflow: hidden;
 }
 
-.map-iframe {
-  display: block;
-  width: 100%;
+.calendar-card :deep(.ddf-calendar) {
   height: 100%;
-
-  border: 0;
+  min-height: 0;
 }
 
-/* ===== 장소 정보 ===== */
-.place-info {
-  width: 100%;
-  max-width: var(--visual-max);
-
-  margin-top: 10px;
-
-  font-size: 13px;
-  line-height: 1.45;
-  color: #333;
-
-  display: grid;
-  gap: 4px;
-}
-
-.place-info > div:first-child {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  column-gap: 12px;
-  align-items: start;
-}
-
-.place-name {
-  min-width: 0;
-  font-weight: 700;
-  word-break: keep-all;
-}
-
-.contact {
-  min-width: 0;
-  justify-self: end;
-}
-
-.contact a {
-  color: inherit;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.contact a:hover {
-  text-decoration: underline;
-}
-
-.addr,
-.hours {
-  word-break: keep-all;
-  overflow-wrap: break-word;
-}
-
-/* ===== 가운데 RecentComponent 보정 ===== */
 .recent-card {
-  width: 100%;
-  max-width: var(--visual-max);
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .col-center :deep(.recent-content) {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+
+  height: var(--top-card-height);
+  min-height: 0 !important;
+
+  border: 1px solid var(--line) !important;
+  background: #fff;
+
+  box-sizing: border-box;
+}
+
+.col-center :deep(.recent-empty) {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0 !important;
+}
+
+.col-center :deep(.recent-figure),
+.col-center :deep(.recent-meta) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .col-center :deep(.recent-figure) {
-  width: 100%;
-  max-width: 100%;
   margin: 0;
   box-sizing: border-box;
 }
@@ -420,38 +339,42 @@ onBeforeUnmount(() => {
   height: auto;
 }
 
-.col-center :deep(.recent-meta) {
+/* ===== 하단 Project / Show 영역 ===== */
+.col-right {
+  grid-area: right;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: var(--gap);
+
   width: 100%;
-  max-width: 100%;
   min-width: 0;
+  max-width: 100%;
+
+  height: auto;
+  min-height: 0;
+
+  overflow: visible;
+
+  align-items: start;
 }
 
-/* ===== 오른쪽 리스트 섹션 ===== */
 .list-section {
   position: relative;
 
   width: 100%;
   min-width: 0;
+  max-width: 100%;
+
+  height: var(--bottom-list-height);
   min-height: 0;
 
   display: flex;
   flex-direction: column;
+
+  overflow: hidden;
 }
 
-/* Project 영역 */
-.col-right .list-section:first-child {
-  flex: 0 1 42%;
-  min-height: 160px;
-  max-height: 42%;
-}
-
-/* Show 영역 */
-.col-right .list-section:last-child {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-
-/* 하단 흐림 효과 */
 .list-section::before {
   content: "";
 
@@ -472,19 +395,17 @@ onBeforeUnmount(() => {
   z-index: 2;
 }
 
-/* 최하단에 도달했을 때 하단 흐림 축소 */
 .list-section.is-bottom::before {
   height: 28px;
   opacity: 0.65;
 }
 
-/* 제목은 고정, 리스트만 스크롤 */
 .item-list {
   width: 100%;
   min-width: 0;
-  min-height: 0;
 
   flex: 1 1 auto;
+  min-height: 0;
 
   list-style: none;
   padding: 0 0 36px;
@@ -497,7 +418,6 @@ onBeforeUnmount(() => {
 
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
-
   scroll-behavior: smooth;
 }
 
@@ -530,7 +450,7 @@ onBeforeUnmount(() => {
   scrollbar-color: #BDBDBD transparent;
 }
 
-/* ===== 아래/위 이동 버튼 ===== */
+/* ===== 스크롤 버튼 ===== */
 .scroll-control-btn {
   position: absolute;
   left: 50%;
@@ -560,14 +480,12 @@ onBeforeUnmount(() => {
   border-radius: 999px;
 
   cursor: pointer;
-
   z-index: 4;
 
   transition:
     transform 0.18s ease,
     background-color 0.18s ease,
-    color 0.18s ease,
-    bottom 0.18s ease;
+    color 0.18s ease;
 }
 
 .scroll-control-btn:hover {
@@ -585,7 +503,6 @@ onBeforeUnmount(() => {
   outline-offset: 3px;
 }
 
-/* 최하단에서는 위로 가는 버튼 느낌 */
 .scroll-control-btn.is-up {
   background: #1C1C1C;
   color: #fff;
@@ -596,7 +513,7 @@ onBeforeUnmount(() => {
   color: #1C1C1C;
 }
 
-/* ===== 공통 행 레이아웃 ===== */
+/* ===== Project / Show 행 ===== */
 .row {
   width: 100%;
   min-width: 0;
@@ -620,7 +537,6 @@ onBeforeUnmount(() => {
   text-decoration: underline;
 }
 
-/* ===== Project / Show 타이포그래피 ===== */
 .title {
   grid-column: 1 / 2;
 
@@ -663,67 +579,34 @@ onBeforeUnmount(() => {
 }
 
 .divider {
-  flex: 0 0 auto;
-  height: 8px;
+  display: none;
 }
 
-/* ===== 1280px 이상 ===== */
-@media (min-width: 1280px) {
+/* ===== 넓은 화면 ===== */
+@media (min-width: 1440px) {
   .home-wrap {
-    --visual-max: 580px;
-
-    grid-template-columns:
-      minmax(300px, 0.95fr)
-      minmax(380px, 1.2fr)
-      minmax(300px, 0.85fr);
+    --top-card-height: 640px;
+    --bottom-list-height: 400px;
   }
 }
 
 /* ===== 중간 데스크톱 ===== */
 @media (max-width: 1180px) {
   .home-wrap {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "left center"
-      "right right";
-    gap: 24px;
-  }
+    --top-card-height: 560px;
+    --bottom-list-height: 380px;
 
-  .col-center {
-    justify-content: center;
-  }
-
-  .col-right {
-    display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     column-gap: 24px;
-    row-gap: 16px;
-
-    height: auto;
-    min-height: 0;
-
-    overflow: visible;
-  }
-
-  .col-right .list-section:first-child,
-  .col-right .list-section:last-child {
-    min-height: 0;
-    max-height: 420px;
-  }
-
-  .item-list {
-    max-height: 360px;
-  }
-
-  .divider {
-    display: none;
+    row-gap: 28px;
   }
 }
 
 /* ===== 태블릿 이하 ===== */
 @media (max-width: 1024px) {
   .home-wrap {
-    --visual-max: 100%;
+    --top-card-height: 500px;
+    --bottom-list-height: 360px;
 
     padding: 60px 16px 48px;
     gap: 18px;
@@ -732,14 +615,6 @@ onBeforeUnmount(() => {
   .code-block {
     font-size: 14px;
     margin-bottom: 10px;
-  }
-
-  .map-box {
-    aspect-ratio: 4 / 5;
-  }
-
-  .place-info {
-    font-size: 11px;
   }
 
   .title {
@@ -752,15 +627,16 @@ onBeforeUnmount(() => {
   }
 
   .scroll-control-btn {
-    width: 22px;
-    height: 22px;
     font-size: 14px;
   }
 }
 
-/* ===== 모바일: 1컬럼 ===== */
+/* ===== 모바일 ===== */
 @media (max-width: 768px) {
   .home-wrap {
+    --top-card-height: auto;
+    --bottom-list-height: auto;
+
     grid-template-columns: 1fr;
     grid-template-areas:
       "left"
@@ -771,44 +647,30 @@ onBeforeUnmount(() => {
     padding: 56px 14px 44px;
   }
 
-  .col-center {
-    justify-content: stretch;
+  .calendar-card,
+  .recent-card {
+    height: auto;
   }
 
-  .map-box {
-    aspect-ratio: 1 / 1;
+  .calendar-card {
+    overflow: visible;
+  }
+
+  .col-center :deep(.recent-content) {
+    height: auto;
+    min-height: 420px !important;
   }
 
   .col-right {
     display: flex;
     flex-direction: column;
     gap: 18px;
-
-    height: auto;
-    min-height: 0;
-
-    overflow: visible;
-  }
-
-  .col-right .list-section:first-child,
-  .col-right .list-section:last-child {
-    flex: none;
-    min-height: 0;
-    max-height: none;
   }
 
   .list-section {
+    height: auto;
     min-height: 0;
-  }
-
-  .list-section::before {
-    display: block;
-    height: 38px;
-  }
-
-  .list-section.is-bottom::before {
-    height: 24px;
-    opacity: 0.55;
+    overflow: visible;
   }
 
   .item-list {
@@ -821,40 +683,11 @@ onBeforeUnmount(() => {
 
     overflow-y: auto;
     overflow-x: hidden;
-
-    border-top: 1px solid var(--line);
-  }
-
-  .scroll-control-btn {
-    display: flex;
-
-    width: 22px;
-    height: 22px;
-
-    bottom: 8px;
-
-    font-size: 15px;
-
-    background: rgba(255, 255, 255, 0.96);
-    border: 1px solid #1C1C1C;
   }
 
   .divider {
     display: block;
     height: 6px;
-  }
-
-  .place-info > div:first-child {
-    grid-template-columns: 1fr;
-    row-gap: 2px;
-  }
-
-  .contact {
-    justify-self: start;
-  }
-
-  .contact a {
-    white-space: normal;
   }
 
   .row {
@@ -885,11 +718,15 @@ onBeforeUnmount(() => {
   }
 }
 
-/* ===== 작은 모바일: 321px ~ 440px ===== */
+/* ===== 작은 모바일 ===== */
 @media (min-width: 321px) and (max-width: 440px) {
   .home-wrap {
     gap: 18px;
     padding: 56px 14px 40px;
+  }
+
+  .col-center :deep(.recent-content) {
+    min-height: 380px !important;
   }
 
   .item-list {
@@ -906,7 +743,7 @@ onBeforeUnmount(() => {
   }
 }
 
-/* ===== 초소형: ≤320px ===== */
+/* ===== 초소형 ===== */
 @media (max-width: 320px) {
   .home-wrap {
     gap: 16px;
@@ -917,8 +754,8 @@ onBeforeUnmount(() => {
     font-size: 13px;
   }
 
-  .place-info {
-    font-size: 10.5px;
+  .col-center :deep(.recent-content) {
+    min-height: 340px !important;
   }
 
   .item-list {
@@ -940,5 +777,14 @@ onBeforeUnmount(() => {
   .meta {
     font-size: 11px;
   }
+}
+.calendar-card {
+  overflow: visible;
+}
+
+.calendar-card :deep(.ddf-calendar),
+.calendar-card :deep(.ddf-calendar-grid),
+.calendar-card :deep(.ddf-calendar-day) {
+  overflow: visible;
 }
 </style>

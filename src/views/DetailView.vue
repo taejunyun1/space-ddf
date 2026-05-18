@@ -345,22 +345,23 @@ function formatCreditLine(text) {
 }
 </script>
 
+
+
 <style scoped>
-/* ===== 레이아웃: 좌 본문 / 우 사이드 ===== */
+
+/* ===== 레이아웃: 본문 위 / 리스트 아래 ===== */
 .detail-wrap {
   --gap: 20px;
   --line: #1C1C1C;
   --muted: #666;
-
-  /*
-    사이드 리스트 1개 항목의 기준 높이.
-    credits까지 보여주기 때문에 기존보다 넉넉하게 잡음.
-  */
   --side-row-h: 78px;
 
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
-  gap: var(--gap);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "main"
+    "side";
+  row-gap: 40px;
 
   width: 100%;
   margin: 0;
@@ -380,20 +381,18 @@ function formatCreditLine(text) {
 
 /* ===== 좌/우 영역 ===== */
 .detail-wrap .main {
-  grid-column: 1;
+  grid-area: main;
   min-width: 0;
 }
 
 .detail-wrap .side {
-  grid-column: 2;
-  align-self: start;
-  justify-self: end;
-}
+  grid-area: side;
 
-@media (min-width: 1281px) {
-  .side {
-    min-width: 400px;
-  }
+  width: 100%;
+  min-width: 0;
+
+  justify-self: stretch;
+  align-self: start;
 }
 
 /* ===== 본문 내부 그리드 ===== */
@@ -515,10 +514,9 @@ function formatCreditLine(text) {
   font-size: 22px;
 }
 
-/* ===== 사이드 ===== */
+/* ===== 하단 리스트 ===== */
 .sticky-wrap {
-  position: sticky;
-  top: 24px;
+  position: static;
   display: grid;
   width: 100%;
 }
@@ -555,7 +553,7 @@ function formatCreditLine(text) {
   text-decoration: underline;
 }
 
-/* ===== 사이드 리스트: 최대 5개 높이 + 내부 스크롤 ===== */
+/* ===== 하단 리스트: 최대 5개 높이 + 내부 스크롤 ===== */
 .item-list.side-list {
   width: 100%;
   min-width: 0;
@@ -566,10 +564,6 @@ function formatCreditLine(text) {
 
   border-top: 1px solid var(--line);
 
-  /*
-    한 번에 최대 5개 항목 정도만 보이게.
-    버튼 공간 때문에 padding-bottom 36px를 더함.
-  */
   max-height: calc(var(--side-row-h) * 5 + 36px + 1px);
 
   overflow-y: auto;
@@ -629,9 +623,8 @@ function formatCreditLine(text) {
   scrollbar-color: #BDBDBD transparent;
 }
 
-/* ===== 사이드 리스트 항목 ===== */
+/* ===== 하단 리스트 항목 ===== */
 .side-item.row {
-
   padding: 10px 0;
 
   border-bottom: 1px solid var(--line);
@@ -661,7 +654,6 @@ function formatCreditLine(text) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-
 }
 
 .date.side-date {
@@ -771,25 +763,6 @@ function formatCreditLine(text) {
   .gallery {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-/* 작은 화면: 사이드 아래로 내려감 */
-@media (max-width: 1280px) {
-  .detail-wrap {
-    grid-template-columns: 1fr !important;
-    grid-template-areas: none;
-  }
-
-  .detail-wrap .side {
-    grid-column: 1;
-    justify-self: stretch;
-    width: auto;
-    min-width: 0;
-  }
-
-  .sticky-wrap {
-    position: static;
-  }
 
   .poster-row {
     grid-template-columns: 1fr;
@@ -800,10 +773,7 @@ function formatCreditLine(text) {
     font-size: 14px;
   }
 
-  .date.side-date {
-    font-size: 11px;
-  }
-
+  .date.side-date,
   .meta.side-meta {
     font-size: 11px;
   }
@@ -817,6 +787,7 @@ function formatCreditLine(text) {
 
   .detail-wrap {
     padding: 56px 14px 44px;
+    row-gap: 28px;
   }
 
   .panel-wrap {
@@ -830,9 +801,6 @@ function formatCreditLine(text) {
   .back-link {
     font-size: 12px;
   }
-
-  .item-list.side-list {
-    max-height: calc(var(--side-row-h) * 5 + 36px + 1px);
-  }
 }
+
 </style>

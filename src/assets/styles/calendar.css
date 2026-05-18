@@ -1,0 +1,530 @@
+.ddf-calendar,
+.ddf-calendar * {
+  box-sizing: border-box;
+}
+
+.ddf-calendar {
+  position: relative;
+
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  height: 100%;
+  min-height: 0;
+
+  padding: 14px;
+
+  border: 1px solid #1C1C1C;
+  background: #fff;
+
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  row-gap: 10px;
+
+  overflow: visible;
+}
+
+/* Header */
+.ddf-calendar-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  min-width: 0;
+}
+
+.ddf-calendar-heading {
+  min-width: 0;
+}
+
+.ddf-calendar-eyebrow {
+  margin: 0 0 4px;
+
+  font-family: 'D2Coding', monospace;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+
+  color: #777;
+
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ddf-calendar-header h2 {
+  margin: 0;
+
+  font-size: clamp(36px, 4.4vw, 60px);
+  line-height: 0.9;
+  font-weight: 700;
+  letter-spacing: -0.07em;
+
+  color: #111;
+
+  white-space: nowrap;
+}
+
+/* Controls */
+.ddf-calendar-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  flex: 0 0 auto;
+}
+
+.ddf-calendar-control button {
+  width: 30px;
+  height: 30px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  margin: 0;
+
+  border: 1px solid #1C1C1C;
+  border-radius: 999px;
+
+  font-family: 'D2Coding', monospace;
+  font-size: 20px;
+  line-height: 1;
+
+  color: #1C1C1C;
+  background: #fff;
+
+  cursor: pointer;
+}
+
+.ddf-calendar-control button:hover {
+  color: #fff;
+  background: #1C1C1C;
+}
+
+.ddf-calendar-control .today-btn {
+  width: auto;
+  height: 26px;
+
+  padding: 0 9px;
+
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Week */
+.ddf-calendar-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+
+  padding-bottom: 8px;
+
+  border-bottom: 1px solid #1C1C1C;
+
+  min-width: 0;
+}
+
+.ddf-calendar-week span {
+  min-width: 0;
+
+  text-align: center;
+
+  font-family: 'D2Coding', monospace;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+
+  color: #999;
+
+  letter-spacing: -0.02em;
+}
+
+/* Grid */
+.ddf-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  row-gap: 1px;
+  column-gap: 1px;
+
+  overflow: visible;
+}
+
+/* Day */
+.ddf-calendar-day {
+  position: relative;
+
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  padding: 2px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  border: 0;
+  background: #fff;
+
+  font-family: inherit;
+
+  cursor: pointer;
+
+  overflow: visible;
+
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+
+/* 날짜 범위 배경 */
+.ddf-calendar-day.range-exhibition {
+  background: rgba(255, 59, 48, 0.095);
+}
+
+.ddf-calendar-day.range-workshop {
+  background: rgba(52, 199, 89, 0.105);
+}
+
+.ddf-calendar-day.range-rental {
+  background: rgba(0, 122, 255, 0.105);
+}
+
+/* 시작일 / 종료일 */
+.ddf-calendar-day.range-start-exhibition,
+.ddf-calendar-day.range-end-exhibition {
+  background: rgba(255, 59, 48, 0.17);
+}
+
+.ddf-calendar-day.range-start-workshop,
+.ddf-calendar-day.range-end-workshop {
+  background: rgba(52, 199, 89, 0.18);
+}
+
+.ddf-calendar-day.range-start-rental,
+.ddf-calendar-day.range-end-rental {
+  background: rgba(0, 122, 255, 0.18);
+}
+
+.ddf-calendar-day:hover,
+.ddf-calendar-day:focus-visible {
+  background-color: #f5f5f5;
+  outline: none;
+}
+
+.ddf-calendar-day.range-exhibition:hover,
+.ddf-calendar-day.range-exhibition:focus-visible {
+  background: rgba(255, 59, 48, 0.22);
+}
+
+.ddf-calendar-day.range-workshop:hover,
+.ddf-calendar-day.range-workshop:focus-visible {
+  background: rgba(52, 199, 89, 0.22);
+}
+
+.ddf-calendar-day.range-rental:hover,
+.ddf-calendar-day.range-rental:focus-visible {
+  background: rgba(0, 122, 255, 0.22);
+}
+
+.ddf-calendar-date {
+  width: 28px;
+  height: 28px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  flex: 0 0 auto;
+
+  border-radius: 999px;
+
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 500;
+
+  color: #1C1C1C;
+}
+
+.ddf-calendar-day.is-muted .ddf-calendar-date {
+  color: #c5c5c5;
+}
+
+.ddf-calendar-day.is-today .ddf-calendar-date {
+  background: #1C1C1C;
+  color: #fff;
+}
+
+.ddf-calendar-day.is-closed {
+  background-color: #fafafa;
+}
+
+/* Marks */
+.ddf-calendar-marks {
+  display: inline-flex;
+  gap: 4px;
+
+  flex: 0 0 auto;
+
+  margin-top: 5px;
+}
+
+.ddf-calendar-mark,
+.ddf-calendar-closed {
+  width: 9px;
+  height: 9px;
+
+  border-radius: 999px;
+}
+
+.ddf-calendar-closed {
+  flex: 0 0 auto;
+
+  margin-top: 5px;
+  background: #b8b8b8;
+}
+
+/* 전시 */
+.type-exhibition {
+  background: #ff3b30;
+}
+
+/* 워크샵 */
+.type-workshop {
+  background: #34c759;
+}
+
+/* 대관 */
+.type-rental {
+  background: #007aff;
+}
+
+/* Tooltip */
+.ddf-calendar-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 6px);
+  top: auto;
+
+  transform: translateX(-50%) translateY(4px);
+
+  width: max-content;
+  max-width: 220px;
+
+  padding: 7px 9px;
+
+  border: 1px solid #1C1C1C;
+  background: #fff;
+  color: #1C1C1C;
+
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: left;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+
+  z-index: 9999;
+
+  box-shadow: 4px 4px 0 rgba(28, 28, 28, 0.14);
+
+  transition:
+    opacity 120ms ease,
+    visibility 120ms ease,
+    transform 120ms ease;
+}
+
+.tooltip-row {
+  display: block;
+}
+
+.tooltip-row + .tooltip-row {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.ddf-calendar-tooltip strong {
+  display: block;
+
+  margin-bottom: 3px;
+
+  font-size: 10px;
+  line-height: 1.2;
+  color: #777;
+}
+
+.ddf-calendar-tooltip em {
+  display: block;
+
+  margin-top: 3px;
+
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1.2;
+  color: #888;
+}
+
+.ddf-calendar-day:hover .ddf-calendar-tooltip,
+.ddf-calendar-day:focus-visible .ddf-calendar-tooltip,
+.ddf-calendar-day:active .ddf-calendar-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Footer */
+.ddf-calendar-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  padding-top: 9px;
+
+  border-top: 1px solid #e5e5e5;
+}
+
+.ddf-calendar-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  font-size: 11px;
+  line-height: 1;
+  color: #555;
+}
+
+.ddf-calendar-legend-dot {
+  width: 9px;
+  height: 9px;
+
+  border-radius: 999px;
+}
+
+/* Responsive */
+@media (max-width: 1180px) {
+  .ddf-calendar-header h2 {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ddf-calendar {
+    padding: 12px;
+    row-gap: 8px;
+  }
+
+  .ddf-calendar-header h2 {
+    font-size: 30px;
+  }
+
+  .ddf-calendar-control button {
+    width: 26px;
+    height: 26px;
+    font-size: 17px;
+  }
+
+  .ddf-calendar-control .today-btn {
+    height: 24px;
+    font-size: 9px;
+  }
+
+  .ddf-calendar-date {
+    width: 24px;
+    height: 24px;
+    font-size: 13px;
+  }
+
+  .ddf-calendar-mark,
+  .ddf-calendar-closed {
+    width: 8px;
+    height: 8px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ddf-calendar {
+    height: auto;
+    min-height: 420px;
+    overflow: visible;
+  }
+
+  .ddf-calendar-grid {
+    min-height: 300px;
+    overflow: visible;
+  }
+
+  .ddf-calendar-header h2 {
+    font-size: 34px;
+  }
+
+  .ddf-calendar-tooltip {
+    bottom: calc(100% + 6px);
+    top: auto;
+
+    max-width: 160px;
+    font-size: 10px;
+    z-index: 9999;
+  }
+
+  .ddf-calendar-day.has-event:focus .ddf-calendar-tooltip,
+  .ddf-calendar-day.has-event:active .ddf-calendar-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@media (max-width: 420px) {
+  .ddf-calendar-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ddf-calendar-header h2 {
+    font-size: 28px;
+  }
+
+  .ddf-calendar-control button {
+    width: 25px;
+    height: 25px;
+    font-size: 17px;
+  }
+
+  .ddf-calendar-control .today-btn {
+    width: auto;
+    height: 22px;
+    font-size: 9px;
+  }
+
+  .ddf-calendar-week span {
+    font-size: 9px;
+  }
+
+  .ddf-calendar-date {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+
+  .ddf-calendar-mark,
+  .ddf-calendar-closed {
+    width: 7px;
+    height: 7px;
+  }
+
+  .ddf-calendar-tooltip {
+    max-width: 140px;
+  }
+}

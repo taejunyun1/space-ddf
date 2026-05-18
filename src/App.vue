@@ -12,10 +12,9 @@
       aria-controls="app-aside"
       @click="toggleAside"
     >
-<span class="bar"></span>
-<span class="bar"></span>
-<span class="bar"></span>
-
+      <span class="bar"></span>
+      <span class="bar"></span>
+      <span class="bar"></span>
     </button>
 
     <div v-if="isAsideOpen" class="backdrop" @click="closeAside"></div>
@@ -27,21 +26,6 @@
       @keydown.esc="closeAside"
       tabindex="-1"
     >
-      <section class="upcoming-wrap" aria-label="다가오는 전시">
-        <h3 class="side-title">Upcoming</h3>
-
-        <article
-          v-for="item in upcomingItems"
-          :key="item.title"
-          class="upcoming-item"
-        >
-          <div class="upcoming-title">{{ item.title }}</div>
-          <div class="upcoming-line">{{ item.artist }}</div>
-          <div class="upcoming-line">{{ item.curator }}</div>
-          <div class="upcoming-period">{{ item.period }}</div>
-        </article>
-      </section>
-
       <div class="intro-wrap" role="region" aria-label="소개글">
         <p class="intro-kr">
           광주 충장로에 위치한 스페이스 DDF는 2021년부터 지역 예술 생태계의 핵심 거점 역할을 해온 대안 예술 공간입니다. 전시, 워크숍, 프로젝트를 통해 동시대 사진과 이미지 기반 작업을 중심으로 다양한 작가와 기획자들의 실험적 실천과 교류를 지원하고 있습니다.
@@ -50,6 +34,28 @@
           Space DDF, located in Chungjang-ro, Gwangju, is an alternative art space that has served as a key hub for the local art ecosystem since 2021. Through exhibitions, workshops, and projects, it supports experimental practices and exchanges centered on contemporary photography and image-based works by a wide range of artists and curators.
         </p>
       </div>
+
+      <section class="location-wrap" aria-label="공간 위치">
+        <h3 class="side-title">Location</h3>
+
+        <figure class="side-map-box">
+          <iframe
+            class="side-map"
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3262.2521703589455!2d126.90988227667317!3d35.150331258953756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x35718dcb0676ea25%3A0xe52a9bee2121a68e!2z7Iqk7Y6Y7J207IqkIOuUlOuUlOyXkO2UhA!5e0!3m2!1sko!2skr!4v1754984708875!5m2!1sko!2skr"
+            loading="lazy"
+            allowfullscreen
+            referrerpolicy="no-referrer-when-downgrade"
+            title="스페이스 디디에프 위치 지도"
+          ></iframe>
+        </figure>
+
+        <div class="location-info">
+          <div class="location-name">스페이스 디디에프</div>
+          <div class="location-line">광주광역시 동구 충장로46-4 1층</div>
+          <div class="location-line">운영시간 11:00–18:00</div>
+          <div class="location-line">월요일 및 공휴일 휴관</div>
+        </div>
+      </section>
 
       <div class="left-body"></div>
 
@@ -76,21 +82,6 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 
 const isAsideOpen = ref(false)
-
-const upcomingItems = ref([
-  {
-    title: '지역작가 GB토크',
-    artist: '윤태준 작가  / 광주비엔날레',
-    curator: '스페이스 디디에프',
-    period: '2026.8.10 — 2026.08.28',
-  },{
-    title: '광주비엔날레 라트비아 파빌리온',
-    artist: '라트비아 파빌리온',
-    curator: '광주비엔날레',
-    period: '2026.08.30 — 2026.11.20',
-  },
-  
-])
 
 const toggleAside = () => {
   isAsideOpen.value = !isAsideOpen.value
@@ -153,8 +144,8 @@ onBeforeUnmount(() => {
   background: #fff;
   z-index: 20;
 
-  overflow-y: auto;
-  overscroll-behavior: contain;
+overflow: hidden;
+overscroll-behavior: none;
 }
 
 /* Upcoming */
@@ -176,48 +167,13 @@ onBeforeUnmount(() => {
   letter-spacing: -0.02em;
 }
 
-.upcoming-item {
-  padding: 10px 0;
-  border-top: 1px solid #e5e5e5;
-}
-
-.upcoming-title {
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.4;
-
-  word-break: keep-all;
-  overflow-wrap: break-word;
-}
-
-.upcoming-line,
-.upcoming-period {
-  margin-top: 4px;
-
-  font-size: 12px;
-  line-height: 1.45;
-  color: #444;
-
-  word-break: keep-all;
-  overflow-wrap: break-word;
-}
-
-.upcoming-period {
-  color: #666;
-}
-
 /* 소개글 */
 .intro-wrap {
   position: static;
   background: #fff;
   padding-top: 16px;
-  padding-bottom: 12px;
+  padding-bottom: 14px;
   border-bottom: none;
-}
-
-.left-body {
-  padding: 12px 0;
-  flex: 1 1 auto;
 }
 
 .intro-kr,
@@ -234,6 +190,60 @@ onBeforeUnmount(() => {
 
 .intro-en a:hover {
   text-decoration: underline;
+}
+
+/* Location */
+.location-wrap {
+  padding-top: 14px;
+  padding-bottom: 14px;
+
+  border-top: 1px solid #1C1C1C;
+}
+
+.side-map-box {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+
+  margin: 0;
+  margin-top: 10px;
+
+  border: 1px solid #1C1C1C;
+  overflow: hidden;
+}
+
+.side-map {
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  border: 0;
+}
+
+.location-info {
+  margin-top: 10px;
+
+  display: grid;
+  gap: 4px;
+}
+
+.location-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.location-line {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #555;
+
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.left-body {
+  padding: 12px 0;
+  flex: 1 1 auto;
 }
 
 /* 푸터 */
@@ -319,22 +329,21 @@ onBeforeUnmount(() => {
     backdrop-filter: blur(1px);
   }
 
-  .section-left {
+.section-left {
+
     position: fixed;
     top: 0;
     left: 0;
-
     width: 80vw;
     max-width: 320px;
     height: 100dvh;
-
     transform: translateX(-100%);
     transition: transform 220ms ease-out;
-
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
-
     padding: 16px;
     padding-top: 60px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .section-left.open {

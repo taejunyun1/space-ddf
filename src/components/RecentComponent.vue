@@ -97,10 +97,13 @@ const componentTag = computed(() => {
 })
 </script>
 
+
+
 <style scoped>
 .recent-card {
   display: flex;
   flex-direction: column;
+
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -111,34 +114,50 @@ const componentTag = computed(() => {
   margin: 0 0 14px;
 }
 
-/* 이미지 + 텍스트 전체 링크 영역 */
+/* CalendarComponent와 박스 크기/질감 맞춤 */
 .recent-content {
-  display: block;
+  display: flex;
+  flex-direction: column;
+
   width: 100%;
   max-width: 100%;
   min-width: 0;
 
+  height: 100%;
+
+  padding: 14px;
+
+  border: 1px solid #1C1C1C;
+  background: #fff;
+
   color: inherit;
   text-decoration: none;
+
+  box-sizing: border-box;
 }
 
 /* 이미지 영역 */
 .recent-figure {
   width: 100%;
   max-width: 100%;
+
   margin: 0;
 
-  border: 1px solid #1C1C1C;
+  border: none;
   overflow: hidden;
+
   box-sizing: border-box;
 }
 
 /* 이미지 */
 .recent-figure img {
   display: block;
+
   width: 100%;
   max-width: 100%;
   height: auto;
+
+  object-fit: cover;
 }
 
 /* 하단 메타 정보 */
@@ -205,7 +224,6 @@ const componentTag = computed(() => {
   text-decoration: none;
 }
 
-/* hover */
 .recent-content:hover .recent-link {
   text-decoration: underline;
 }
@@ -213,11 +231,10 @@ const componentTag = computed(() => {
 /* ===== 종료 후 빈 상태 ===== */
 .recent-empty {
   width: 100%;
-  min-height: 520px;
-
-  border: 1px solid #1C1C1C;
+  min-height: 100%;
 
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -245,13 +262,17 @@ const componentTag = computed(() => {
   word-break: keep-all;
 }
 
-/* 종료 상태에서는 hover 효과 제거 */
 .recent-content.is-expired {
   cursor: default;
 }
 
 /* ===== 태블릿 이하 ===== */
 @media (max-width: 1024px) {
+  .recent-content {
+    min-height: 420px;
+    padding: 12px;
+  }
+
   .recent-name {
     font-size: 14px;
   }
@@ -264,10 +285,6 @@ const componentTag = computed(() => {
   .recent-desc {
     font-size: 11px;
     line-height: 1.4;
-  }
-
-  .recent-empty {
-    min-height: 420px;
   }
 
   .recent-empty-title {
@@ -283,6 +300,11 @@ const componentTag = computed(() => {
 @media (max-width: 768px) {
   .recent-card h3 {
     margin-bottom: 10px;
+  }
+
+  .recent-content {
+    min-height: 320px;
+    padding: 14px;
   }
 
   .recent-meta {
@@ -306,7 +328,6 @@ const componentTag = computed(() => {
   }
 
   .recent-empty {
-    min-height: 320px;
     padding: 24px;
   }
 
