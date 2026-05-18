@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <url>
+    <loc>https://www.spaceddf.xyz/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Shows -->
+  <url><loc>https://www.spaceddf.xyz/shows/water-photo-automat</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/absolute</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/dohoon</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/doyoung</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/jungkang</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/junhyung</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/swiss-pavilion</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/technically</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/subeom</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/fragile</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/pingpong-2022</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/lost-topophilia</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/hugging-world</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/make-it-slow</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/kahye</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/seokwoo</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/jihye</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://www.spaceddf.xyz/shows/suwa</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+
+  <!-- Projects -->
+  <url><loc>https://www.spaceddf.xyz/projects/open-portfolio-2025</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.spaceddf.xyz/projects/tech-workshop-2025</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.spaceddf.xyz/projects/community-chat-2025</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.spaceddf.xyz/projects/peer-up-2023</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.spaceddf.xyz/projects/peer-up-2024</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://www.spaceddf.xyz/projects/artwall</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+
+</urlset>
