@@ -16,7 +16,13 @@
             @click="openLightbox(0)"
             @keyup.enter="openLightbox(0)"
           >
-            <img :src="item.hero" :alt="item.title" />
+            <img
+              :src="item.preview || item.hero"
+              :alt="`${item.title} 대표 이미지`"
+              loading="eager"
+              decoding="async"
+              fetchpriority="high"
+            />
           </figure>
 
           <div
@@ -32,11 +38,19 @@
             </p>
 
             <p
-              v-for="(c, i) in (item?.credits || [])"
+              v-for="(credit, i) in creditLines"
               :key="i"
               class="credit-line"
-              v-html="formatCreditLine(c)"
-            ></p>
+            >
+              <span>{{ credit.prefix }}</span>
+              <template v-if="credit.href">
+                {{ credit.prefix ? ' ' : '' }}<a
+                  :href="credit.href"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >{{ credit.label }}</a>
+              </template>
+            </p>
 
             <p v-if="item?.location" class="location-line">
               <strong>Location</strong> · {{ item.location }}
@@ -80,7 +94,12 @@
         >
           <img
             :src="typeof g === 'string' ? g : g.src"
-            :alt="(typeof g === 'object' && g.alt) || item.title"
+            :srcset="typeof g === 'object' ? g.srcset : undefined"
+            :sizes="typeof g === 'object' ? g.sizes : undefined"
+            :alt="(typeof g === 'object' && g.alt) || `${item.title} 전시 이미지 ${i + 1}`"
+            loading="lazy"
+            decoding="async"
+            fetchpriority="low"
           />
           <figcaption v-if="typeof g === 'object' && g.caption">
             {{ g.caption }}
@@ -149,7 +168,7 @@
     :index="lightboxIndex"
     :imgs="[
       ...(item?.hero ? [item.hero] : []),
-      ...((item?.gallery || []).map(g => (typeof g === 'string' ? g : g.src)))
+      ...((item?.gallery || []).map(g => (typeof g === 'string' ? g : (g.original || g.src))))
     ]"
     :maskClosable="true"
     :escDisabled="false"
@@ -249,6 +268,12 @@ const descriptionParas = computed(() => {
   return Array.isArray(d) ? d : [d]
 })
 
+const creditLines = computed(() => {
+  return (item.value?.credits || [])
+    .map(parseCreditLine)
+    .filter(credit => credit.prefix || credit.href)
+})
+
 const lightboxVisible = ref(false)
 const lightboxIndex = ref(0)
 
@@ -317,31 +342,34 @@ onBeforeUnmount(() => {
 })
 
 /**
- * 크레딧 문자열 내의 URL을 <a> 태그로 변환합니다.
+ * 크레딧 문자열 끝의 URL을 안전한 링크 데이터로 변환합니다.
  * 예: "Homepage www.taejunyun.com"
  */
-function formatCreditLine(text) {
-  if (!text) return ''
-
-  const urlRegex = /(\b(https?:\/\/\S+|www\.\S+)\b)/g
-  const parts = text.split(/\s+/)
+function parseCreditLine(text) {
+  const parts = String(text || '').trim().split(/\s+/)
   const lastPart = parts[parts.length - 1]
+  const isLink = /^(https?:\/\/|www\.)\S+$/i.test(lastPart)
 
-  if (lastPart.match(urlRegex)) {
-    const url = lastPart
-    let href = url
-
-    if (!href.match(/^https?:\/\//i)) {
-      href = 'http://' + href
-    }
-
-    const prefix = parts.slice(0, parts.length - 1).join(' ')
-    const separator = prefix ? ' ' : ''
-
-    return `${prefix}${separator}<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`
+  if (!isLink) {
+    return { prefix: parts.join(' '), href: '', label: '' }
   }
 
-  return text
+  const prefix = parts.slice(0, -1).join(' ')
+  const href = lastPart.match(/^https?:\/\//i)
+    ? lastPart
+    : `https://${lastPart}`
+
+  try {
+    const url = new URL(href)
+
+    if (!['http:', 'https:'].includes(url.protocol)) {
+      return { prefix: parts.join(' '), href: '', label: '' }
+    }
+  } catch {
+    return { prefix: parts.join(' '), href: '', label: '' }
+  }
+
+  return { prefix, href, label: lastPart }
 }
 </script>
 
@@ -424,6 +452,11 @@ function formatCreditLine(text) {
   width: 100%;
   height: auto;
   object-fit: cover;
+}
+
+.gal-item {
+  content-visibility: auto;
+  contain-intrinsic-size: 720px;
 }
 
 /* ===== 크레딧 ===== */

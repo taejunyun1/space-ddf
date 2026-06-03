@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHistory(), // Vue CLI면 createWebHistory(process.env.BASE_URL)도 가능
+  history: createWebHistory(),
   routes: [
     {
       path: '/',

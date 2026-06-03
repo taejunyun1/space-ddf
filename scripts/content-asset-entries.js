@@ -1,0 +1,28 @@
+const entries = [
+  ['show', 'water-photo-automat'],
+  ['show', 'absolute'],
+  ['show', 'dohoon'],
+  ['show', 'doyoung'],
+  ['show', 'jungkang'],
+  ['show', 'junhyung'],
+  ['show', 'swiss-pavilion'],
+  ['show', 'technically'],
+  ['show', 'subeom'],
+  ['show', 'fragile'],
+  ['show', 'pingpong-2022'],
+  ['show', 'lost-topophilia'],
+  ['show', 'hugging-world'],
+  ['show', 'make-it-slow'],
+  ['show', 'kahye'],
+  ['show', 'seokwoo'],
+  ['show', 'jihye'],
+  ['show', 'suwa'],
+  ['project', 'open-portfolio-2025'],
+  ['project', 'tech-workshop-2025'],
+  ['project', 'community-chat-2025'],
+  ['project', 'peer-up-2023'],
+  ['project', 'peer-up-2024'],
+  ['project', 'artwall'],
+]
+
+module.exports = entries.map(([kind, slug]) => ({ kind, slug }))

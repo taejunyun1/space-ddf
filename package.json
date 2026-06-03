@@ -3,12 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "serve": "vite --host 127.0.0.1",
+    "dev": "vite --host 127.0.0.1",
+    "build": "npm run assets:manifest && vite build && npm run prerender && npm run csp:hashes && npm run package:dist",
+    "assets:manifest": "node scripts/write-content-assets-manifest.js",
+    "prerender": "node scripts/prerender-seo.js",
+    "csp:hashes": "node scripts/apply-csp-hashes.js",
+    "package:dist": "node scripts/package-dist.js",
+    "package:originals": "node scripts/package-originals.js",
+    "preview": "vite preview --host 127.0.0.1",
+    "smoke": "node scripts/smoke-test.js",
+    "lint": "eslint . --ext .vue,.js"
   },
   "dependencies": {
-    "core-js": "^3.8.3",
     "pinia": "^3.0.3",
     "vue": "^3.5.34",
     "vue-easy-lightbox": "^1.19.0",
@@ -17,16 +24,16 @@
   "devDependencies": {
     "@babel/core": "^7.12.16",
     "@babel/eslint-parser": "^7.12.16",
-    "@vue/cli-plugin-babel": "~5.0.0",
-    "@vue/cli-plugin-eslint": "~5.0.0",
-    "@vue/cli-plugin-router": "~5.0.0",
-    "@vue/cli-service": "~5.0.0",
+    "@vitejs/plugin-vue": "^6.0.7",
     "eslint": "^7.32.0",
-    "eslint-plugin-vue": "^8.0.3"
+    "eslint-plugin-vue": "^8.0.3",
+    "vite": "^8.0.16"
   },
   "eslintConfig": {
     "root": true,
     "env": {
+      "browser": true,
+      "es2021": true,
       "node": true
     },
     "extends": [
@@ -34,7 +41,8 @@
       "eslint:recommended"
     ],
     "parserOptions": {
-      "parser": "@babel/eslint-parser"
+      "parser": "@babel/eslint-parser",
+      "requireConfigFile": false
     },
     "globals": {
       "defineProps": "readonly",

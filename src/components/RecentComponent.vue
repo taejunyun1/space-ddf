@@ -11,7 +11,13 @@
       <!-- 기간이 지나지 않았을 때 -->
       <template v-if="!isExpired">
         <figure class="recent-figure">
-          <img :src="imageSrc" :alt="title" />
+          <img
+            :src="imageSrc"
+            :alt="`${title} 대표 이미지`"
+            loading="eager"
+            decoding="async"
+            fetchpriority="high"
+          />
         </figure>
 
         <div class="recent-meta">
@@ -44,7 +50,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
-import { parseDateRange } from '@/stores/lib/content-helpers'
+import { parseDateRange } from '@/stores/lib/date-helpers'
 
 const props = defineProps({
   imageSrc: { type: String, required: true },

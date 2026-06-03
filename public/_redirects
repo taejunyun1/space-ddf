@@ -1,0 +1,7 @@
+/img/* /404.html 404
+/originals/* /404.html 404
+/js/* /404.html 404
+/css/* /404.html 404
+/assets/* /404.html 404
+
+/* /index.html 200

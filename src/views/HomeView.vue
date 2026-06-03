@@ -1,5 +1,7 @@
 <template>
   <div class="home-wrap">
+    <h1 class="visually-hidden">Space DDF - 광주 충장로 대안 예술 공간</h1>
+
     <section class="col-left">
       <h3 class="code-block">Calendar</h3>
 
@@ -213,6 +215,18 @@ onBeforeUnmount(() => {
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ===== 기본 레이아웃 ===== */

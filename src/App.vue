@@ -1,7 +1,13 @@
 <template>
   <div id="app" class="layout">
     <router-link to="/home" class="home-btn">
-      <img src="@/assets/logo.png" alt="Space DDF" />
+      <img
+        src="@/assets/logo.png"
+        alt="Space DDF"
+        width="2363"
+        height="2363"
+        decoding="async"
+      />
     </router-link>
 
     <button
@@ -44,14 +50,14 @@
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3262.2521703589455!2d126.90988227667317!3d35.150331258953756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x35718dcb0676ea25%3A0xe52a9bee2121a68e!2z7Iqk7Y6Y7J207IqkIOuUlOuUlOyXkO2UhA!5e0!3m2!1sko!2skr!4v1754984708875!5m2!1sko!2skr"
             loading="lazy"
             allowfullscreen
-            referrerpolicy="no-referrer-when-downgrade"
+            referrerpolicy="strict-origin-when-cross-origin"
             title="스페이스 디디에프 위치 지도"
           ></iframe>
         </figure>
 
         <div class="location-info">
           <div class="location-name">스페이스 디디에프</div>
-          <div class="location-line">광주광역시 동구 충장로46-4 1층</div>
+          <div class="location-line">광주광역시 동구 충장로46번길 8-8 1층</div>
           <div class="location-line">운영시간 11:00–18:00</div>
           <div class="location-line">월요일 및 공휴일 휴관</div>
         </div>
@@ -68,7 +74,7 @@
         <div class="intro-en">
           <a href="mailto:space.ddf@gmail.com">space.ddf@gmail.com</a>
         </div>
-        <span>COPYRIGHT©2025 Space DDF</span>
+        <span>COPYRIGHT©2026 Space DDF</span>
       </div>
     </aside>
 

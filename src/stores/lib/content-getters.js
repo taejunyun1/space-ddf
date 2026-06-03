@@ -1,5 +1,5 @@
 // src/stores/lib/content-getters.js
-import { compareByRangeAsc } from './content-helpers'
+import { compareByRangeAsc } from './date-helpers'
 
 const safeArray = (value) => (Array.isArray(value) ? value : [])
 

@@ -1,5 +1,6 @@
 // src/stores/content.js
 import { defineStore } from 'pinia'
+import defaultImage from '@/assets/default.png'
 
 // ✅ 헬퍼만 가져오고, 데이터는 이 파일에 둔다
 // parseDateRange는 이 파일에서 직접 안 쓰므로 import 하지 않음
@@ -434,9 +435,9 @@ const PROJECT_META = {
 
   'artwall': {
     title: '<Artwall Project>',
-    dateRange: '2022.02.15 – 02.30',
+    dateRange: '2022.02.15',
     summary:
-      '🌱 PEER는 동료와 또래라는 뜻을 동시에 가진 영단어로, 예술단체 주도의 예비예술인 발굴 및 육성이라는 큰 틀 안에서 전업예술인-예비예술인-전문인력 간의 수평적 관계: 동료 만들기를 지향합니다. 이런 동료 의식 위에 구축된 네트워크를 통해 향후 예비예술인들이 지역에 정주하며 예술활동을 지속할 수 있는 기반을 마련하고, 궁극적으로는 함께 상생할 수 있도록 CHEER UP! 하고자 합니다.',
+      '광주의 예술공간 산수싸리와 스페이스 DDF가 동구청과 함께 만든 아트월(Art wall)에 박준형 작가의 <충장로 산책> 작품 이미지를 설치했습니다.',
     description: `
     광주의 예술공간인 산수싸리와 스페이스 DDF가 동구청과 함께 만든 ‘아트월(Art wall)’에 두 점의 작품 이미지를 설치했습니다. <충장로 산책>이라고 이름 지은 이 작품은 가을비가 내리던 2021년 11월 어느 날, 충장로 5가를 산책하며 채집한 45개의 표면과 색채를 병치한 것입니다. 많은 분이아시는 것처럼 충장로는 광주의 역사와 문화가 살아있는 유서 깊은 거리입니다. 
     
@@ -460,8 +461,8 @@ const PROJECT_META = {
 export const useContentStore = defineStore('content', {
   state: () => ({
     // ↓↓↓ 기본 이미지(로고 등) 하나 지정
-    defaultThumb: require('@/assets/default.png'),
-    defaultHero:  require('@/assets/default.png'),
+    defaultThumb: defaultImage,
+    defaultHero: defaultImage,
 
     projects: makeProjectsFromSlugs(PROJECT_SLUGS, PROJECT_META),
     shows: makeShowsFromSlugs(SHOW_SLUGS, SHOW_META),
@@ -469,4 +470,3 @@ export const useContentStore = defineStore('content', {
   getters: contentGetters,
   actions: contentActions,
 })
-

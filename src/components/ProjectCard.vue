@@ -1,7 +1,13 @@
 <template>
   <router-link class="block group" :to="`/projects/${item.slug}`">
     <figure class="overflow-hidden">
-      <img :src="item.thumb" :alt="item.title" class="w-full object-cover transition group-hover:scale-[1.02]" />
+      <img
+        :src="item.thumb"
+        :alt="`${item.title} 대표 이미지`"
+        class="w-full object-cover transition group-hover:scale-[1.02]"
+        loading="lazy"
+        decoding="async"
+      />
     </figure>
     <div class="mt-2">
       <h3 class="text-lg font-semibold">{{ item.title }}</h3>
