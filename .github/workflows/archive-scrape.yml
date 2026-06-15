@@ -1,0 +1,39 @@
+name: archive-scrape
+
+# Free scheduled scraper for JS-rendered venue sites (호랑가시나무 등). Renders with
+# headless Chromium on GitHub's runners (no Cloudflare cost) and posts the
+# exhibitions to the Worker's manual ingestion API. Runs from a non-Cloudflare IP.
+
+on:
+  schedule:
+    - cron: '30 18 * * *' # daily, shortly after the Worker's 18:00 UTC artmap cron
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+concurrency:
+  group: archive-scrape
+  cancel-in-progress: true
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scrapers
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run scrapers
+        env:
+          API_BASE: https://space-ddf-archive-api.taejunyun.workers.dev
+          CRAWL_SECRET: ${{ secrets.CRAWL_SECRET }}
+        run: node scrape.mjs
