@@ -14,7 +14,7 @@ import { chromium } from 'playwright'
 import { extractExhibitions } from './lib/horang-parse.mjs'
 import { parseHouseCurrent } from './lib/house-parse.mjs'
 import { scrapeGwangjuMuseum } from './lib/museum.mjs'
-import { scrapeDmgj } from './lib/dmgj.mjs'
+// import { scrapeDmgj } from './lib/dmgj.mjs' // disabled — robots (see fetchSources)
 
 const API_BASE = process.env.API_BASE || 'https://space-ddf-archive-api.taejunyun.workers.dev'
 const CRAWL_SECRET = process.env.CRAWL_SECRET || ''
@@ -149,7 +149,10 @@ async function main() {
   // but respond to GitHub's runners.
   const fetchSources = [
     { id: 'gwangju-museum', run: () => scrapeGwangjuMuseum({ sinceYear: 2024, maxPagesPast: 3 }) },
-    { id: 'dmgj', run: () => scrapeDmgj() }, // robots-allowed /menu.es only
+    // DMGJ disabled: /menu.es (robots-allowed) 302-redirects to /event.es
+    // (robots-DISALLOWED), so the listing is only reachable by crawling a
+    // disallowed path. Respect robots — re-enable only with site permission.
+    // { id: 'dmgj', run: () => scrapeDmgj() },
   ]
 
   for (const src of fetchSources) {
