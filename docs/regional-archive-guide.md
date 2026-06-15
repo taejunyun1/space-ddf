@@ -467,16 +467,15 @@ Google Maps API key는 HTTP referrer 제한 필수
 호랑가시나무(Google Sites)   브라우저 렌더 → 목록 추출        13건
 예술공간 집(Wix)             브라우저 렌더 → 현재전시 1건      1건
 광주시립미술관               단순 fetch + 기존 파서(브라우저 X)  32건
-디어마이광주(DMGJ)           fetch (robots 허용 menu.es만)     전시 ~20건
 ```
 
-DMGJ 주의:
+DMGJ (비활성화):
 
 ```txt
-robots.txt가 /event.es를 막고 /menu.es는 허용 → 반드시 menu.es만 사용(p_cate=0302=전시).
-페이지네이션은 event.es라 1페이지(현재/최근 전시)만 수집.
-dmgj.kr는 TLS 중간 인증서를 누락 → node:https로 해당 fetch만 rejectUnauthorized:false
-  (공개 목록 읽기·자격증명 없음). 좌표는 비우고, 공유 공간은 dedupe COALESCE로 채워짐.
+robots.txt가 /event.es를 차단하고 /menu.es만 허용하지만, /menu.es는 302로
+/event.es(차단)로 리다이렉트한다. 즉 전시목록은 차단 경로에만 존재 → robots를
+지키면서 수집할 방법이 없어 스크레이퍼에서 비활성화했다(코드는 보존).
+재가동은 사이트 허락 또는 공식 API가 있을 때만.
 ```
 
 - 공간 추가: `scrapers/scrape.mjs`의 `VENUES`에 URL·좌표·추출기를 한 줄 추가. Google Sites류는 `extractExhibitions` 재사용, 레이아웃이 다르면 `customScrape`만 작성.
