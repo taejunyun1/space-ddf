@@ -454,3 +454,69 @@ POST /api/archive/crawl/artmap 호출에는 x-crawl-secret 필요
 Google Maps API key는 HTTP referrer 제한 필수
 이미지는 저작권 검토 전 직접 저장하지 않고 원문 URL만 보관
 ```
+
+## 업데이트 (v1.1)
+
+### 권역 확장: 광주 · 전북 · 전남 전역
+
+수집 권역을 호남 전역(광주광역시 + 전라북도 + 전라남도)으로 확장한다. `jeonju` 버킷은 전주시뿐 아니라 **전라북도 전체**를 담고, 전남과 동일하게 `cityLabel`에 실제 시군명을 표시한다(`JEONBUK_AREAS`: 전주·군산·익산·완주·정읍·남원·김제·진안·무주·장수·임실·순창·고창·부안). 이전에 `전북` 라벨로 드롭되던 아트맵 기록(아트이슈프로젝트·전북도립미술관·서신갤러리·서학동사진관 등)이 모두 포함된다. 권역 밖(서울·경기·부산 등 타 시도)만 `OUT_OF_SCOPE_TERMS`로 제외한다.
+
+```txt
+city: gwangju | jeonju(전북 전역) | jeonnam
+cityLabel: 광주 | 전주·군산·… | 목포·여수·…
+```
+
+UI 필터의 `전주` 칩은 `전북`으로 표기한다.
+
+### 대안미술공간 포함
+
+대안공간은 소스에 표기가 제각각이라 누락되기 쉬우므로 `VENUE_ALIASES`에 변형을 등록해 high 신뢰도로 매칭한다. 광주(스페이스 디디에프·오버랩·호랑가시나무·뽕뽕브릿지·솅겐갤러리·미테우그로·산수싸리·대안공간 RGA), 전북(서학동사진관·우주계란·아트이슈프로젝트·서신갤러리)을 포함하며, 새 공간은 이 목록에 추가한다.
+
+### 아카이브 타입 (3종 고정)
+
+수집 범위를 시각미술 전시, 독립영화 상영, 워크숍 3종으로 한정한다. `exhibitions.archive_type`에 저장하고, 매칭은 제목·공간명·소개 키워드로 추정한다.
+
+```txt
+exhibition  기본값 (시각미술 전시)
+screening   광주극장/운터강 등 상영 공간 또는 상영·영화제·독립영화 키워드
+workshop    워크숍/워크샵/workshop 키워드
+```
+
+API에 `type` 필터를 추가했다. 예: `GET /api/archive/exhibitions?type=screening`.
+
+### 지역 판정 신뢰도와 검수 버킷
+
+`detectTargetRegion`은 `confidence`를 함께 반환한다.
+
+```txt
+high    priority_venues 또는 공간명 별칭(VENUE_ALIASES) 일치
+medium  지역/공간 키워드 일치
+none    미매칭
+```
+
+미매칭(unknown) 기록은 무조건 버리지 않는다.
+
+```txt
+out-of-scope 라벨(전북/타 지역) 있음        → 제외 (skippedRegion)
+disqualifying 라벨 없음(공간만 불명)         → visibility='review'로 저장, review_reason='unmatched-venue'
+```
+
+검수 화면은 `GET /api/archive/exhibitions?visibility=review`로 후보를 받아 사람이 승격(priority_venues 추가)한다.
+
+### 공간명 별칭
+
+소스 표기가 등록 표기와 달라 후보 공간을 놓치는 문제를 막기 위해 `VENUE_ALIASES`로 변형을 흡수한다. 예: `서학동사진관`↔`서학동사진미술관`, `스페이스 디디에프`/`SPACE DDF`/`space.ddf`. 대안공간(오버랩, 호랑가시나무, 뽕뽕브릿지, 솅겐갤러리 등)도 별칭으로 high 신뢰도 매칭한다.
+
+### 크롤 관측성
+
+`scheduled` 핸들러는 각 크롤러를 `runScheduledCrawl`로 감싸 조기 실패(import 오류 등)도 `crawl_runs`에 `failed`로 기록한다. 소스가 0건이 되어도 `/api/archive/crawl/runs`에서 드러난다.
+
+### 운영 체크리스트
+
+```txt
+1. cd cloudflare && npx wrangler d1 migrations apply space-ddf-archive --remote
+2. npx wrangler deploy
+3. 시립미술관 1회 수동 실행: POST /api/archive/crawl/gwangju-museum (x-crawl-secret)
+4. /api/archive/crawl/runs 에 gwangju-museum-* 성공 row 확인
+5. /api/archive/exhibitions?visibility=review 로 검수 후보 확인
+```

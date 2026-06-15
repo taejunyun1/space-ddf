@@ -46,6 +46,10 @@ function toArchiveItem(row) {
     period: row.period || '',
     status: row.status,
     statusLabel: statusLabel(row.status),
+    archiveType: row.archive_type || 'exhibition',
+    typeLabel: typeLabel(row.archive_type),
+    regionConfidence: row.region_confidence || '',
+    reviewReason: row.review_reason || '',
     artists: parseJsonArray(row.artists_json),
     category: parseJsonArray(row.categories_json),
     thumbnail: row.thumbnail_url || '',
@@ -87,10 +91,17 @@ function statusLabel(status) {
   return '미정'
 }
 
+function typeLabel(type) {
+  if (type === 'screening') return '상영'
+  if (type === 'workshop') return '워크숍'
+  return '전시'
+}
+
 async function listExhibitions(request, env) {
   const url = new URL(request.url)
   const city = normalizeParam(url.searchParams.get('city'))
   const status = normalizeParam(url.searchParams.get('status'))
+  const type = normalizeParam(url.searchParams.get('type'))
   const visibility = normalizeParam(url.searchParams.get('visibility')) || 'public'
   const limit = Math.min(Number(url.searchParams.get('limit')) || 200, 500)
   const values = []
@@ -109,6 +120,11 @@ async function listExhibitions(request, env) {
   if (status && status !== 'all') {
     where.push('e.status = ?')
     values.push(status)
+  }
+
+  if (type && type !== 'all') {
+    where.push('e.archive_type = ?')
+    values.push(type)
   }
 
   values.push(limit)
@@ -360,8 +376,38 @@ export default {
 
   async scheduled(_event, env, ctx) {
     ctx.waitUntil(Promise.allSettled([
-      crawlArtmap(env, { visibility: 'public' }),
-      crawlGwangjuMuseum(env, { visibility: 'public' }),
+      runScheduledCrawl(env, 'artmap', 'artmap-scheduled', () => crawlArtmap(env, { visibility: 'public' })),
+      runScheduledCrawl(env, 'gwangju-museum-of-art', 'gwangju-museum-scheduled', () => crawlGwangjuMuseum(env, { visibility: 'public' })),
     ]))
   },
+}
+
+// Each crawler logs its own crawl_runs row once it starts. This wrapper catches
+// failures that happen before/around that (import errors, early throws) so a
+// broken source surfaces in /api/archive/crawl/runs instead of failing silently.
+async function runScheduledCrawl(env, sourceId, crawlType, run) {
+  try {
+    return await run()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`scheduled crawl failed: ${crawlType}: ${message}`)
+
+    try {
+      await env.DB.prepare(`
+        INSERT INTO crawl_runs (id, source_id, status, crawl_type, request_url, started_at, finished_at, error_message)
+        VALUES (?, ?, 'failed', ?, 'scheduled', ?, ?, ?)
+      `).bind(
+        `${crawlType}-${Date.now()}`,
+        sourceId,
+        crawlType,
+        new Date().toISOString(),
+        new Date().toISOString(),
+        message,
+      ).run()
+    } catch (logErr) {
+      console.error(`failed to record scheduled crawl failure: ${logErr instanceof Error ? logErr.message : logErr}`)
+    }
+
+    return null
+  }
 }

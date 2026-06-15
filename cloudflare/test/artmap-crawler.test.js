@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   detectTargetRegion,
+  inferArchiveType,
+  normalizeArchiveType,
   parseArtmapDetail,
   parseArtmapList,
 } from '../src/artmap-crawler.js'
@@ -108,5 +110,78 @@ describe('detectTargetRegion', () => {
 
     assert.equal(region.city, 'gwangju')
     assert.equal(region.cityLabel, '광주')
+    assert.equal(region.confidence, 'high')
+  })
+
+  it('matches a candidate venue spelling variant via aliases (서학동사진관)', () => {
+    const region = detectTargetRegion({
+      title: '김지연 사진전 : 매몰',
+      venueName: '서학동사진관',
+      regionLabel: '전북',
+    })
+
+    assert.equal(region.city, 'jeonju')
+    assert.equal(region.confidence, 'high')
+  })
+
+  it('includes alternative art spaces at high confidence', () => {
+    const ddf = detectTargetRegion({ title: '전시', venueName: 'SPACE DDF', regionLabel: '' })
+    assert.equal(ddf.city, 'gwangju')
+    assert.equal(ddf.confidence, 'high')
+
+    const ugro = detectTargetRegion({ title: '전시', venueName: '미테우그로' })
+    assert.equal(ugro.city, 'gwangju')
+    assert.equal(ugro.confidence, 'high')
+  })
+
+  it('reports medium confidence when only a region keyword matches', () => {
+    const region = detectTargetRegion({ title: 'x', venueName: '전남도립미술관', regionLabel: '전남' })
+
+    assert.equal(region.city, 'jeonnam')
+    assert.equal(region.confidence, 'medium')
+  })
+
+  it('includes 전북 in scope and labels the specific 시군', () => {
+    const jeonbuk = detectTargetRegion({ title: 'x', venueName: '전북도립미술관', regionLabel: '전북' })
+    assert.equal(jeonbuk.city, 'jeonju')
+    assert.equal(jeonbuk.cityLabel, '전북')
+
+    const gunsan = detectTargetRegion({ title: 'x', venueName: '어느갤러리', address: '전북 군산시 어딘가' })
+    assert.equal(gunsan.city, 'jeonju')
+    assert.equal(gunsan.cityLabel, '군산')
+  })
+
+  it('marks records outside 광주·전북·전남 for dropping', () => {
+    const region = detectTargetRegion({ title: 'x', venueName: '서울시립미술관', address: '서울 중구', regionLabel: '서울' })
+
+    assert.equal(region.city, 'unknown')
+    assert.equal(region.outOfScope, true)
+  })
+
+  it('keeps an unknown venue with no disqualifying region for review', () => {
+    const region = detectTargetRegion({ title: '어떤 전시', venueName: '무명갤러리', regionLabel: '' })
+
+    assert.equal(region.city, 'unknown')
+    assert.equal(region.outOfScope, false)
+  })
+})
+
+describe('inferArchiveType', () => {
+  it('classifies screenings by venue and keyword', () => {
+    assert.equal(inferArchiveType({ title: '독립영화 상영회', venueName: '광주극장' }), 'screening')
+    assert.equal(inferArchiveType({ title: '시네마 토크' }, { description: '영화제 상영 프로그램' }), 'screening')
+  })
+
+  it('classifies workshops by keyword', () => {
+    assert.equal(inferArchiveType({ title: '사진 워크숍 참가자 모집' }), 'workshop')
+  })
+
+  it('defaults to exhibition', () => {
+    assert.equal(inferArchiveType({ title: '회화 개인전', venueName: '은암미술관' }), 'exhibition')
+  })
+
+  it('normalizes unsupported types back to exhibition', () => {
+    assert.equal(normalizeArchiveType('performance'), 'exhibition')
+    assert.equal(normalizeArchiveType('screening'), 'screening')
   })
 })

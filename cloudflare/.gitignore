@@ -1,0 +1,7 @@
+# Local wrangler/miniflare state (D1 dev DB, caches) — never commit
+.wrangler/
+node_modules/
+
+# Secrets
+.env
+.dev.vars

@@ -18,9 +18,46 @@ const STATUS_BY_TYPE = {
   end: 'closed',
 }
 
+// Archive scope is intentionally narrow: visual-art exhibitions, independent
+// film screenings, and workshops. Anything unmatched stays 'exhibition'.
+const ARCHIVE_TYPES = new Set(['exhibition', 'screening', 'workshop'])
+const SCREENING_VENUE_TERMS = ['광주극장', '운터강', 'untergang', '독립영화관', '시네마']
+const SCREENING_KEYWORDS = ['상영', '스크리닝', 'screening', '영화제', '독립영화', '시네마', '필름']
+const WORKSHOP_KEYWORDS = ['워크숍', '워크샵', 'workshop']
+
+// Alternative art spaces + spelling variants that differ from the canonical
+// name registered in priority_venues / TARGET_REGION_PATTERNS. Matched at high
+// confidence so these community spaces are reliably included and not missed on a
+// name mismatch. Curated list — extend as new spaces appear.
+const VENUE_ALIASES = [
+  // 광주 대안공간
+  { city: 'gwangju', cityLabel: '광주', terms: ['스페이스ddf', 'spaceddf', 'space ddf', 'space.ddf', '스페이스디디에프'] },
+  { city: 'gwangju', cityLabel: '광주', terms: ['오버랩', 'overlab', '대안공간오버랩'] },
+  { city: 'gwangju', cityLabel: '광주', terms: ['호랑가시나무', '호랑가시나무아트폴리곤', '호랑가시나무창작소'] },
+  { city: 'gwangju', cityLabel: '광주', terms: ['뽕뽕브릿지', '뽕뽕브리지'] },
+  { city: 'gwangju', cityLabel: '광주', terms: ['솅겐갤러리', 'schengengallery', 'schengen gallery'] },
+  { city: 'gwangju', cityLabel: '광주', terms: ['미테우그로', 'miteugro', 'mite ugro', 'mite-ugro'] },
+  { city: 'gwangju', cityLabel: '광주', terms: ['산수싸리'] },
+  { city: 'gwangju', cityLabel: '광주', terms: ['대안공간rga', '대안공간 rga'] },
+  // 전북 대안공간
+  { city: 'jeonju', cityLabel: '전주', terms: ['서학동사진관', '서학동사진미술관'] },
+  { city: 'jeonju', cityLabel: '전주', terms: ['우주계란'] },
+  { city: 'jeonju', cityLabel: '전주', terms: ['아트이슈프로젝트', 'artissueproject'] },
+  { city: 'jeonju', cityLabel: '전주', terms: ['서신갤러리'] },
+]
+
+// Explicit out-of-scope region labels (outside 광주·전북·전남). An unknown-venue
+// record that carries one of these is dropped; an unknown-venue record with no
+// disqualifying label came from the 광주/전라 portal with no placement, so it is
+// parked for review instead of being silently lost (guide: include unknown spaces).
+const OUT_OF_SCOPE_TERMS = [
+  '서울', '경기', '인천', '부산', '대구', '대전', '울산', '세종',
+  '강원', '충북', '충남', '경북', '경남', '제주', '충청', '경상',
+]
+
 const CITY_LABELS = {
   gwangju: '광주',
-  jeonju: '전주',
+  jeonju: '전북', // bucket covers all of 전라북도; specific 시군 set via cityLabel
   jeonnam: '전남',
   unknown: '미정',
 }
@@ -48,6 +85,25 @@ const JEONNAM_AREAS = [
   { label: '완도', terms: ['완도', '완도군'] },
   { label: '진도', terms: ['진도', '진도군'] },
   { label: '신안', terms: ['신안', '신안군'] },
+]
+
+// 전라북도 시군. The `jeonju` bucket covers all of 전북; cityLabel shows the
+// specific city the same way the jeonnam bucket does.
+const JEONBUK_AREAS = [
+  { label: '전주', terms: ['전주', '전주시'] },
+  { label: '군산', terms: ['군산', '군산시'] },
+  { label: '익산', terms: ['익산', '익산시'] },
+  { label: '완주', terms: ['완주', '완주군'] },
+  { label: '정읍', terms: ['정읍', '정읍시'] },
+  { label: '남원', terms: ['남원', '남원시'] },
+  { label: '김제', terms: ['김제', '김제시'] },
+  { label: '진안', terms: ['진안', '진안군'] },
+  { label: '무주', terms: ['무주', '무주군'] },
+  { label: '장수', terms: ['장수', '장수군'] },
+  { label: '임실', terms: ['임실', '임실군'] },
+  { label: '순창', terms: ['순창', '순창군'] },
+  { label: '고창', terms: ['고창', '고창군'] },
+  { label: '부안', terms: ['부안', '부안군'] },
 ]
 
 const TARGET_REGION_PATTERNS = [
@@ -117,12 +173,14 @@ const TARGET_REGION_PATTERNS = [
   },
   {
     city: 'jeonju',
-    cityLabel: '전주',
+    cityLabel: '전북',
     terms: [
-      '전주',
+      '전북',
+      '전라북도',
       '아트갤러리전주',
       '전주현대미술관',
       '서학동사진미술관',
+      '서학동사진관',
       '교동미술관',
       '우진문화공간',
       '팔복 예술공장',
@@ -130,6 +188,11 @@ const TARGET_REGION_PATTERNS = [
       '전주부채문화관',
       '국립전주박물관',
       '전주영화제작소',
+      '전북도립미술관',
+      '아트이슈프로젝트',
+      '서신갤러리',
+      '삼례문화예술촌',
+      ...JEONBUK_AREAS.flatMap(area => area.terms),
     ],
   },
   {
@@ -240,12 +303,26 @@ export async function crawlArtmap(env, options = {}) {
               venueName: detail?.venueName || record.venueName,
             }, priorityVenuePatterns)
 
+            let effectiveVisibility = visibility
+            let reviewReason = null
+
             if (region.city === 'unknown') {
-              stats.skippedRegion += 1
-              continue
+              if (region.outOfScope) {
+                // Explicit out-of-scope region label (전북/타 지역) → drop.
+                stats.skippedRegion += 1
+                continue
+              }
+
+              // Unknown venue, no disqualifying region → park for human review
+              // instead of dropping (guide: include unknown spaces).
+              effectiveVisibility = 'review'
+              reviewReason = 'unmatched-venue'
+              stats.reviewSaved += 1
+            } else if (region.confidence === 'medium') {
+              stats.mediumConfidence += 1
             }
 
-            const enriched = enrichRecord(record, detail, region, visibility)
+            const enriched = enrichRecord(record, detail, region, effectiveVisibility, { reviewReason })
 
             await upsertVenue(env, enriched)
             const exhibitionId = await upsertExhibition(env, enriched)
@@ -319,6 +396,8 @@ function createCrawlStats() {
     detailErrors: 0,
     skippedOld: 0,
     skippedRegion: 0,
+    reviewSaved: 0,
+    mediumConfidence: 0,
     recordErrors: 0,
     staleEndPages: 0,
     errors: [],
@@ -529,7 +608,7 @@ export function parseArtmapDetail(html) {
   }
 }
 
-export function enrichRecord(record, detail, region, visibility) {
+export function enrichRecord(record, detail, region, visibility, extra = {}) {
   const description = detail?.description || ''
   const summary = makeSummary(description) || `${record.venueName}에서 진행된 지역 전시 기록.`
   const address = detail?.address || ''
@@ -549,6 +628,9 @@ export function enrichRecord(record, detail, region, visibility) {
     summary,
     artists: detail?.artists || [],
     categories: inferCategories(record.title, description),
+    archiveType: normalizeArchiveType(record.archiveType || inferArchiveType(record, detail)),
+    regionConfidence: region.confidence || 'medium',
+    reviewReason: extra.reviewReason || null,
     visibility,
     dedupeKey: [
       normalizeForKey(record.title),
@@ -679,9 +761,12 @@ export async function upsertExhibition(env, record) {
       source_type,
       scraped_at,
       visibility,
+      archive_type,
+      region_confidence,
+      review_reason,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(dedupe_key) DO UPDATE SET
 	      title = excluded.title,
 	      normalized_title = excluded.normalized_title,
@@ -703,6 +788,9 @@ export async function upsertExhibition(env, record) {
 	      source_type = excluded.source_type,
 	      scraped_at = excluded.scraped_at,
       visibility = excluded.visibility,
+      archive_type = excluded.archive_type,
+      region_confidence = excluded.region_confidence,
+      review_reason = excluded.review_reason,
       updated_at = excluded.updated_at
   `).bind(
     exhibitionId,
@@ -727,6 +815,9 @@ export async function upsertExhibition(env, record) {
     record.sourceType,
     record.scrapedAt,
     record.visibility,
+    normalizeArchiveType(record.archiveType),
+    record.regionConfidence || 'medium',
+    record.reviewReason || null,
     record.scrapedAt,
   ).run()
 
@@ -829,36 +920,67 @@ export function detectTargetRegion(record, priorityVenuePatterns = []) {
     record.regionLabel,
   ].join(' '))
 
-  for (const venue of priorityVenuePatterns) {
+  // High confidence: a specifically registered candidate venue (DB priority
+  // list or a known spelling alias) was matched by name.
+  for (const venue of [...priorityVenuePatterns, ...VENUE_ALIASES]) {
     if (venue.terms.some(term => includesSearchTerm(haystack, term))) {
       return {
         city: venue.city,
-        cityLabel: venue.city === 'jeonnam'
-          ? venue.cityLabel || detectJeonnamAreaLabel(haystack) || CITY_LABELS.jeonnam
-          : venue.cityLabel || CITY_LABELS[venue.city],
+        confidence: 'high',
+        cityLabel: venue.cityLabel || areaLabelFor(venue.city, haystack),
       }
     }
   }
 
+  // Medium confidence: matched a region/venue keyword from the curated patterns.
   for (const group of TARGET_REGION_PATTERNS) {
     if (group.terms.some(term => includesSearchTerm(haystack, term))) {
       return {
         city: group.city,
-        cityLabel: group.city === 'jeonnam'
-          ? detectJeonnamAreaLabel(haystack) || group.cityLabel
-          : group.cityLabel,
+        confidence: 'medium',
+        // Prefer the specific 시군 over the generic province label.
+        cityLabel: areaLabelFor(group.city, haystack) || group.cityLabel,
       }
     }
   }
 
   return {
     city: 'unknown',
+    confidence: 'none',
     cityLabel: CITY_LABELS.unknown,
+    // No target match. If it carries an out-of-scope label it is dropped; if it
+    // has no disqualifying region at all it is kept for review.
+    outOfScope: OUT_OF_SCOPE_TERMS.some(term => includesSearchTerm(haystack, term)),
   }
 }
 
-function detectJeonnamAreaLabel(haystack) {
-  const match = JEONNAM_AREAS.find(area => (
+// Narrow the archive to the three supported buckets. Screening wins over
+// workshop, which wins over the default exhibition.
+export function inferArchiveType(record = {}, detail = {}) {
+  const venue = normalizeForSearch(`${record.venueName || ''} ${detail.venueName || ''}`)
+  const text = normalizeForSearch(`${record.title || ''} ${detail.description || ''}`)
+
+  if (SCREENING_VENUE_TERMS.some(term => includesSearchTerm(venue, term))) return 'screening'
+  if (SCREENING_KEYWORDS.some(term => includesSearchTerm(text, term))) return 'screening'
+  if (WORKSHOP_KEYWORDS.some(term => includesSearchTerm(text, term))) return 'workshop'
+
+  return 'exhibition'
+}
+
+export function normalizeArchiveType(value) {
+  return ARCHIVE_TYPES.has(value) ? value : 'exhibition'
+}
+
+// Resolve the specific 시군 label within a province bucket (jeonnam / jeonbuk).
+// Falls back to the generic province label for gwangju and unmatched cases.
+function areaLabelFor(city, haystack) {
+  if (city === 'jeonnam') return detectAreaLabel(JEONNAM_AREAS, haystack) || CITY_LABELS.jeonnam
+  if (city === 'jeonju') return detectAreaLabel(JEONBUK_AREAS, haystack) || CITY_LABELS.jeonju
+  return CITY_LABELS[city] || CITY_LABELS.unknown
+}
+
+function detectAreaLabel(areas, haystack) {
+  const match = areas.find(area => (
     area.terms.some(term => includesSearchTerm(haystack, term))
   ))
 

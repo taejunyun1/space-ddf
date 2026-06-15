@@ -11,7 +11,7 @@ export const archiveCities = [
   },
   {
     id: 'jeonju',
-    label: '전주',
+    label: '전북',
     lat: 35.8242,
     lng: 127.148,
   },
@@ -54,6 +54,10 @@ export const archiveTypes = [
   {
     id: 'screening',
     label: '상영',
+  },
+  {
+    id: 'workshop',
+    label: '워크숍',
   },
 ]
 
