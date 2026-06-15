@@ -63,6 +63,13 @@
         </div>
       </section>
 
+      <nav class="side-nav" aria-label="주요 페이지">
+        <router-link to="/archive-map" class="side-nav-link" @click="closeAside">
+          <span>Regional Archive</span>
+          <strong>전시 지도</strong>
+        </router-link>
+      </nav>
+
       <div class="left-body"></div>
 
       <div class="footer-wrap">
@@ -250,6 +257,36 @@ overscroll-behavior: none;
 .left-body {
   padding: 12px 0;
   flex: 1 1 auto;
+}
+
+.side-nav {
+  border-top: 1px solid #1C1C1C;
+  border-bottom: 1px solid #1C1C1C;
+  padding: 10px 0;
+}
+
+.side-nav-link {
+  display: grid;
+  gap: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.side-nav-link span {
+  font-family: 'D2Coding', monospace;
+  font-size: 12px;
+  line-height: 1.2;
+  color: #666;
+}
+
+.side-nav-link strong {
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.side-nav-link:hover strong {
+  text-decoration: underline;
 }
 
 /* 푸터 */

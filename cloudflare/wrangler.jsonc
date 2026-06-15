@@ -1,0 +1,17 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "space-ddf-archive-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-14",
+  "triggers": {
+    "crons": ["0 18 * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "space-ddf-archive",
+      "database_id": "6dcaafeb-9681-47b9-9b30-7494eb6caffe",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

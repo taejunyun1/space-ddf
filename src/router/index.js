@@ -11,6 +11,12 @@ const router = createRouter({
       // 혹은: { path: '/home', redirect: { name: 'home' } }
     },
     {
+      path: '/archive-map',
+      name: 'regional-archive',
+      component: () => import('@/views/RegionalArchiveView.vue'),
+      alias: ['/map']
+    },
+    {
       path: '/projects/:slug',
       name: 'project-detail',
       component: () => import('@/views/DetailView.vue'),

@@ -1,6 +1,6 @@
 <template>
   <div class="home-wrap">
-    <h1 class="visually-hidden">Space DDF - 광주 충장로 대안 예술 공간</h1>
+    <h1 class="ddf-visually-hidden">Space DDF - 광주 충장로 대안 예술 공간</h1>
 
     <section class="col-left">
       <h3 class="code-block">Calendar</h3>
@@ -211,30 +211,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
 /* ===== 기본 레이아웃 ===== */
 .home-wrap {
-  --line: #1C1C1C;
-  --muted: #666;
-  --gap: clamp(20px, 2vw, 32px);
-  --page-x: clamp(18px, 3.5vw, 56px);
+  --line: var(--ddf-line);
+  --muted: var(--ddf-muted);
+  --gap: var(--ddf-grid-gap);
+  --page-x: var(--ddf-page-x);
   --top-card-height: 640px;
   --bottom-list-height: 360px;
 

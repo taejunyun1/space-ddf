@@ -13,6 +13,7 @@
     "package:originals": "node scripts/package-originals.js",
     "preview": "vite preview --host 127.0.0.1",
     "smoke": "node scripts/smoke-test.js",
+    "test:crawler": "node --test cloudflare/test/*.test.js",
     "lint": "eslint . --ext .vue,.js"
   },
   "dependencies": {

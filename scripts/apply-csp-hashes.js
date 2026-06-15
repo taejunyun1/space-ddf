@@ -11,9 +11,24 @@ const CSP_BASE = {
   defaultSrc: ["'self'"],
   styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
   fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://fastly.jsdelivr.net'],
-  imgSrc: ["'self'", 'data:', 'blob:'],
+  scriptSrc: ['https://maps.googleapis.com', 'https://maps.gstatic.com'],
+  imgSrc: [
+    "'self'",
+    'data:',
+    'blob:',
+    'https://maps.googleapis.com',
+    'https://maps.gstatic.com',
+    'https://*.googleapis.com',
+    'https://*.ggpht.com',
+  ],
   frameSrc: ['https://www.google.com'],
-  connectSrc: ["'self'"],
+  connectSrc: [
+    "'self'",
+    'https://space-ddf-archive-api.taejunyun.workers.dev',
+    'https://maps.googleapis.com',
+    'https://maps.gstatic.com',
+    'https://*.googleapis.com',
+  ],
   manifestSrc: ["'self'"],
 }
 
@@ -70,7 +85,7 @@ function inlineScriptHashes(htmlFiles) {
 function buildCsp(scriptHashes, options) {
   const directives = [
     directive('default-src', CSP_BASE.defaultSrc),
-    directive('script-src', ["'self'", ...scriptHashes]),
+    directive('script-src', ["'self'", ...scriptHashes, ...CSP_BASE.scriptSrc]),
     directive('style-src', CSP_BASE.styleSrc),
     directive('font-src', CSP_BASE.fontSrc),
     directive('img-src', CSP_BASE.imgSrc),

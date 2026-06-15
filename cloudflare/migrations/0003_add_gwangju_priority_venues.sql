@@ -1,0 +1,31 @@
+-- Add more Gwangju museums, galleries, and alternative spaces for crawler matching.
+
+INSERT OR IGNORE INTO priority_venues (id, name, normalized_name, city, city_label, priority)
+VALUES
+  ('gwangju-acc', '국립아시아문화전당(ACC)', '국립아시아문화전당ACC', 'gwangju', '광주', 94),
+  ('gwangju-biennale-exhibition-hall', '광주비엔날레전시관', '광주비엔날레전시관', 'gwangju', '광주', 90),
+  ('gwangju-gmap', '광주미디어아트플랫폼 GMAP', '광주미디어아트플랫폼GMAP', 'gwangju', '광주', 88),
+  ('gwangju-sansussari', '산수싸리', '산수싸리', 'gwangju', '광주', 88),
+  ('gwangju-lee-kangha-art-museum', '이강하미술관', '이강하미술관', 'gwangju', '광주', 86),
+  ('gwangju-ha-jungwoong-art-museum', '하정웅미술관', '하정웅미술관', 'gwangju', '광주', 85),
+  ('gwangju-miro-center', '미로센터', '미로센터', 'gwangju', '광주', 84),
+  ('gwangju-ark-gallery', '아크갤러리', '아크갤러리', 'gwangju', '광주', 84),
+  ('gwangju-uijae-art-museum', '의재미술관', '의재미술관', 'gwangju', '광주', 83),
+  ('gwangju-eunam-art-museum', '은암미술관', '은암미술관', 'gwangju', '광주', 83),
+  ('gwangju-rga', '대안공간 RGA', '대안공간RGA', 'gwangju', '광주', 82),
+  ('gwangju-gook-yoon-art-museum', '국윤미술관', '국윤미술관', 'gwangju', '광주', 82),
+  ('gwangju-mudeung-contemporary-art-museum', '무등현대미술관', '무등현대미술관', 'gwangju', '광주', 82),
+  ('gwangju-deyoung-art-museum', '드영미술관', '드영미술관', 'gwangju', '광주', 82),
+  ('gwangju-woo-jegil-art-museum', '우제길미술관', '우제길미술관', 'gwangju', '광주', 80),
+  ('gwangju-yangnim-art-museum', '양림미술관', '양림미술관', 'gwangju', '광주', 80),
+  ('gwangju-mudeung-gallery', '무등갤러리', '무등갤러리', 'gwangju', '광주', 80),
+  ('gwangju-lee-lee-nam-studio', '이이남 스튜디오', '이이남스튜디오', 'gwangju', '광주', 80),
+  ('gwangju-sochon-art-factory', '소촌아트팩토리', '소촌아트팩토리', 'gwangju', '광주', 78),
+  ('gwangju-cho-sun-university-museum', '조선대미술관', '조선대미술관', 'gwangju', '광주', 78),
+  ('gwangju-han-heewon-art-museum', '한희원미술관', '한희원미술관', 'gwangju', '광주', 78),
+  ('gwangju-shinsegae-gallery', '광주신세계갤러리', '광주신세계갤러리', 'gwangju', '광주', 76),
+  ('gwangju-lotte-gallery', '롯데갤러리 광주점', '롯데갤러리광주점', 'gwangju', '광주', 74),
+  ('gwangju-art-center-gallery', '광주예술의전당 갤러리', '광주예술의전당갤러리', 'gwangju', '광주', 74),
+  ('gwangju-jami-gallery', '자미갤러리', '자미갤러리', 'gwangju', '광주', 72),
+  ('gwangju-ilgok-gallery', '일곡갤러리', '일곡갤러리', 'gwangju', '광주', 72),
+  ('gwangju-herstory', '광주여성전시관 Herstory', '광주여성전시관Herstory', 'gwangju', '광주', 70);

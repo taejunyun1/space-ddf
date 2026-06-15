@@ -7,6 +7,8 @@ const DEFAULT_TITLE = 'Space DDF - 광주 전시공간 · 전시 대관 · 대�
 const DEFAULT_DESCRIPTION = 'Space DDF는 광주 동구 충장로에 위치한 대안 예술 공간입니다. 사진, 미디어아트, 설치 등 실험적 전시와 전시 대관, 워크숍, 오픈 포트폴리오 프로그램을 운영합니다.'
 const DEFAULT_IMAGE = '/og-default.jpg'
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+const ARCHIVE_TITLE = '지역 전시·상영 아카이브 | Space DDF'
+const ARCHIVE_DESCRIPTION = '광주, 전주, 전남 지역의 전시와 상영 정보를 지도와 리스트로 모아보는 Space DDF 지역 전시·상영 아카이브입니다.'
 
 function compactText(value) {
   return String(value || '')
@@ -190,14 +192,44 @@ function homeStructuredData() {
   }
 }
 
+function archiveStructuredData() {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'CollectionPage',
+        '@id': `${SITE_URL}/archive-map#webpage`,
+        url: absoluteUrl('/archive-map'),
+        name: ARCHIVE_TITLE,
+        description: ARCHIVE_DESCRIPTION,
+        inLanguage: 'ko-KR',
+        isPartOf: {
+          '@id': `${SITE_URL}/#website`,
+        },
+        publisher: {
+          '@id': `${SITE_URL}/#organization`,
+        },
+      },
+      artGalleryStructuredData(),
+    ],
+  }
+}
+
 export function updateSeo(route, pinia) {
   const store = useContentStore(pinia)
   const item = getItem(route, store)
   const isNotFound = route.name === 'not-found'
-  const canonicalPath = item ? route.path : '/'
+  const isArchive = route.name === 'regional-archive'
+  const canonicalPath = item ? route.path : isArchive ? '/archive-map' : '/'
   const canonical = absoluteUrl(canonicalPath)
-  const title = item ? `${compactText(item.title)} | ${SITE_NAME}` : isNotFound ? `페이지를 찾을 수 없습니다 | ${SITE_NAME}` : DEFAULT_TITLE
-  const sourceDescription = item?.summary || item?.description || item?.body?.[0] || DEFAULT_DESCRIPTION
+  const title = item
+    ? `${compactText(item.title)} | ${SITE_NAME}`
+    : isNotFound
+      ? `페이지를 찾을 수 없습니다 | ${SITE_NAME}`
+      : isArchive
+        ? ARCHIVE_TITLE
+        : DEFAULT_TITLE
+  const sourceDescription = item?.summary || item?.description || item?.body?.[0] || (isArchive ? ARCHIVE_DESCRIPTION : DEFAULT_DESCRIPTION)
   const description = truncate(sourceDescription) || DEFAULT_DESCRIPTION
   const image = absoluteUrl(item?.hero || item?.thumb || DEFAULT_IMAGE)
   const robots = isNotFound ? 'noindex, nofollow' : DEFAULT_ROBOTS
@@ -227,5 +259,7 @@ export function updateSeo(route, pinia) {
 
   setStructuredData(item
     ? detailStructuredData(item, canonical, description, image)
-    : homeStructuredData())
+    : isArchive
+      ? archiveStructuredData()
+      : homeStructuredData())
 }
