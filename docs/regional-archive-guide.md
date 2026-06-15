@@ -455,6 +455,59 @@ Google Maps API key는 HTTP referrer 제한 필수
 이미지는 저작권 검토 전 직접 저장하지 않고 원문 URL만 보관
 ```
 
+## 업데이트 (v1.2) — 하이브리드 소스
+
+기관·갤러리는 아트맵에서 자동 수집하되, **아트맵에 없는 대안미술공간**(호랑가시나무·예술공간 집·뽕뽕브릿지·스페이스 DDF·Overlab·빈틀 등)은 사이트가 JS 렌더링이거나 인스타 전용이라 자동 크롤이 어렵다. 이들은 **수동/제보 입력 경로**로 같은 DB·지도에 통합한다.
+
+### 입력 API
+
+```txt
+POST /api/archive/manual    (헤더: x-crawl-secret)
+```
+
+단건 또는 `{ "items": [ ... ] }` 배열. 저장 시 `source_type='manual'`, 기본 `visibility='public'`.
+
+필드:
+
+```txt
+title*      전시명 (필수)
+venue*      공간명 (필수)
+city        gwangju | jeonju | jeonnam   (기본 gwangju)
+cityLabel   표시용 (예: 광주, 목포)        (기본 city 라벨)
+address     주소
+lat, lng    지도 좌표 (없으면 마커 안 뜸)
+startDate   2025.09.30  또는 2025-09-30
+endDate     2025.10.12
+artists     "신수와" 또는 ["a","b"]
+archiveType exhibition | screening | workshop  (없으면 제목으로 추정)
+sourceUrl   원문 링크
+thumbnail   대표 이미지 URL
+```
+
+예시:
+
+```bash
+curl -X POST https://space-ddf-archive-api.taejunyun.workers.dev/api/archive/manual \
+  -H "x-crawl-secret: <SECRET>" -H "content-type: application/json" \
+  -d '{"title":"○○ 개인전","venue":"호랑가시나무 아트폴리곤","city":"gwangju",
+       "address":"광주 남구 제중로47번길 20","lat":35.13,"lng":126.91,
+       "startDate":"2026.06.01","endDate":"2026.06.30","artists":"작가명",
+       "sourceUrl":"https://www.horang.art/art-polygon/exhibition/current"}'
+```
+
+같은 `dedupeKey`(제목+공간+시작일)면 덮어쓰므로, 같은 전시를 다시 보내면 갱신된다. 향후 간단한 관리 폼을 붙이면 이 API를 그대로 쓴다.
+
+### 대안공간 등록 현황 (좌표 채워 입력 필요)
+
+```txt
+호랑가시나무 아트폴리곤/창작소  광주 남구 제중로
+예술공간 집                    https://www.artspacehouse.com
+뽕뽕브릿지                     인스타 @spaceppong
+스페이스 DDF                   광주 동구 충장로46번길 8-8 (좌표 35.150331,126.909882) — 입력 완료
+Overlab                       https://overlab.creatorlink.net
+스페이스 빈틀                  인스타 @space_vintle
+```
+
 ## 업데이트 (v1.1)
 
 ### 권역 확장: 광주 · 전북 · 전남 전역

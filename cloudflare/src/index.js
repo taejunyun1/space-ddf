@@ -1,5 +1,6 @@
 import { crawlArtmap } from './artmap-crawler.js'
 import { crawlGwangjuMuseum } from './gwangju-museum-crawler.js'
+import { importManualExhibitions } from './manual-source.js'
 
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
@@ -343,6 +344,22 @@ async function runGwangjuMuseumCrawl(request, env) {
   return json(result)
 }
 
+// Manual / submission entry for alternative spaces. Accepts a single record or
+// { items: [...] }. Upserts into the same exhibitions table as sourceType=manual.
+async function runManualUpsert(request, env) {
+  if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+
+  const body = await parseJsonBody(request)
+  const items = Array.isArray(body) ? body : Array.isArray(body.items) ? body.items : [body]
+
+  try {
+    const result = await importManualExhibitions(env, items)
+    return json(result)
+  } catch (err) {
+    return error(err instanceof Error ? err.message : 'Invalid manual record', 400)
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: jsonHeaders })
@@ -358,6 +375,11 @@ export default {
       if (url.pathname === '/api/archive/crawl/gwangju-museum') {
         if (request.method !== 'POST') return error('Method not allowed', 405)
         return runGwangjuMuseumCrawl(request, env)
+      }
+
+      if (url.pathname === '/api/archive/manual') {
+        if (request.method !== 'POST') return error('Method not allowed', 405)
+        return runManualUpsert(request, env)
       }
 
       if (request.method !== 'GET') return error('Method not allowed', 405)
