@@ -585,8 +585,12 @@ function nearestHrefExternalId(html, inputIndex) {
 }
 
 function extractPeriodMatch(html, inputIndex) {
-  const snippet = html.slice(Math.max(0, inputIndex - 1300), Math.min(html.length, inputIndex + 300))
-  return snippet.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})\s*~\s*(\d{4})[./-](\d{1,2})[./-](\d{1,2})/)
+  // The card's date span sits just before its push-button <input>. Search a
+  // tight preceding window and take the LAST (closest) match, otherwise a wide
+  // window matches the *previous* card's date and shifts every card by one.
+  const snippet = html.slice(Math.max(0, inputIndex - 600), inputIndex)
+  const matches = [...snippet.matchAll(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})\s*~\s*(\d{4})[./-](\d{1,2})[./-](\d{1,2})/g)]
+  return matches.at(-1) || null
 }
 
 function formatDate(parts) {

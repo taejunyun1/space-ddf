@@ -38,6 +38,30 @@ describe('parseArtmapList', () => {
     assert.equal(record.thumbnailUrl, 'https://art-map.co.kr/poster.jpg')
   })
 
+  it('keeps each card’s own date (no off-by-one bleed from the previous card)', () => {
+    const card = (idx, title, date) => `
+      <a href='view.php?idx=${idx}'>
+        <div class='new_exh_list'>
+          <span id='ttl_${idx}'>${title}</span><br/>
+          <span>이강하미술관/광주</span><br/>
+          <span>${date}</span>
+          <span class='mck' style='display:none;'>
+            <input type='checkbox' id='mapc${idx}' onclick='push_val("${title}", 35.13, 126.91, ${idx}, "이강하미술관/광주", 1,"https://art-map.co.kr/p.jpg")'>
+          </span>
+        </div>
+      </a>`
+    const html = card('1001', '첫번째 전시', '2026.01.10 ~ 2026.02.20')
+      + card('1002', '두번째 전시', '2026.03.05 ~ 2026.04.15')
+
+    const records = parseArtmapList(html, 'ing')
+
+    assert.equal(records.length, 2)
+    assert.equal(records[0].startDate, '2026-01-10')
+    assert.equal(records[0].endDate, '2026-02-20')
+    assert.equal(records[1].startDate, '2026-03-05') // not 2026-01-10 from the previous card
+    assert.equal(records[1].endDate, '2026-04-15')
+  })
+
   it('is resilient to input attribute ordering and date separators', () => {
     const html = `
       <a href="/exhibition/view.php?idx=32331">
