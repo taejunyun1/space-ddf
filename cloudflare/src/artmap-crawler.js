@@ -538,7 +538,9 @@ export function parseArtmapList(html, type) {
     const venueParts = splitVenue(args[4])
     const title = cleanPlainText(args[0])
     const startDate = periodMatch ? formatDate(periodMatch.slice(1, 4)) : ''
-    const endDate = periodMatch ? formatDate(periodMatch.slice(4, 7)) : ''
+    // Source data sometimes has a typo in the end year (e.g. 2050.10.26).
+    // Discard an implausible end date rather than store a broken range.
+    const endDate = sanitizeEndDate(startDate, periodMatch ? formatDate(periodMatch.slice(4, 7)) : '')
 
     records.push({
       sourceRecordId: `artmap-${externalId}`,
@@ -551,7 +553,7 @@ export function parseArtmapList(html, type) {
       normalizedVenueName: normalizeForKey(venueParts.name),
       regionLabel: venueParts.region,
       cityHint: venueParts.region,
-      periodText: startDate && endDate ? `${startDate} - ${endDate}` : '',
+      periodText: startDate ? (endDate ? `${startDate} - ${endDate}` : startDate) : '',
       startDate,
       endDate,
       status: statusFromDates(startDate, endDate, STATUS_BY_TYPE[type]),
@@ -596,6 +598,19 @@ function extractPeriodMatch(html, inputIndex) {
 function formatDate(parts) {
   const [year, month, day] = parts
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+// Guard against source typos in the end date (e.g. 2050 instead of 2025). An end
+// before the start, or more than ~2 years after it, is treated as missing.
+export function sanitizeEndDate(startDate, endDate) {
+  if (!startDate || !endDate) return endDate || ''
+  if (endDate < startDate) return ''
+
+  const startYear = Number(startDate.slice(0, 4))
+  const endYear = Number(endDate.slice(0, 4))
+  if (Number.isFinite(startYear) && Number.isFinite(endYear) && endYear - startYear > 2) return ''
+
+  return endDate
 }
 
 export function parseArtmapDetail(html) {

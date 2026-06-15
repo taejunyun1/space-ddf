@@ -6,6 +6,7 @@ import {
   normalizeArchiveType,
   parseArtmapDetail,
   parseArtmapList,
+  sanitizeEndDate,
 } from '../src/artmap-crawler.js'
 
 describe('parseArtmapList', () => {
@@ -187,6 +188,24 @@ describe('detectTargetRegion', () => {
 
     assert.equal(region.city, 'unknown')
     assert.equal(region.outOfScope, false)
+  })
+})
+
+describe('sanitizeEndDate', () => {
+  it('keeps a normal range', () => {
+    assert.equal(sanitizeEndDate('2025-09-02', '2025-10-26'), '2025-10-26')
+  })
+
+  it('drops a source-typo end year (2050)', () => {
+    assert.equal(sanitizeEndDate('2025-09-02', '2050-10-26'), '')
+  })
+
+  it('drops an end before the start', () => {
+    assert.equal(sanitizeEndDate('2025-09-02', '2025-08-01'), '')
+  })
+
+  it('allows up to a ~2 year span', () => {
+    assert.equal(sanitizeEndDate('2025-01-01', '2026-12-31'), '2026-12-31')
   })
 })
 
