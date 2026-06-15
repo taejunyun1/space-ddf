@@ -14,6 +14,7 @@ import { chromium } from 'playwright'
 import { extractExhibitions } from './lib/horang-parse.mjs'
 import { parseHouseCurrent } from './lib/house-parse.mjs'
 import { scrapeGwangjuMuseum } from './lib/museum.mjs'
+import { scrapeDmgj } from './lib/dmgj.mjs'
 
 const API_BASE = process.env.API_BASE || 'https://space-ddf-archive-api.taejunyun.workers.dev'
 const CRAWL_SECRET = process.env.CRAWL_SECRET || ''
@@ -135,18 +136,25 @@ async function main() {
     await browser.close()
   }
 
-  // Fetch-based sources (no browser). 광주시립미술관 blocks Cloudflare Worker IPs
-  // but responds to GitHub's runners.
-  try {
-    const museum = await scrapeGwangjuMuseum({ sinceYear: 2024, maxPagesPast: 3 })
-    console.log(`[gwangju-museum] extracted ${museum.length} exhibitions`)
-    if (museum.length && !DRY_RUN) {
-      const r = await postManual(museum)
-      console.log(`[gwangju-museum] posted: ${r.imported}`)
-      total += r.imported || 0
+  // Fetch-based sources (no browser). These sites block Cloudflare Worker IPs
+  // but respond to GitHub's runners.
+  const fetchSources = [
+    { id: 'gwangju-museum', run: () => scrapeGwangjuMuseum({ sinceYear: 2024, maxPagesPast: 3 }) },
+    { id: 'dmgj', run: () => scrapeDmgj() }, // robots-allowed /menu.es only
+  ]
+
+  for (const src of fetchSources) {
+    try {
+      const items = await src.run()
+      console.log(`[${src.id}] extracted ${items.length} exhibitions`)
+      if (items.length && !DRY_RUN) {
+        const r = await postManual(items)
+        console.log(`[${src.id}] posted: ${r.imported}`)
+        total += r.imported || 0
+      }
+    } catch (err) {
+      console.error(`[${src.id}] failed: ${err.message}`)
     }
-  } catch (err) {
-    console.error(`[gwangju-museum] failed: ${err.message}`)
   }
 
   console.log(DRY_RUN ? 'dry run complete' : `done — imported ${total}`)

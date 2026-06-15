@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { parseDateRange, extractExhibitions } from '../lib/horang-parse.mjs'
 import { parseHouseCurrent } from '../lib/house-parse.mjs'
+import { parseDmgjList } from '../lib/dmgj.mjs'
 
 describe('parseDateRange', () => {
   it('parses an abbreviated end date (inherits year/month)', () => {
@@ -61,5 +62,36 @@ describe('parseHouseCurrent', () => {
 
   it('returns null when no exhibition is present', () => {
     assert.equal(parseHouseCurrent('Home\nABOUT US\nEXHIBITIONS'), null)
+  })
+})
+
+describe('parseDmgjList', () => {
+  it('extracts title, venue (before date), and date range from list items', () => {
+    const html = `
+      <li>
+        <span class="list_cate">전시</span>
+        <span class="list_label">D-DAY</span>
+        <p class="info_tit">2026 명현철 7번째 개인전 &lt;나무, 부활&gt;</p>
+        <span>관선재 갤러리</span>
+        <span>2026.06.16~2026.06.22</span>
+        <a href="/event.es?mid=a10302000000&seq=9187&act=view">view</a>
+      </li>
+      <li>
+        <p class="info_tit">강지수: 보이지 않는 정원</p>
+        <span>광주예술의전당 갤러리</span>
+        <span>2026.06.12~2026.07.12</span>
+        <a href="/event.es?mid=a10302000000&seq=9155&act=view">view</a>
+      </li>`
+
+    const out = parseDmgjList(html)
+    assert.equal(out.length, 2)
+    assert.deepEqual(out[0], {
+      title: '2026 명현철 7번째 개인전 <나무, 부활>',
+      venue: '관선재 갤러리',
+      startDate: '2026-06-16',
+      endDate: '2026-06-22',
+      sourceUrl: 'https://dmgj.kr/event.es?mid=a10302000000&seq=9187&act=view',
+    })
+    assert.equal(out[1].venue, '광주예술의전당 갤러리')
   })
 })
