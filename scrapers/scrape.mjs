@@ -12,6 +12,8 @@
 
 import { chromium } from 'playwright'
 import { extractExhibitions } from './lib/horang-parse.mjs'
+import { parseHouseCurrent } from './lib/house-parse.mjs'
+import { scrapeGwangjuMuseum } from './lib/museum.mjs'
 
 const API_BASE = process.env.API_BASE || 'https://space-ddf-archive-api.taejunyun.workers.dev'
 const CRAWL_SECRET = process.env.CRAWL_SECRET || ''
@@ -31,6 +33,32 @@ const VENUES = [
     sectionStart: /CURRENT EXHIBITION/i,
     sectionEnd: /Home\s+Creative Studio|Copyright/i,
     extract: extractExhibitions,
+  },
+  {
+    id: 'artspace-house',
+    venue: '예술공간 집',
+    city: 'gwangju',
+    cityLabel: '광주',
+    address: '광주광역시 동구 제봉로158번길 11-5',
+    lat: 35.1518319,
+    lng: 126.9198964,
+    sourceUrl: 'https://www.artspacehouse.com',
+    // Wix site: one current exhibition per page. Navigate home → "NOW" link.
+    customScrape: async (page) => {
+      await page.goto('https://www.artspacehouse.com/', { waitUntil: 'networkidle', timeout: 45000 })
+      await page.waitForTimeout(1500)
+      const href = await page.evaluate(() => {
+        const a = [...document.querySelectorAll('a')].find((el) => /(^|\s)NOW(\s|$)/i.test((el.innerText || '').trim()))
+        return a ? a.href : null
+      })
+      if (href) {
+        await page.goto(href, { waitUntil: 'networkidle', timeout: 45000 })
+        await page.waitForTimeout(1500)
+      }
+      const text = await page.evaluate(() => document.body.innerText)
+      const rec = parseHouseCurrent(text)
+      return rec ? [rec] : []
+    },
   },
 ]
 
@@ -68,9 +96,13 @@ async function main() {
 
   try {
     for (const v of VENUES) {
-      const text = await renderText(page, v.url)
-      const section = sliceSection(text, v.sectionStart, v.sectionEnd)
-      const exhibitions = v.extract(section)
+      let exhibitions
+      if (v.customScrape) {
+        exhibitions = await v.customScrape(page)
+      } else {
+        const text = await renderText(page, v.url)
+        exhibitions = v.extract(sliceSection(text, v.sectionStart, v.sectionEnd))
+      }
 
       const items = exhibitions.map((e) => ({
         title: e.title,
@@ -101,6 +133,20 @@ async function main() {
     }
   } finally {
     await browser.close()
+  }
+
+  // Fetch-based sources (no browser). 광주시립미술관 blocks Cloudflare Worker IPs
+  // but responds to GitHub's runners.
+  try {
+    const museum = await scrapeGwangjuMuseum({ sinceYear: 2024, maxPagesPast: 3 })
+    console.log(`[gwangju-museum] extracted ${museum.length} exhibitions`)
+    if (museum.length && !DRY_RUN) {
+      const r = await postManual(museum)
+      console.log(`[gwangju-museum] posted: ${r.imported}`)
+      total += r.imported || 0
+    }
+  } catch (err) {
+    console.error(`[gwangju-museum] failed: ${err.message}`)
   }
 
   console.log(DRY_RUN ? 'dry run complete' : `done — imported ${total}`)

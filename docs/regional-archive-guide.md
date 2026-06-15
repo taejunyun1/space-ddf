@@ -455,6 +455,29 @@ Google Maps API key는 HTTP referrer 제한 필수
 이미지는 저작권 검토 전 직접 저장하지 않고 원문 URL만 보관
 ```
 
+## 업데이트 (v1.3) — 무료 자동 스크레이퍼 (GitHub Actions)
+
+수동 입력 대신, JS 렌더링이 필요한 공간을 **GitHub Actions에서 헤드리스 브라우저(Playwright)로 무료 수집**해 manual API로 보낸다(Cloudflare Browser Rendering 같은 유료 기능 불필요). GitHub 러너는 Cloudflare가 아닌 IP라, 워커에서 막히던 광주시립미술관도 수집된다.
+
+- 코드: `scrapers/` (Playwright) + `.github/workflows/archive-scrape.yml`(매일 + 수동).
+- 활성화: repo Settings → Secrets → Actions에 `CRAWL_SECRET` 등록.
+- 소스별 방식:
+
+```txt
+호랑가시나무(Google Sites)   브라우저 렌더 → 목록 추출        13건
+예술공간 집(Wix)             브라우저 렌더 → 현재전시 1건      1건
+광주시립미술관               단순 fetch + 기존 파서(브라우저 X)  32건
+```
+
+- 공간 추가: `scrapers/scrape.mjs`의 `VENUES`에 URL·좌표·추출기를 한 줄 추가. Google Sites류는 `extractExhibitions` 재사용, 레이아웃이 다르면 `customScrape`만 작성.
+
+남은 곳:
+
+```txt
+Overlab(Creatorlink)   목록에 날짜 없음 + 비-광주 전시 섞임 → 보류/수동
+뽕뽕브릿지·빈틀(인스타) 로그인 벽 → 가끔 수동
+```
+
 ## 업데이트 (v1.2) — 하이브리드 소스
 
 기관·갤러리는 아트맵에서 자동 수집하되, **아트맵에 없는 대안미술공간**(호랑가시나무·예술공간 집·뽕뽕브릿지·스페이스 DDF·Overlab·빈틀 등)은 사이트가 JS 렌더링이거나 인스타 전용이라 자동 크롤이 어렵다. 이들은 **수동/제보 입력 경로**로 같은 DB·지도에 통합한다.
