@@ -46,15 +46,15 @@ const VENUES = [
     sourceUrl: 'https://www.artspacehouse.com',
     // Wix site: one current exhibition per page. Navigate home → "NOW" link.
     customScrape: async (page) => {
-      await page.goto('https://www.artspacehouse.com/', { waitUntil: 'networkidle', timeout: 45000 })
-      await page.waitForTimeout(1500)
+      await page.goto('https://www.artspacehouse.com/', { waitUntil: 'domcontentloaded', timeout: 60000 })
+      await page.waitForTimeout(2500)
       const href = await page.evaluate(() => {
         const a = [...document.querySelectorAll('a')].find((el) => /(^|\s)NOW(\s|$)/i.test((el.innerText || '').trim()))
         return a ? a.href : null
       })
       if (href) {
-        await page.goto(href, { waitUntil: 'networkidle', timeout: 45000 })
-        await page.waitForTimeout(1500)
+        await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 60000 })
+        await page.waitForTimeout(2500)
       }
       const text = await page.evaluate(() => document.body.innerText)
       const rec = parseHouseCurrent(text)
@@ -64,8 +64,11 @@ const VENUES = [
 ]
 
 async function renderText(page, url) {
-  await page.goto(url, { waitUntil: 'networkidle', timeout: 45000 })
-  await page.waitForTimeout(1500)
+  // 'networkidle' frequently times out on sites with continuous background
+  // requests (Google Sites/Wix analytics). 'domcontentloaded' + a settle wait
+  // is far more reliable in CI.
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
+  await page.waitForTimeout(2500)
   return page.evaluate(() => document.body.innerText)
 }
 
@@ -91,45 +94,51 @@ async function postManual(items) {
 }
 
 async function main() {
-  const browser = await chromium.launch()
-  const page = await browser.newPage({ userAgent: 'SpaceDDFArchiveScraper/1.0 (+https://www.spaceddf.xyz)' })
+  // --no-sandbox is required on GitHub Actions runners.
+  const browser = await chromium.launch({ args: ['--no-sandbox'] })
   let total = 0
+  let failures = 0
 
   try {
     for (const v of VENUES) {
-      let exhibitions
-      if (v.customScrape) {
-        exhibitions = await v.customScrape(page)
-      } else {
-        const text = await renderText(page, v.url)
-        exhibitions = v.extract(sliceSection(text, v.sectionStart, v.sectionEnd))
-      }
+      // Each venue is isolated: one site being down/slow must not abort the rest.
+      try {
+        const page = await browser.newPage({ userAgent: 'SpaceDDFArchiveScraper/1.0 (+https://www.spaceddf.xyz)' })
+        let exhibitions
+        try {
+          if (v.customScrape) {
+            exhibitions = await v.customScrape(page)
+          } else {
+            const text = await renderText(page, v.url)
+            exhibitions = v.extract(sliceSection(text, v.sectionStart, v.sectionEnd))
+          }
+        } finally {
+          await page.close()
+        }
 
-      const items = exhibitions.map((e) => ({
-        title: e.title,
-        venue: v.venue,
-        city: v.city,
-        cityLabel: v.cityLabel,
-        address: v.address,
-        lat: v.lat,
-        lng: v.lng,
-        startDate: e.startDate,
-        endDate: e.endDate,
-        artists: e.artists,
-        sourceUrl: v.sourceUrl,
-      }))
+        const items = exhibitions.map((e) => ({
+          title: e.title,
+          venue: v.venue,
+          city: v.city,
+          cityLabel: v.cityLabel,
+          address: v.address,
+          lat: v.lat,
+          lng: v.lng,
+          startDate: e.startDate,
+          endDate: e.endDate,
+          artists: e.artists,
+          sourceUrl: v.sourceUrl,
+        }))
 
-      console.log(`[${v.id}] extracted ${items.length} exhibitions`)
-      for (const it of items) console.log(`   • ${it.startDate}~${it.endDate} | ${it.title} | ${(it.artists || []).join(', ')}`)
-
-      if (!items.length) continue
-
-      if (DRY_RUN) {
-        console.log(`[${v.id}] DRY_RUN — not posting`)
-      } else {
-        const r = await postManual(items)
-        console.log(`[${v.id}] posted: ${r.imported}`)
-        total += r.imported || 0
+        console.log(`[${v.id}] extracted ${items.length} exhibitions`)
+        if (items.length && !DRY_RUN) {
+          const r = await postManual(items)
+          console.log(`[${v.id}] posted: ${r.imported}`)
+          total += r.imported || 0
+        }
+      } catch (err) {
+        failures += 1
+        console.error(`[${v.id}] failed: ${err.message}`)
       }
     }
   } finally {
@@ -153,11 +162,18 @@ async function main() {
         total += r.imported || 0
       }
     } catch (err) {
+      failures += 1
       console.error(`[${src.id}] failed: ${err.message}`)
     }
   }
 
-  console.log(DRY_RUN ? 'dry run complete' : `done — imported ${total}`)
+  console.log(DRY_RUN ? `dry run complete (${failures} source failures)` : `done — imported ${total}, ${failures} source failures`)
+
+  // Surface a fully-broken run, but tolerate partial source failures so one
+  // flaky site doesn't red-X the whole schedule.
+  if (failures && total === 0 && !DRY_RUN) {
+    process.exit(1)
+  }
 }
 
 main().catch((err) => {
