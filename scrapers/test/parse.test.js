@@ -3,6 +3,8 @@ import { describe, it } from 'node:test'
 import { parseDateRange, extractExhibitions } from '../lib/horang-parse.mjs'
 import { parseHouseCurrent } from '../lib/house-parse.mjs'
 import { parseDmgjList } from '../lib/dmgj.mjs'
+import { parsePalbokList } from '../lib/palbok.mjs'
+import { extractGmap } from '../lib/gmap-parse.mjs'
 
 describe('parseDateRange', () => {
   it('parses an abbreviated end date (inherits year/month)', () => {
@@ -93,5 +95,32 @@ describe('parseDmgjList', () => {
       sourceUrl: 'https://dmgj.kr/event.es?mid=a10302000000&seq=9187&act=view',
     })
     assert.equal(out[1].venue, '광주예술의전당 갤러리')
+  })
+})
+
+describe('parsePalbokList', () => {
+  it('pairs the title (.list-junbox-d2) with its 일정 date range', () => {
+    const html = '<a><div class="list-junbox-d2">전주문화재단 20주년 특별전 展</div>'
+      + '<p>일정 : <span>2026-03-10</span> ~ <span>2026-06-21</span></p></a>'
+    const out = parsePalbokList(html)
+    assert.equal(out.length, 1)
+    assert.deepEqual(out[0], { title: '전주문화재단 20주년 특별전 展', startDate: '2026-03-10', endDate: '2026-06-21' })
+  })
+})
+
+describe('extractGmap', () => {
+  it('takes the title line above a YYYY-MM-DD~YYYY-MM-DD range, skipping nav', () => {
+    const text = [
+      'EXHIBITION',
+      '광주미디어아트플랫폼 전시안내',
+      '완전한 것들의 틈',
+      '2026 5·18기념 미디어아트 특별전',
+      '2026-05-07~2026-07-15',
+    ].join('\n')
+    const out = extractGmap(text)
+    assert.equal(out.length, 1)
+    assert.equal(out[0].title, '완전한 것들의 틈')
+    assert.equal(out[0].startDate, '2026-05-07')
+    assert.equal(out[0].endDate, '2026-07-15')
   })
 })

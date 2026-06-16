@@ -13,7 +13,9 @@
 import { chromium } from 'playwright'
 import { extractExhibitions } from './lib/horang-parse.mjs'
 import { parseHouseCurrent } from './lib/house-parse.mjs'
+import { extractGmap } from './lib/gmap-parse.mjs'
 import { scrapeGwangjuMuseum } from './lib/museum.mjs'
+import { scrapePalbok } from './lib/palbok.mjs'
 // import { scrapeDmgj } from './lib/dmgj.mjs' // disabled — robots (see fetchSources)
 
 const API_BASE = process.env.API_BASE || 'https://space-ddf-archive-api.taejunyun.workers.dev'
@@ -60,6 +62,19 @@ const VENUES = [
       const rec = parseHouseCurrent(text)
       return rec ? [rec] : []
     },
+  },
+  {
+    id: 'gmap',
+    venue: '광주미디어아트플랫폼',
+    city: 'gwangju',
+    cityLabel: '광주',
+    address: '광주광역시 동구 천변우로 415',
+    lat: 35.1484274,
+    lng: 126.9093966,
+    url: 'https://gmap.gwangju.go.kr/',
+    sourceUrl: 'https://gmap.gwangju.go.kr/',
+    sectionEnd: /DOCENT/i,
+    extract: extractGmap,
   },
 ]
 
@@ -149,6 +164,7 @@ async function main() {
   // but respond to GitHub's runners.
   const fetchSources = [
     { id: 'gwangju-museum', run: () => scrapeGwangjuMuseum({ sinceYear: 2024, maxPagesPast: 3 }) },
+    { id: 'palbok', run: () => scrapePalbok() },
     // DMGJ disabled: /menu.es (robots-allowed) 302-redirects to /event.es
     // (robots-DISALLOWED), so the listing is only reachable by crawling a
     // disallowed path. Respect robots — re-enable only with site permission.
