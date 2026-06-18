@@ -41,6 +41,13 @@
         </p>
       </div>
 
+      <nav class="side-nav" aria-label="주요 페이지">
+        <router-link to="/archive-map" class="side-nav-link" @click="closeAside">
+          <span>Regional Archive</span>
+          <strong>📍전시 지도📍</strong>
+        </router-link>
+      </nav>
+
       <section class="location-wrap" aria-label="공간 위치">
         <h3 class="side-title">Location</h3>
 
@@ -62,13 +69,6 @@
           <div class="location-line">월요일 및 공휴일 휴관</div>
         </div>
       </section>
-
-      <nav class="side-nav" aria-label="주요 페이지">
-        <router-link to="/archive-map" class="side-nav-link" @click="closeAside">
-          <span>Regional Archive</span>
-          <strong>전시 지도</strong>
-        </router-link>
-      </nav>
 
       <div class="left-body"></div>
 
@@ -261,7 +261,6 @@ overscroll-behavior: none;
 
 .side-nav {
   border-top: 1px solid #1C1C1C;
-  border-bottom: 1px solid #1C1C1C;
   padding: 10px 0;
 }
 
