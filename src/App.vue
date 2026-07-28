@@ -46,6 +46,10 @@
           <span>Regional Archive</span>
           <strong>📍전시 지도📍</strong>
         </router-link>
+        <router-link to="/rental" class="side-nav-link" @click="closeAside">
+          <span>Space Rental</span>
+          <strong>대관 신청</strong>
+        </router-link>
       </nav>
 
       <section class="location-wrap" aria-label="공간 위치">
@@ -351,6 +355,7 @@ overscroll-behavior: none;
 @media (max-width: 1024px) {
   .layout {
     grid-template-columns: 1fr;
+    overflow-x: clip;
   }
 
   .hamburger {

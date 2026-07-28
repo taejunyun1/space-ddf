@@ -2,6 +2,7 @@
 
 const fs = require('fs')
 const http = require('http')
+const https = require('https')
 const os = require('os')
 const path = require('path')
 const { spawn, spawnSync } = require('child_process')
@@ -10,7 +11,8 @@ const root = path.resolve(__dirname, '..')
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT || 4173)
 const baseUrl = process.env.SMOKE_BASE_URL || `http://${host}:${port}`
-const routes = ['/', '/shows/jihye/', '/projects/artwall/']
+const routes = ['/', '/rental', '/shows/jihye/', '/projects/artwall/']
+const protectedRoutes = ['/manage', '/manage/rentals']
 const expectedStops = new WeakSet()
 
 async function main() {
@@ -27,10 +29,16 @@ async function main() {
     await client.send('Page.enable')
     await client.send('Runtime.enable')
     await client.send('Log.enable')
+    await client.send('Network.enable')
 
     for (const route of routes) {
       const result = await smokeRoute(client, new URL(route, baseUrl).href)
       console.log(`OK ${route} - ${result.title}`)
+    }
+
+    for (const route of protectedRoutes) {
+      const result = await smokeProtectedRoute(new URL(route, baseUrl).href)
+      console.log(`OK protected ${route} - ${result.status}`)
     }
   } finally {
     if (client) client.close()
@@ -38,6 +46,18 @@ async function main() {
     if (chrome?.userDataDir) removeDirectory(chrome.userDataDir)
     if (startedPreview) await stopProcess(startedPreview)
   }
+}
+
+async function smokeProtectedRoute(url) {
+  const response = await fetch(url, { redirect: 'manual' })
+  const status = response.status
+  const location = response.headers.get('location') || ''
+
+  if ([301, 302, 303, 307, 308].includes(status) && /\/manage\/login/.test(location)) {
+    return { status }
+  }
+
+  throw new Error(`Expected protected manage route at ${url}, got HTTP ${status} ${location}`)
 }
 
 function startPreview() {
@@ -173,6 +193,7 @@ function createCdpClient(webSocketUrl) {
 
 async function smokeRoute(client, url) {
   const errors = []
+  const resourceErrors = []
   const detach = client.onEvent(message => {
     if (message.method === 'Runtime.exceptionThrown') {
       const details = message.params.exceptionDetails
@@ -185,6 +206,13 @@ async function smokeRoute(client, url) {
 
     if (message.method === 'Log.entryAdded' && message.params.entry.level === 'error') {
       errors.push(message.params.entry.text)
+    }
+
+    if (message.method === 'Network.responseReceived' && message.params.response.status >= 400) {
+      resourceErrors.push({
+        status: message.params.response.status,
+        url: message.params.response.url,
+      })
     }
   })
 
@@ -220,16 +248,34 @@ async function smokeRoute(client, url) {
       throw new Error(`App did not render enough content at ${url}: ${JSON.stringify(result)}`)
     }
 
-    const actionableErrors = errors.filter(error => !/favicon/i.test(error))
+    const actionableResourceErrors = resourceErrors.filter(error => !isIgnoredResourceError(error.url))
+    const actionableErrors = errors.filter(error => {
+      if (/favicon/i.test(error)) return false
 
-    if (actionableErrors.length) {
-      throw new Error(`Console/runtime errors at ${url}:\n${actionableErrors.join('\n')}`)
+      if (/Failed to load resource/i.test(error) && resourceErrors.some(item => isIgnoredResourceError(item.url))) {
+        return false
+      }
+
+      return true
+    })
+
+    if (actionableErrors.length || actionableResourceErrors.length) {
+      const details = [
+        ...actionableErrors,
+        ...actionableResourceErrors.map(error => `${error.status} ${error.url}`),
+      ]
+
+      throw new Error(`Console/runtime errors at ${url}:\n${details.join('\n')}`)
     }
 
     return result
   } finally {
     detach()
   }
+}
+
+function isIgnoredResourceError(url) {
+  return /\/favicon\.ico(?:$|\?)/i.test(url) || /\/cdn-cgi\/rum(?:$|\?)/i.test(url)
 }
 
 function waitForCdpEvent(client, method, timeoutMs) {
@@ -250,10 +296,11 @@ function waitForCdpEvent(client, method, timeoutMs) {
 
 function waitForHttp(url, timeoutMs) {
   const started = Date.now()
+  const client = getHttpClient(url)
 
   return new Promise((resolve, reject) => {
     const attempt = () => {
-      http.get(url, response => {
+      client.get(url, response => {
         response.resume()
         resolve()
       }).on('error', error => {
@@ -268,6 +315,15 @@ function waitForHttp(url, timeoutMs) {
 
     attempt()
   })
+}
+
+function getHttpClient(url) {
+  const protocol = new URL(url).protocol
+
+  if (protocol === 'https:') return https
+  if (protocol === 'http:') return http
+
+  throw new Error(`Unsupported protocol for smoke URL: ${protocol}`)
 }
 
 async function fetchJson(url, options) {

@@ -27,7 +27,15 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Verify crawl secret
+        env:
+          CRAWL_SECRET: ${{ secrets.CRAWL_SECRET }}
+        run: test -n "$CRAWL_SECRET"
+
+      - name: Run parser tests
+        run: npm test
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium

@@ -29,7 +29,7 @@
         :key="city.id"
         type="button"
         class="ddf-filter-button"
-        :class="{ 'is-active': cityModel === city.id }"
+        :class="[{ 'is-active': cityModel === city.id }, city.id !== 'all' ? city.id : '']"
         @click="cityModel = city.id"
       >
         {{ city.label }}
@@ -153,5 +153,35 @@ const statusModel = computed({
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+}
+
+.filter-group[aria-label="지역 선택"] .gwangju {
+  border-color: var(--ddf-city-gwangju);
+  color: var(--ddf-city-gwangju);
+}
+
+.filter-group[aria-label="지역 선택"] .jeonju {
+  border-color: var(--ddf-city-jeonju);
+  color: var(--ddf-city-jeonju);
+}
+
+.filter-group[aria-label="지역 선택"] .jeonnam {
+  border-color: var(--ddf-city-jeonnam);
+  color: var(--ddf-city-jeonnam);
+}
+
+.filter-group[aria-label="지역 선택"] .gwangju.is-active {
+  background: var(--ddf-city-gwangju);
+  color: var(--ddf-paper);
+}
+
+.filter-group[aria-label="지역 선택"] .jeonju.is-active {
+  background: var(--ddf-city-jeonju);
+  color: var(--ddf-paper);
+}
+
+.filter-group[aria-label="지역 선택"] .jeonnam.is-active {
+  background: var(--ddf-city-jeonnam);
+  color: var(--ddf-paper);
 }
 </style>

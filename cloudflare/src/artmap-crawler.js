@@ -343,6 +343,12 @@ export async function crawlArtmap(env, options = {}) {
     }
 
     await env.DB.prepare(`
+      UPDATE exhibitions
+      SET active = 0, updated_at = ?
+      WHERE source_name = '아트맵' AND scraped_at < ? AND active = 1
+    `).bind(new Date().toISOString(), startedAt).run()
+
+    await env.DB.prepare(`
       UPDATE crawl_runs
       SET status = 'success',
           finished_at = ?,
@@ -452,7 +458,7 @@ async function fetchArtmapList(type, start, wrap, fetchOptions) {
     method: 'POST',
     headers: {
       'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
-      'user-agent': 'SpaceDDFArchiveCrawler/1.0 (+https://www.spaceddf.xyz)',
+      'user-agent': 'SpaceDDFArchiveCrawler/1.0 (+https://spaceddf.xyz)',
     },
     body: params.toString(),
   }, fetchOptions)
@@ -467,7 +473,7 @@ async function fetchArtmapList(type, start, wrap, fetchOptions) {
 async function fetchArtmapDetail(externalId, fetchOptions) {
   const response = await fetchWithRetry(`${ARTMAP_BASE_URL}/exhibition/view.php?idx=${encodeURIComponent(externalId)}`, {
     headers: {
-      'user-agent': 'SpaceDDFArchiveCrawler/1.0 (+https://www.spaceddf.xyz)',
+      'user-agent': 'SpaceDDFArchiveCrawler/1.0 (+https://spaceddf.xyz)',
     },
   }, fetchOptions)
 
@@ -783,9 +789,10 @@ export async function upsertExhibition(env, record) {
       archive_type,
       region_confidence,
       review_reason,
+      active,
       updated_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
     ON CONFLICT(dedupe_key) DO UPDATE SET
 	      title = excluded.title,
 	      normalized_title = excluded.normalized_title,
@@ -810,6 +817,7 @@ export async function upsertExhibition(env, record) {
       archive_type = excluded.archive_type,
       region_confidence = excluded.region_confidence,
       review_reason = excluded.review_reason,
+      active = 1,
       updated_at = excluded.updated_at
   `).bind(
     exhibitionId,
@@ -851,26 +859,19 @@ export async function linkExhibitionSource(env, exhibitionId, sourceRecordId) {
 }
 
 export async function replaceExhibitionMetadata(env, exhibitionId, record) {
-  await env.DB.prepare('DELETE FROM exhibition_artists WHERE exhibition_id = ?')
-    .bind(exhibitionId)
-    .run()
-  await env.DB.prepare('DELETE FROM exhibition_categories WHERE exhibition_id = ?')
-    .bind(exhibitionId)
-    .run()
-
-  for (const artist of record.artists) {
-    await env.DB.prepare(`
+  const statements = [
+    env.DB.prepare('DELETE FROM exhibition_artists WHERE exhibition_id = ?').bind(exhibitionId),
+    env.DB.prepare('DELETE FROM exhibition_categories WHERE exhibition_id = ?').bind(exhibitionId),
+    ...record.artists.map(artist => env.DB.prepare(`
       INSERT OR IGNORE INTO exhibition_artists (exhibition_id, artist_name, normalized_artist_name)
       VALUES (?, ?, ?)
-    `).bind(exhibitionId, artist, normalizeForKey(artist)).run()
-  }
-
-  for (const category of record.categories) {
-    await env.DB.prepare(`
+    `).bind(exhibitionId, artist, normalizeForKey(artist))),
+    ...record.categories.map(category => env.DB.prepare(`
       INSERT OR IGNORE INTO exhibition_categories (exhibition_id, category)
       VALUES (?, ?)
-    `).bind(exhibitionId, category).run()
-  }
+    `).bind(exhibitionId, category)),
+  ]
+  await env.DB.batch(statements)
 }
 
 function parseJsArgs(value) {

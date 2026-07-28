@@ -9,11 +9,12 @@ const distDir = path.join(root, 'dist')
 const contentFile = path.join(root, 'src/stores/content.js')
 const indexFile = path.join(distDir, 'index.html')
 
-const SITE_URL = 'https://www.spaceddf.xyz'
+const SITE_URL = 'https://spaceddf.xyz'
 const SITE_NAME = 'Space DDF'
 const DEFAULT_DESCRIPTION = 'Space DDF는 광주 동구 충장로에 위치한 대안 예술 공간입니다. 사진, 미디어아트, 설치 등 실험적 전시와 전시 대관, 워크숍, 오픈 포트폴리오 프로그램을 운영합니다.'
 const DEFAULT_IMAGE = '/og-default.jpg'
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+const STATIC_SPA_ROUTES = ['/rental', '/admin/rentals', '/manage', '/manage/rentals']
 
 function main() {
   if (!fs.existsSync(indexFile)) {
@@ -36,6 +37,13 @@ function main() {
 
     fs.mkdirSync(path.dirname(target), { recursive: true })
     fs.writeFileSync(target, html)
+  }
+
+  for (const routePath of STATIC_SPA_ROUTES) {
+    const target = path.join(distDir, routePath, 'index.html')
+
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    fs.writeFileSync(target, template)
   }
 
   console.log(`Prerendered ${routes.length} detail routes.`)

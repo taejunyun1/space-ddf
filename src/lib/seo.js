@@ -1,7 +1,7 @@
 import { useContentStore } from '@/stores/content'
 import { parseDateRange } from '@/stores/lib/date-helpers'
 
-const SITE_URL = 'https://www.spaceddf.xyz'
+const SITE_URL = 'https://spaceddf.xyz'
 const SITE_NAME = 'Space DDF'
 const DEFAULT_TITLE = 'Space DDF - 광주 전시공간 · 전시 대관 · 대안 예술 공간'
 const DEFAULT_DESCRIPTION = 'Space DDF는 광주 동구 충장로에 위치한 대안 예술 공간입니다. 사진, 미디어아트, 설치 등 실험적 전시와 전시 대관, 워크숍, 오픈 포트폴리오 프로그램을 운영합니다.'

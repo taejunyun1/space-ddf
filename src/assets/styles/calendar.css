@@ -19,7 +19,7 @@
   background: #fff;
 
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(220px, 1fr) auto auto;
   row-gap: 10px;
 
   overflow: visible;
@@ -49,17 +49,17 @@
 
   color: #777;
 
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .ddf-calendar-header h2 {
   margin: 0;
 
-  font-size: clamp(36px, 4.4vw, 60px);
-  line-height: 0.9;
+  font-size: 34px;
+  line-height: 1;
   font-weight: 700;
-  letter-spacing: -0.07em;
+  letter-spacing: 0;
 
   color: #111;
 
@@ -112,7 +112,7 @@
 
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 /* Week */
@@ -139,7 +139,7 @@
 
   color: #999;
 
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 /* Grid */
@@ -196,8 +196,20 @@
   background: rgba(52, 199, 89, 0.105);
 }
 
+.ddf-calendar-day.range-rental-available {
+  background: rgba(0, 140, 122, 0.12);
+}
+
+.ddf-calendar-day.range-rental-requested {
+  background: rgba(255, 149, 0, 0.13);
+}
+
 .ddf-calendar-day.range-rental {
   background: rgba(0, 122, 255, 0.105);
+}
+
+.ddf-calendar-day.range-rental-blocked {
+  background: rgba(107, 114, 128, 0.105);
 }
 
 /* 시작일 / 종료일 */
@@ -211,9 +223,24 @@
   background: rgba(52, 199, 89, 0.18);
 }
 
+.ddf-calendar-day.range-start-rental-available,
+.ddf-calendar-day.range-end-rental-available {
+  background: rgba(0, 140, 122, 0.22);
+}
+
+.ddf-calendar-day.range-start-rental-requested,
+.ddf-calendar-day.range-end-rental-requested {
+  background: rgba(255, 149, 0, 0.24);
+}
+
 .ddf-calendar-day.range-start-rental,
 .ddf-calendar-day.range-end-rental {
   background: rgba(0, 122, 255, 0.18);
+}
+
+.ddf-calendar-day.range-start-rental-blocked,
+.ddf-calendar-day.range-end-rental-blocked {
+  background: rgba(107, 114, 128, 0.18);
 }
 
 .ddf-calendar-day:hover,
@@ -232,9 +259,42 @@
   background: rgba(52, 199, 89, 0.22);
 }
 
+.ddf-calendar-day.range-rental-available:hover,
+.ddf-calendar-day.range-rental-available:focus-visible {
+  background: rgba(0, 140, 122, 0.26);
+}
+
+.ddf-calendar-day.range-rental-requested:hover,
+.ddf-calendar-day.range-rental-requested:focus-visible {
+  background: rgba(255, 149, 0, 0.28);
+}
+
 .ddf-calendar-day.range-rental:hover,
 .ddf-calendar-day.range-rental:focus-visible {
   background: rgba(0, 122, 255, 0.22);
+}
+
+.ddf-calendar-day.range-rental-blocked:hover,
+.ddf-calendar-day.range-rental-blocked:focus-visible {
+  background: rgba(107, 114, 128, 0.22);
+}
+
+.ddf-calendar-day.is-bookable {
+  cursor: pointer;
+}
+
+.ddf-calendar-day.is-rental-blocked {
+  cursor: not-allowed;
+}
+
+.ddf-calendar-day.is-selected-booking-window {
+  box-shadow: inset 0 0 0 1px #008c7a;
+}
+
+.ddf-calendar-day.is-selected-booking-window .ddf-calendar-date,
+.ddf-calendar-day.is-selected-booking-range .ddf-calendar-date {
+  background: #008c7a;
+  color: #fff;
 }
 
 .ddf-calendar-date {
@@ -272,17 +332,17 @@
 /* Marks */
 .ddf-calendar-marks {
   display: inline-flex;
-  gap: 4px;
+  gap: 3px;
 
   flex: 0 0 auto;
 
-  margin-top: 5px;
+  margin-top: 4px;
 }
 
 .ddf-calendar-mark,
 .ddf-calendar-closed {
-  width: 9px;
-  height: 9px;
+  width: 5px;
+  height: 5px;
 
   border-radius: 999px;
 }
@@ -290,7 +350,7 @@
 .ddf-calendar-closed {
   flex: 0 0 auto;
 
-  margin-top: 5px;
+  margin-top: 4px;
   background: #b8b8b8;
 }
 
@@ -307,6 +367,19 @@
 /* 대관 */
 .type-rental {
   background: #007aff;
+}
+
+.type-rental-requested {
+  background: #ff9500;
+}
+
+.type-rental-available {
+  background: #008c7a;
+}
+
+/* 차단 */
+.type-rental-blocked {
+  background: #6b7280;
 }
 
 /* Tooltip */
@@ -412,10 +485,110 @@
   border-radius: 999px;
 }
 
+/* Booking */
+.ddf-booking-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+
+  padding-top: 12px;
+
+  border-top: 1px solid #1C1C1C;
+}
+
+.ddf-booking-summary-copy {
+  min-width: 0;
+}
+
+.ddf-booking-eyebrow {
+  margin: 0 0 5px;
+
+  font-family: 'D2Coding', monospace;
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  color: #777;
+}
+
+.ddf-booking-summary-copy h3 {
+  margin: 0 0 6px;
+
+  font-size: 17px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.ddf-booking-summary-copy p {
+  margin: 0;
+
+  color: #555;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ddf-booking-summary-window {
+  grid-column: 1 / 3;
+
+  min-width: 0;
+  padding: 8px 0;
+
+  border-top: 1px solid #e5e5e5;
+}
+
+.ddf-booking-summary-window span,
+.ddf-booking-summary-window strong {
+  display: block;
+  min-width: 0;
+}
+
+.ddf-booking-summary-window span {
+  margin-bottom: 3px;
+
+  font-family: 'D2Coding', monospace;
+  font-size: 11px;
+  line-height: 1.2;
+  color: #666;
+}
+
+.ddf-booking-summary-window strong {
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.ddf-booking-summary-link {
+  grid-column: 1 / 3;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 34px;
+  padding: 0 12px;
+
+  border: 1px solid #1C1C1C;
+
+  color: #fff;
+  background: #1C1C1C;
+  text-decoration: none;
+
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.ddf-booking-summary-link:hover,
+.ddf-booking-summary-link:focus-visible {
+  color: #1C1C1C;
+  background: #fff;
+  outline: none;
+}
+
 /* Responsive */
 @media (max-width: 1180px) {
   .ddf-calendar-header h2 {
-    font-size: 36px;
+    font-size: 34px;
   }
 }
 
@@ -448,15 +621,15 @@
 
   .ddf-calendar-mark,
   .ddf-calendar-closed {
-    width: 8px;
-    height: 8px;
+    width: 5px;
+    height: 5px;
   }
 }
 
 @media (max-width: 768px) {
   .ddf-calendar {
     height: auto;
-    min-height: 420px;
+    min-height: 720px;
     overflow: visible;
   }
 
@@ -466,7 +639,7 @@
   }
 
   .ddf-calendar-header h2 {
-    font-size: 34px;
+    font-size: 30px;
   }
 
   .ddf-calendar-tooltip {
@@ -483,6 +656,15 @@
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
+  }
+
+  .ddf-booking-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .ddf-booking-summary-window,
+  .ddf-booking-summary-link {
+    grid-column: 1 / 2;
   }
 }
 
@@ -520,8 +702,8 @@
 
   .ddf-calendar-mark,
   .ddf-calendar-closed {
-    width: 7px;
-    height: 7px;
+    width: 4px;
+    height: 4px;
   }
 
   .ddf-calendar-tooltip {

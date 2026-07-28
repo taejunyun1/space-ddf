@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import './assets/styles/global.css'
+import { installGoogleAnalytics } from './services/analytics'
 
 const app = createApp(App)
 const pinia = createPinia()
@@ -18,5 +19,7 @@ const updateRouteSeo = async (route) => {
 
 router.afterEach(updateRouteSeo)
 router.isReady().then(() => updateRouteSeo(router.currentRoute.value))
+
+installGoogleAnalytics()
 
 app.mount('#app')

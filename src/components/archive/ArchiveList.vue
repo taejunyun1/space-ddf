@@ -30,7 +30,7 @@
           @click="$emit('select', item.id)"
         >
           <span class="card-topline">
-            <span class="ddf-pill">{{ item.cityLabel }}</span>
+            <span class="ddf-pill city" :class="item.city">{{ item.cityLabel }}</span>
             <span class="ddf-pill type" :class="archiveTypeValue(item)">
               {{ archiveTypeLabel(item) }}
             </span>
@@ -174,6 +174,21 @@ defineEmits(['select'])
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+.card-topline .city.gwangju {
+  border-color: var(--ddf-city-gwangju);
+  color: var(--ddf-city-gwangju);
+}
+
+.card-topline .city.jeonju {
+  border-color: var(--ddf-city-jeonju);
+  color: var(--ddf-city-jeonju);
+}
+
+.card-topline .city.jeonnam {
+  border-color: var(--ddf-city-jeonnam);
+  color: var(--ddf-city-jeonnam);
 }
 
 .status.ongoing {

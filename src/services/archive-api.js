@@ -21,22 +21,20 @@ export async function fetchArchiveItems({ limit = 500 } = {}) {
   const baseUrl = import.meta.env.VITE_ARCHIVE_API_BASE_URL || DEFAULT_ARCHIVE_API_BASE_URL
   const url = new URL('/api/archive/exhibitions', baseUrl)
 
-  url.searchParams.set('limit', String(limit))
+  const items = []
+  let cursor = ''
 
-  const response = await fetch(url.toString(), {
-    headers: {
-      accept: 'application/json',
-    },
-  })
+  do {
+    url.searchParams.set('limit', String(Math.min(100, limit - items.length)))
+    if (cursor) url.searchParams.set('cursor', cursor)
+    const response = await fetch(url.toString(), { headers: { accept: 'application/json' } })
+    if (!response.ok) throw new Error(`Archive API request failed: ${response.status}`)
+    const payload = await response.json()
+    items.push(...(Array.isArray(payload.data) ? payload.data : []))
+    cursor = payload.meta?.nextCursor || ''
+  } while (cursor && items.length < limit)
 
-  if (!response.ok) {
-    throw new Error(`Archive API request failed: ${response.status}`)
-  }
-
-  const payload = await response.json()
-  const items = Array.isArray(payload.data) ? payload.data : []
-
-  return items.map(normalizeArchiveItem)
+  return items.slice(0, limit).map(normalizeArchiveItem)
 }
 
 function normalizeArchiveItem(item) {

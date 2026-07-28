@@ -118,7 +118,7 @@ async function main() {
     for (const v of VENUES) {
       // Each venue is isolated: one site being down/slow must not abort the rest.
       try {
-        const page = await browser.newPage({ userAgent: 'SpaceDDFArchiveScraper/1.0 (+https://www.spaceddf.xyz)' })
+        const page = await browser.newPage({ userAgent: 'SpaceDDFArchiveScraper/1.0 (+https://spaceddf.xyz)' })
         let exhibitions
         try {
           if (v.customScrape) {

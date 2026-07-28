@@ -20,7 +20,7 @@ function fetchListingHtml(url) {
       url,
       {
         rejectUnauthorized: false,
-        headers: { 'user-agent': 'SpaceDDFArchiveScraper/1.0 (+https://www.spaceddf.xyz)', accept: 'text/html' },
+        headers: { 'user-agent': 'SpaceDDFArchiveScraper/1.0 (+https://spaceddf.xyz)', accept: 'text/html' },
       },
       (res) => {
         if (!res.statusCode || res.statusCode >= 400) {

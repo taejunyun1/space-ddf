@@ -218,6 +218,7 @@ onBeforeUnmount(() => {
   --gap: var(--ddf-grid-gap);
   --page-x: var(--ddf-page-x);
   --top-card-height: 640px;
+  --calendar-card-height: 640px;
   --bottom-list-height: 360px;
 
   width: 100%;
@@ -279,17 +280,21 @@ onBeforeUnmount(() => {
   width: 100%;
   min-width: 0;
   max-width: 100%;
+}
 
+.recent-card {
   height: var(--top-card-height);
 }
 
 .calendar-card {
-  overflow: hidden;
+  height: auto;
+  min-height: var(--calendar-card-height);
+  overflow: visible;
 }
 
 .calendar-card :deep(.ddf-calendar) {
-  height: 100%;
-  min-height: 0;
+  height: auto;
+  min-height: var(--calendar-card-height);
 }
 
 .recent-card {
@@ -582,6 +587,7 @@ onBeforeUnmount(() => {
 @media (min-width: 1440px) {
   .home-wrap {
     --top-card-height: 640px;
+    --calendar-card-height: 640px;
     --bottom-list-height: 400px;
   }
 }
@@ -590,6 +596,7 @@ onBeforeUnmount(() => {
 @media (max-width: 1180px) {
   .home-wrap {
     --top-card-height: 560px;
+    --calendar-card-height: 560px;
     --bottom-list-height: 380px;
 
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -602,6 +609,7 @@ onBeforeUnmount(() => {
 @media (max-width: 1024px) {
   .home-wrap {
     --top-card-height: 500px;
+    --calendar-card-height: 500px;
     --bottom-list-height: 360px;
 
     padding: 60px 16px 48px;
@@ -646,6 +654,11 @@ onBeforeUnmount(() => {
   .calendar-card,
   .recent-card {
     height: auto;
+  }
+
+  .calendar-card,
+  .calendar-card :deep(.ddf-calendar) {
+    min-height: 0;
   }
 
   .calendar-card {
@@ -774,10 +787,6 @@ onBeforeUnmount(() => {
     font-size: 11px;
   }
 }
-.calendar-card {
-  overflow: visible;
-}
-
 .calendar-card :deep(.ddf-calendar),
 .calendar-card :deep(.ddf-calendar-grid),
 .calendar-card :deep(.ddf-calendar-day) {

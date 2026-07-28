@@ -17,6 +17,33 @@ const router = createRouter({
       alias: ['/map']
     },
     {
+      path: '/rental',
+      name: 'rental',
+      component: () => import('@/views/RentalView.vue')
+    },
+    {
+      path: '/admin',
+      redirect: { name: 'admin-rentals' }
+    },
+    {
+      path: '/admin/rental',
+      redirect: { name: 'admin-rentals' }
+    },
+    {
+      path: '/admin/rentals',
+      name: 'admin-rentals',
+      component: () => import('@/views/AdminRentalsView.vue')
+    },
+    {
+      path: '/manage',
+      redirect: { name: 'manage-rentals' }
+    },
+    {
+      path: '/manage/rentals',
+      name: 'manage-rentals',
+      component: () => import('@/views/AdminRentalsView.vue')
+    },
+    {
       path: '/projects/:slug',
       name: 'project-detail',
       component: () => import('@/views/DetailView.vue'),

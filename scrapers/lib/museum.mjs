@@ -28,7 +28,7 @@ export async function scrapeGwangjuMuseum({ sinceYear = 2024, maxPagesPast = 3 }
     const pages = t.type === 'P' ? maxPagesPast : 1
     for (let page = 1; page <= pages; page += 1) {
       const res = await fetch(listUrl(t, page), {
-        headers: { 'user-agent': 'Mozilla/5.0 SpaceDDFArchiveScraper/1.0 (+https://www.spaceddf.xyz)', accept: 'text/html' },
+        headers: { 'user-agent': 'Mozilla/5.0 SpaceDDFArchiveScraper/1.0 (+https://spaceddf.xyz)', accept: 'text/html' },
       })
       if (!res.ok) break
       const records = parseGwangjuMuseumList(await res.text(), t)

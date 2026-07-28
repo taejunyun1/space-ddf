@@ -6,6 +6,7 @@
     "serve": "vite --host 127.0.0.1",
     "dev": "vite --host 127.0.0.1",
     "build": "npm run assets:manifest && vite build && npm run prerender && npm run csp:hashes && npm run package:dist",
+    "build:pages": "npm run assets:manifest && vite build && npm run prerender && npm run csp:hashes",
     "assets:manifest": "node scripts/write-content-assets-manifest.js",
     "prerender": "node scripts/prerender-seo.js",
     "csp:hashes": "node scripts/apply-csp-hashes.js",
@@ -13,10 +14,13 @@
     "package:originals": "node scripts/package-originals.js",
     "preview": "vite preview --host 127.0.0.1",
     "smoke": "node scripts/smoke-test.js",
+    "smoke:pages": "node scripts/smoke-test.js",
     "test:crawler": "node --test cloudflare/test/*.test.js",
-    "lint": "eslint . --ext .vue,.js"
+    "test": "node --test test/*.test.js cloudflare/test/*.test.js && npm --prefix scrapers test",
+    "lint": "eslint . --ext .vue,.js,.mjs"
   },
   "dependencies": {
+    "ical.js": "^2.2.1",
     "pinia": "^3.0.3",
     "vue": "^3.5.34",
     "vue-easy-lightbox": "^1.19.0",
