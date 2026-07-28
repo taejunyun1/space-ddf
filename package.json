@@ -8,6 +8,8 @@
     "build": "npm run assets:manifest && vite build && npm run prerender && npm run csp:hashes && npm run package:dist",
     "build:pages": "npm run assets:manifest && vite build && npm run prerender && npm run csp:hashes",
     "assets:manifest": "node scripts/write-content-assets-manifest.js",
+    "content:export": "node scripts/export-static-content.mjs",
+    "content:migrate": "node scripts/migrate-static-content.mjs",
     "prerender": "node scripts/prerender-seo.js",
     "csp:hashes": "node scripts/apply-csp-hashes.js",
     "package:dist": "node scripts/package-dist.js",

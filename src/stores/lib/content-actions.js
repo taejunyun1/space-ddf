@@ -1,6 +1,23 @@
 // src/stores/lib/content-actions.js
+import { fetchPublishedContents } from '@/services/contents'
 
 export const contentActions = {
+  async hydratePublishedContents() {
+    if (this.contentHydrated) return
+    this.contentHydrated = true
+
+    try {
+      const [shows, projects] = await Promise.all([
+        fetchPublishedContents('show'),
+        fetchPublishedContents('project'),
+      ])
+      this.shows = mergeBySlug(this.shows, shows, 'show')
+      this.projects = mergeBySlug(this.projects, projects, 'project')
+      this.contentSource = 'api'
+    } catch {
+      this.contentSource = 'static'
+    }
+  },
   upsertProject(payload) {
     // ✅ _kind 주입
     const withKind = { _kind: 'project', ...payload }
@@ -24,4 +41,12 @@ export const contentActions = {
   removeShow(slug) {
     this.shows = (this.shows || []).filter(s => s.slug !== slug)
   },
+}
+
+function mergeBySlug(fallback = [], published = [], kind) {
+  const result = new Map(fallback.map(item => [item.slug, item]))
+  for (const item of published) {
+    result.set(item.slug, { ...result.get(item.slug), ...item, _kind: kind })
+  }
+  return [...result.values()]
 }

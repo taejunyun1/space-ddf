@@ -15,6 +15,12 @@
       "migrations_dir": "migrations"
     }
   ],
+  "r2_buckets": [
+    {
+      "binding": "CONTENT_ASSETS",
+      "bucket_name": "space-ddf-content-assets"
+    }
+  ],
   "services": [
     {
       "binding": "RENTAL_NOTIFICATION_EMAIL",
