@@ -1,6 +1,9 @@
 export async function fetchPublishedContents(type) {
   const payload = await requestJson(`/api/contents?type=${encodeURIComponent(type)}`)
-  return Array.isArray(payload.data) ? payload.data : []
+  return {
+    data: Array.isArray(payload.data) ? payload.data : [],
+    managedSlugs: Array.isArray(payload.managedSlugs) ? payload.managedSlugs : [],
+  }
 }
 
 export async function fetchPublishedContent(type, slug) {
@@ -60,6 +63,13 @@ export async function restoreAdminContent(id) {
   })).data
 }
 
+export async function duplicateAdminContent(id) {
+  return (await requestJson(`/api/manage/contents/${encodeURIComponent(id)}/duplicate`, {
+    method: 'POST',
+    body: '{}',
+  })).data
+}
+
 export async function uploadAdminContentAsset(id, { file, role, altText = '', caption = '', sortOrder = 0 }) {
   const body = new FormData()
   body.set('file', file)
@@ -70,6 +80,19 @@ export async function uploadAdminContentAsset(id, { file, role, altText = '', ca
   return (await requestJson(`/api/manage/contents/${encodeURIComponent(id)}/assets`, {
     method: 'POST',
     body,
+  })).data
+}
+
+export async function updateAdminContentAsset(contentId, assetId, input) {
+  return (await requestJson(`/api/manage/contents/${encodeURIComponent(contentId)}/assets/${encodeURIComponent(assetId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })).data
+}
+
+export async function deleteAdminContentAsset(contentId, assetId) {
+  return (await requestJson(`/api/manage/contents/${encodeURIComponent(contentId)}/assets/${encodeURIComponent(assetId)}`, {
+    method: 'DELETE',
   })).data
 }
 
@@ -87,4 +110,3 @@ async function requestJson(path, options = {}) {
   }
   return payload
 }
-

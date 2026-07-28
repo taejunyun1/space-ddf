@@ -80,6 +80,9 @@ export function validateContentForPublish(input = {}) {
   if (!content.assets.some(asset => asset.role === 'poster' && asset.uploadStatus === 'ready')) {
     fields.poster = '포스터를 업로드해주세요.'
   }
+  if (content.assets.some(asset => asset.uploadStatus !== 'ready')) {
+    fields.assets = '업로드가 끝나지 않은 이미지가 있습니다.'
+  }
 
   return { ok: Object.keys(fields).length === 0, fields, content }
 }
@@ -102,6 +105,7 @@ export async function handleManageContentRequest(context) {
   if (action === 'publish' && request.method === 'POST') return publishContent(db, id)
   if (action === 'unpublish' && request.method === 'POST') return unpublishContent(db, id)
   if (action === 'restore' && request.method === 'POST') return restoreContent(db, id)
+  if (action === 'duplicate' && request.method === 'POST') return duplicateContent(db, id)
   if (!action && request.method === 'GET') return getManagerContent(db, id)
   if (!action && request.method === 'PATCH') return updateContent(db, id, await readJson(request))
   if (!action && request.method === 'DELETE') return trashContent(db, id)
@@ -119,14 +123,30 @@ export async function handlePublicContentRequest(context) {
   if (!segments.length) {
     const type = url.searchParams.get('type') || ''
     if (type && !CONTENT_TYPES.has(type)) return jsonError(400, 'invalid_type', '콘텐츠 타입을 확인해주세요.')
-    const result = await db.prepare(`
+    const [result, managed] = await Promise.all([
+      db.prepare(`
       SELECT payload_json FROM content_publications
       WHERE (? = '' OR type = ?)
       ORDER BY published_at DESC
-    `).bind(type, type).all()
-    return json({ data: result.results.map(row => JSON.parse(row.payload_json)) })
+    `).bind(type, type).all(),
+      db.prepare(`SELECT slug FROM contents WHERE deleted_at IS NULL AND (? = '' OR type = ?)`)
+        .bind(type, type).all(),
+    ])
+    return json({
+      data: result.results.map(row => JSON.parse(row.payload_json)),
+      managedSlugs: managed.results.map(row => row.slug),
+    })
   }
 
+  if (segments[0] === 'featured') {
+    const row = await db.prepare(`
+      SELECT p.payload_json FROM content_publications p
+      JOIN contents c ON c.id = p.content_id
+      WHERE c.is_featured = 1 AND c.deleted_at IS NULL
+      ORDER BY p.published_at DESC LIMIT 1
+    `).first()
+    return json({ data: row ? JSON.parse(row.payload_json) : null })
+  }
   if (segments[0] === 'assets' && segments[1]) return serveAsset(env, segments[1])
   if (segments[0] === 'redirect' && segments.length === 3) {
     const row = await db.prepare(`
@@ -155,13 +175,19 @@ async function listManagerContents(db, request) {
   const includeDeleted = url.searchParams.get('includeDeleted') === 'true'
   const type = url.searchParams.get('type') || ''
   const query = `%${url.searchParams.get('q') || ''}%`
+  const status = url.searchParams.get('status') || ''
+  const deletedOnly = url.searchParams.get('deletedOnly') === 'true'
   const result = await db.prepare(`
     SELECT * FROM contents
-    WHERE (? = 1 OR deleted_at IS NULL)
+    WHERE ((? = 1 AND deleted_at IS NOT NULL) OR (? = 0 AND (? = 1 OR deleted_at IS NULL)))
       AND (? = '' OR type = ?)
+      AND (? = '' OR status = ?)
       AND (title LIKE ? OR slug LIKE ?)
     ORDER BY updated_at DESC
-  `).bind(includeDeleted ? 1 : 0, type, type, query, query).all()
+  `).bind(
+    deletedOnly ? 1 : 0, deletedOnly ? 1 : 0, includeDeleted ? 1 : 0,
+    type, type, status, status, query, query,
+  ).all()
   return json({ data: result.results.map(mapContentRow) })
 }
 
@@ -227,7 +253,14 @@ async function publishContent(db, id) {
   const payload = publicPayload(validation.content)
   const statements = []
   if (payload.isFeatured) {
-    statements.push(db.prepare(`UPDATE contents SET is_featured = 0 WHERE id <> ?`).bind(id))
+    statements.push(
+      db.prepare(`UPDATE contents SET is_featured = 0 WHERE id <> ?`).bind(id),
+      db.prepare(`
+        UPDATE content_publications
+        SET payload_json = json_set(payload_json, '$.isFeatured', json('false'))
+        WHERE content_id <> ?
+      `).bind(id),
+    )
   }
   statements.push(
     db.prepare(`
@@ -270,6 +303,20 @@ async function restoreContent(db, id) {
   return json({ data: await loadManagerContent(db, id) })
 }
 
+async function duplicateContent(db, id) {
+  const source = await loadManagerContent(db, id)
+  if (!source) return jsonError(404, 'content_not_found', '콘텐츠를 찾을 수 없습니다.')
+  return createContent(db, {
+    ...source,
+    id: '',
+    slug: `${source.slug}-copy-${crypto.randomUUID().slice(0, 4)}`,
+    title: `${source.title} 복사본`,
+    status: 'draft',
+    isFeatured: false,
+    assets: [],
+  })
+}
+
 async function replaceCredits(db, contentId, credits) {
   const statements = [db.prepare(`DELETE FROM content_credits WHERE content_id=?`).bind(contentId)]
   for (const credit of credits) {
@@ -303,6 +350,8 @@ async function uploadAsset(env, contentId, request) {
   const form = await request.formData()
   const file = form.get('file')
   const role = String(form.get('role') || '')
+  const parent = await db.prepare(`SELECT id FROM contents WHERE id=? AND deleted_at IS NULL`).bind(contentId).first()
+  if (!parent) return jsonError(404, 'content_not_found', '콘텐츠를 찾을 수 없습니다.')
   if (!file || typeof file.arrayBuffer !== 'function') return jsonError(400, 'file_required', '이미지 파일을 선택해주세요.')
   if (!ASSET_ROLES.has(role)) return jsonError(400, 'invalid_asset_role', '이미지 역할을 확인해주세요.')
   if (file.size > MAX_IMAGE_BYTES) return jsonError(413, 'file_too_large', '이미지는 20MB 이하만 업로드할 수 있습니다.')
@@ -311,26 +360,43 @@ async function uploadAsset(env, contentId, request) {
   const id = crypto.randomUUID()
   const ext = extensionForMime(file.type)
   const key = `contents/${contentId}/original/${id}.${ext}`
-  await bucket.put(key, bytes, { httpMetadata: { contentType: file.type } })
+  if (role === 'poster' || role === 'preview') {
+    const previous = await db.prepare(`
+      SELECT * FROM content_assets WHERE content_id=? AND role=? AND deleted_at IS NULL
+    `).bind(contentId, role).first()
+    if (previous) {
+      await bucket.delete([previous.r2_key_original, previous.r2_key_web, previous.r2_key_thumbnail].filter(Boolean))
+      await db.prepare(`DELETE FROM content_assets WHERE id=?`).bind(previous.id).run()
+    }
+  }
   await db.prepare(`
     INSERT INTO content_assets (
       id, content_id, role, r2_key_original, mime_type, byte_size, alt_text,
       caption, sort_order, upload_status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready')
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `).bind(
     id, contentId, role, key, file.type, file.size,
     String(form.get('altText') || ''), String(form.get('caption') || ''),
     Number(form.get('sortOrder') || 0),
   ).run()
+  try {
+    await bucket.put(key, bytes, { httpMetadata: { contentType: file.type } })
+    await db.prepare(`UPDATE content_assets SET upload_status='ready' WHERE id=?`).bind(id).run()
+  } catch (error) {
+    await bucket.delete(key).catch(() => {})
+    await db.prepare(`UPDATE content_assets SET upload_status='failed' WHERE id=?`).bind(id).run()
+    return jsonError(503, 'asset_upload_failed', '이미지 업로드에 실패했습니다. 다시 시도해주세요.')
+  }
   return json({ data: mapAssetRow(await db.prepare(`SELECT * FROM content_assets WHERE id=?`).bind(id).first()) }, 201)
 }
 
 async function updateAsset(db, contentId, assetId, input) {
-  await db.prepare(`
+  const result = await db.prepare(`
     UPDATE content_assets SET alt_text=?, caption=?, sort_order=?
     WHERE id=? AND content_id=?
   `).bind(String(input.altText || ''), String(input.caption || ''), Number(input.sortOrder || 0), assetId, contentId).run()
-  return json({ data: mapAssetRow(await db.prepare(`SELECT * FROM content_assets WHERE id=?`).bind(assetId).first()) })
+  if (!result.meta?.changes) return jsonError(404, 'asset_not_found', '이미지를 찾을 수 없습니다.')
+  return json({ data: mapAssetRow(await db.prepare(`SELECT * FROM content_assets WHERE id=? AND content_id=?`).bind(assetId, contentId).first()) })
 }
 
 async function deleteAsset(env, contentId, assetId) {

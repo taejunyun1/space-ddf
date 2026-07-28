@@ -11,8 +11,8 @@ export const contentActions = {
         fetchPublishedContents('show'),
         fetchPublishedContents('project'),
       ])
-      this.shows = mergeBySlug(this.shows, shows, 'show')
-      this.projects = mergeBySlug(this.projects, projects, 'project')
+      this.shows = mergeBySlug(this.shows, shows.data, shows.managedSlugs, 'show')
+      this.projects = mergeBySlug(this.projects, projects.data, projects.managedSlugs, 'project')
       this.contentSource = 'api'
     } catch {
       this.contentSource = 'static'
@@ -43,8 +43,9 @@ export const contentActions = {
   },
 }
 
-function mergeBySlug(fallback = [], published = [], kind) {
-  const result = new Map(fallback.map(item => [item.slug, item]))
+function mergeBySlug(fallback = [], published = [], managedSlugs = [], kind) {
+  const managed = new Set(managedSlugs)
+  const result = new Map(fallback.filter(item => !managed.has(item.slug)).map(item => [item.slug, item]))
   for (const item of published) {
     result.set(item.slug, { ...result.get(item.slug), ...item, _kind: kind })
   }

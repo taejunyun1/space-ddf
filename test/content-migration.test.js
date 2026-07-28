@@ -21,5 +21,6 @@ test('migration upserts credit and asset metadata alongside R2 objects', () => {
   const source = fs.readFileSync(new URL('../scripts/migrate-static-content.mjs', import.meta.url), 'utf8')
   assert.match(source, /INSERT INTO content_credits/)
   assert.match(source, /INSERT INTO content_assets/)
+  assert.match(source, /INSERT INTO content_publications/)
   assert.match(source, /r2', 'object', 'put'/)
 })

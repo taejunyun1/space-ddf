@@ -11,14 +11,15 @@
       <a v-for="(message, key) in validation" :key="key" href="#" @click.prevent="$emit('focus-field', key)">{{ message }}</a>
     </div>
     <hr>
+    <button type="button" @click="$emit('duplicate')">콘텐츠 복제</button>
+    <button v-if="content.deletedAt" type="button" @click="$emit('restore')">휴지통에서 복구</button>
     <button class="danger" type="button" @click="$emit('trash')">휴지통으로 이동</button>
   </aside>
 </template>
 <script setup>
 defineProps({ content: { type: Object, required: true }, validation: { type: Object, default: () => ({}) }, saveStateLabel: { type: String, default: '저장됨' } })
-defineEmits(['preview', 'publish', 'unpublish', 'trash', 'focus-field'])
+defineEmits(['preview', 'publish', 'unpublish', 'trash', 'restore', 'duplicate', 'focus-field'])
 </script>
 <style scoped>
 .publish-panel{padding:20px;background:#f3f3f3;border-left:1px solid #1c1c1c;display:flex;flex-direction:column;gap:10px}.publish-panel p,.publish-panel h2{margin:0}.publish-panel button{padding:11px;border:1px solid #1c1c1c;background:#fff}.publish-panel .primary{background:#1c1c1c;color:#fff}.publish-panel .danger{color:#a32820}.validation{display:grid;gap:7px;margin-top:12px}.validation a{color:#a32820;font-size:12px}
 </style>
-

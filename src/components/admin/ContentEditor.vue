@@ -48,6 +48,9 @@
         <figure v-for="asset in modelValue.assets" :key="asset.id">
           <img :src="asset.url" :alt="asset.altText || asset.role">
           <figcaption>{{ asset.role }} · {{ asset.uploadStatus }}</figcaption>
+          <input :value="asset.altText" placeholder="대체문구" @change="$emit('update-asset', { asset, altText: $event.target.value })">
+          <input :value="asset.caption" placeholder="캡션" @change="$emit('update-asset', { asset, caption: $event.target.value })">
+          <button type="button" @click="$emit('delete-asset', asset)">이미지 삭제</button>
         </figure>
       </div>
     </div>
@@ -56,7 +59,7 @@
 
 <script setup>
 const props = defineProps({ modelValue: { type: Object, required: true }, section: { type: String, default: 'basic' } })
-const emit = defineEmits(['update:modelValue', 'update:section', 'upload'])
+const emit = defineEmits(['update:modelValue', 'update:section', 'upload', 'update-asset', 'delete-asset'])
 const sections = [{ id: 'basic', label: '1. 기본 정보' }, { id: 'content', label: '2. 내용' }, { id: 'images', label: '3. 이미지' }]
 const set = (key, value) => emit('update:modelValue', { ...props.modelValue, [key]: value })
 function setCredit(index, key, value) {
@@ -74,4 +77,3 @@ function upload(event, role) {
 <style scoped>
 .content-editor{padding:22px;min-width:0}.content-editor header p,.content-editor header h1{margin:0 0 5px}.content-editor nav{display:grid;grid-template-columns:repeat(3,1fr);margin:24px 0;border-bottom:1px solid #1c1c1c}.content-editor nav button{padding:12px;border:0;background:#fff}.content-editor nav .active{background:#1c1c1c;color:#fff}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.wide{grid-column:1/-1}label{display:grid;gap:6px;font-size:13px;font-weight:700}input,select,textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #999;border-radius:0;font:inherit}.check{display:flex;align-items:center}.check input{width:auto}.stack{display:grid;gap:16px}.section-head,.credit-row{display:flex;gap:8px;align-items:center;justify-content:space-between}.credit-row input{flex:1}.asset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px}.asset-grid figure{margin:0}.asset-grid img{width:100%;aspect-ratio:1;object-fit:cover}@media(max-width:700px){.form-grid{grid-template-columns:1fr}.wide{grid-column:auto}}
 </style>
-

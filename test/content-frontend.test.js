@@ -25,6 +25,8 @@ test('content store keeps static data when public hydration fails', () => {
   const source = read('src/stores/lib/content-actions.js')
   assert.match(source, /hydratePublishedContents/)
   assert.match(source, /catch[\s\S]*contentSource = 'static'/)
+  assert.match(source, /managedSlugs/)
+  assert.match(source, /fallback\.filter\(item => !managed\.has\(item\.slug\)\)/)
 })
 
 test('router exposes protected content manager and admin redirect', () => {
@@ -39,4 +41,5 @@ test('content manager uses the approved navigation editor and publish panels', (
   assert.match(source, /admin-content-nav/)
   assert.match(source, /<ContentEditor/)
   assert.match(source, /<ContentPublishPanel/)
+  assert.match(source, /if \(!await saveDraft\(\)\) return/)
 })

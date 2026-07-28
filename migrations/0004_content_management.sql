@@ -71,6 +71,9 @@ CREATE INDEX IF NOT EXISTS idx_contents_manager
   ON contents(deleted_at, status, type, start_date DESC, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_content_assets_content
   ON content_assets(content_id, role, sort_order);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_content_assets_single_poster
+  ON content_assets(content_id, role) WHERE role = 'poster' AND deleted_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_content_assets_single_preview
+  ON content_assets(content_id, role) WHERE role = 'preview' AND deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_content_credits_content
   ON content_credits(content_id, sort_order);
-
