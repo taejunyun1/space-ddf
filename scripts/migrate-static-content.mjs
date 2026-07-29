@@ -7,6 +7,7 @@ import { exportStaticContent } from './export-static-content.mjs'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const dryRun = process.argv.includes('--dry-run')
 const remote = process.argv.includes('--remote')
+const skipAssets = process.argv.includes('--skip-assets')
 const exported = exportStaticContent()
 
 console.log(`콘텐츠 ${exported.contents.length}개, 이미지 ${exported.assets.length}개`)
@@ -44,7 +45,7 @@ fs.writeFileSync(sqlFile, sql)
 
 try {
   run('npx', ['wrangler', 'd1', 'execute', 'space-ddf-rentals', ...(remote ? ['--remote'] : ['--local']), '--file', sqlFile])
-  for (const asset of exported.assets) {
+  for (const asset of skipAssets ? [] : exported.assets) {
     const key = objectKey(asset)
     run('npx', ['wrangler', 'r2', 'object', 'put', `space-ddf-content-assets/${key}`, '--file', path.join(root, asset.file), ...(remote ? ['--remote'] : [])])
   }
@@ -53,8 +54,17 @@ try {
 }
 
 function run(command, args) {
-  const result = spawnSync(command, args, { cwd: root, stdio: 'inherit' })
-  if (result.status !== 0) process.exit(result.status || 1)
+  const maxAttempts = 3
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const result = spawnSync(command, args, { cwd: root, stdio: 'inherit' })
+    if (result.status === 0) return
+    if (attempt < maxAttempts) {
+      console.warn(`명령 실패, 재시도 중 (${attempt}/${maxAttempts})`)
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, attempt * 1000)
+      continue
+    }
+    process.exit(result.status || 1)
+  }
 }
 
 function stableId(type, slug) {
@@ -73,11 +83,13 @@ function publicationPayload(content) {
   const related = exported.assets
     .map((asset, index) => ({ ...asset, id: stableAssetId(asset, index) }))
     .filter(asset => asset.type === content.type && asset.slug === content.slug)
-  const poster = related.find(asset => asset.role === 'poster')
+  const poster = related.find(asset => asset.role === 'poster') || related.find(asset => asset.role === 'gallery')
   const preview = related.find(asset => asset.role === 'preview') || poster
   return {
     id: stableId(content.type, content.slug),
     ...content,
+    body: publicBody(content.body),
+    credits: publicCredits(content.credits),
     startDate: parseStartDate(content.dateDisplay),
     dateRange: content.dateDisplay,
     hero: poster ? `/api/contents/assets/${poster.id}` : '',
@@ -89,6 +101,14 @@ function publicationPayload(content) {
       caption: '',
     })),
   }
+}
+
+function publicBody(body) {
+  return String(body || '').split(/\n\s*\n/).map(value => value.trim()).filter(Boolean)
+}
+
+function publicCredits(credits = []) {
+  return credits.map(credit => [credit.label, credit.value, credit.url].filter(Boolean).join(' ').trim()).filter(Boolean)
 }
 
 function parseStartDate(value) {

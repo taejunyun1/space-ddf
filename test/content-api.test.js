@@ -54,3 +54,11 @@ test('content input normalizes repeatable credits and gallery assets', () => {
   assert.deepEqual(result.credits, [{ label: 'Artist', value: '작가', url: '', sortOrder: 0 }])
   assert.equal(result.assets[0].role, 'poster')
 })
+
+test('published payload matches the existing detail view body and credit contracts', () => {
+  const source = fs.readFileSync(new URL('../src/server/content-api.mjs', import.meta.url), 'utf8')
+  assert.match(source, /body:\s*publicBody\(content\.body\)/)
+  assert.match(source, /credits:\s*publicCredits\(content\.credits\)/)
+  assert.match(source, /split\(\/\\n\\s\*\\n\/\)/)
+  assert.match(source, /credit\.label,\s*credit\.value,\s*credit\.url/)
+})

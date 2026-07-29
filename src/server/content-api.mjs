@@ -480,9 +480,9 @@ function publicPayload(content) {
     endDate: content.endDate,
     dateRange: content.dateDisplay || [content.startDate, content.endDate].filter(Boolean).join(' – '),
     location: content.location,
-    body: content.body,
+    body: publicBody(content.body),
     description: content.description,
-    credits: content.credits,
+    credits: publicCredits(content.credits),
     hero: poster?.originalUrl || poster?.url || '',
     preview: preview?.url || '',
     gallery: content.assets.filter(asset => asset.role === 'gallery').map(asset => ({
@@ -495,6 +495,14 @@ function publicPayload(content) {
     isFeatured: content.isFeatured,
     sortOrder: content.sortOrder,
   }
+}
+
+function publicBody(body) {
+  return String(body || '').split(/\n\s*\n/).map(value => value.trim()).filter(Boolean)
+}
+
+function publicCredits(credits = []) {
+  return credits.map(credit => [credit.label, credit.value, credit.url].filter(Boolean).join(' ').trim()).filter(Boolean)
 }
 
 function validImageSignature(mime, bytes) {
