@@ -1,5 +1,5 @@
 <template>
-  <main class="admin-rentals-page">
+  <section class="admin-rentals-page">
     <header class="admin-rentals-header">
       <div>
         <p>Admin Rentals</p>
@@ -445,7 +445,7 @@
         </aside>
       </section>
     </template>
-  </main>
+  </section>
 </template>
 
 <script setup>

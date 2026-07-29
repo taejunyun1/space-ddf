@@ -12,7 +12,7 @@ const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT || 4173)
 const baseUrl = process.env.SMOKE_BASE_URL || `http://${host}:${port}`
 const routes = ['/', '/rental', '/shows/jihye/', '/projects/artwall/']
-const protectedRoutes = ['/manage', '/manage/rentals']
+const protectedRoutes = ['/admin']
 const expectedStops = new WeakSet()
 
 async function main() {
@@ -53,11 +53,11 @@ async function smokeProtectedRoute(url) {
   const status = response.status
   const location = response.headers.get('location') || ''
 
-  if ([301, 302, 303, 307, 308].includes(status) && /\/manage\/login/.test(location)) {
+  if (status === 200) {
     return { status }
   }
 
-  throw new Error(`Expected protected manage route at ${url}, got HTTP ${status} ${location}`)
+  throw new Error(`Expected protected admin route at ${url}, got HTTP ${status} ${location}`)
 }
 
 function startPreview() {

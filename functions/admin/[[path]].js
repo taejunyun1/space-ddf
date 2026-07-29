@@ -1,5 +1,5 @@
-import { handleAdminPageRoute } from '../../src/server/admin-page.mjs'
+import { handleManagePageRoute } from '../../src/server/manage-auth.mjs'
 
 export function onRequest(context) {
-  return handleAdminPageRoute(context)
+  return handleManagePageRoute(context)
 }

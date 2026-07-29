@@ -36,21 +36,21 @@
 - Produces: Vue route `{ path: '/admin', name: 'admin', component: AdminView }`
 - Produces: `handleManagePageRoute(context)`가 `/admin`에서 로그인 폼 또는 앱 셸 응답
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 라우터에서 `/admin`만 허용하고 `_routes.json`이 `['/api/*', '/admin']`인지, 인증 성공 후 `/admin`으로 돌아오는지 단언한다.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `node --test test/content-frontend.test.js test/home-rental-calendar.test.js test/manage-auth.test.js test/cloudflare-pages-deploy.test.js`
 
 Expected: 기존 `/manage/*` 및 `/admin/*` 경로 때문에 FAIL.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 라우터의 관리 하위 경로를 제거하고 `/admin`을 `AdminView.vue`에 연결한다. 인증 폼의 action과 성공 목적지를 `/admin`으로 바꾸고 Pages Functions 범위를 `/admin`으로 축소한다.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `node --test test/content-frontend.test.js test/home-rental-calendar.test.js test/manage-auth.test.js test/cloudflare-pages-deploy.test.js`
 
@@ -71,21 +71,21 @@ Expected: PASS.
 - `AdminContentsView.vue` emits `preview(content)`
 - `ContentPreviewModal.vue` consumes `content` and emits `close`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `AdminView.vue`에 두 탭과 두 패널이 있고, 콘텐츠 화면은 `window.open` 또는 `/manage/contents`를 사용하지 않으며 `preview` 이벤트를 내보낸다고 단언한다.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --test test/content-frontend.test.js`
 
 Expected: `AdminView.vue` 및 모달이 없어 FAIL.
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `AdminView.vue`에서 버튼 탭으로 두 기존 뷰를 전환하고 콘텐츠 미리보기 이벤트를 모달에 전달한다. 기존 뷰의 페이지 제목과 중복 내비게이션을 패널 문맥에 맞게 정리한다.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --test test/content-frontend.test.js`
 
@@ -96,13 +96,13 @@ Expected: PASS.
 **Files:**
 - Modify: `docs/superpowers/plans/2026-07-29-admin-unified-route.md`
 
-- [ ] **Step 1: Run the complete suite**
+- [x] **Step 1: Run the complete suite**
 
 Run: `npm test`
 
 Expected: 모든 root 및 scraper 테스트 PASS.
 
-- [ ] **Step 2: Check lint and production build**
+- [x] **Step 2: Check lint and production build**
 
 Run: `npm run lint && npm run build:pages`
 

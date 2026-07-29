@@ -10,24 +10,21 @@ const authEnv = {
   MANAGE_AUTH_SECRET: 'test-signing-secret',
 }
 
-test('manage page route redirects unauthenticated visitors to the password login screen', async () => {
+test('admin page route renders the password login screen without changing the URL', async () => {
   const {
     handleManagePageRoute,
   } = await import('../src/server/manage-auth.mjs')
 
   const response = await handleManagePageRoute({
-    request: new Request('https://space-ddf.test/manage/rentals'),
+    request: new Request('https://space-ddf.test/admin'),
     env: authEnv,
     next() {
       throw new Error('unauthenticated manage request should not render')
     },
   })
 
-  assert.equal(response.status, 302)
-  assert.equal(
-    response.headers.get('location'),
-    'https://space-ddf.test/manage/login?next=%2Fmanage%2Frentals'
-  )
+  assert.equal(response.status, 200)
+  assert.match(await response.text(), /action="\/admin"/)
 })
 
 test('manage login page accepts the configured username and password and sets an HttpOnly session cookie', async () => {
@@ -36,7 +33,7 @@ test('manage login page accepts the configured username and password and sets an
   } = await import('../src/server/manage-auth.mjs')
 
   const loginPage = await handleManagePageRoute({
-    request: new Request('https://space-ddf.test/manage/login'),
+    request: new Request('https://space-ddf.test/admin'),
     env: authEnv,
     next() {
       throw new Error('login page should be rendered by the manage auth function')
@@ -49,10 +46,10 @@ test('manage login page accepts the configured username and password and sets an
   assert.match(loginBody, /name="password"/)
 
   const failedLogin = await handleManagePageRoute({
-    request: createFormRequest('https://space-ddf.test/manage/login', {
+    request: createFormRequest('https://space-ddf.test/admin', {
       username: 'ddf',
       password: 'wrong',
-      next: '/manage/rentals',
+      next: '/admin',
     }),
     env: authEnv,
     next() {
@@ -64,10 +61,10 @@ test('manage login page accepts the configured username and password and sets an
   assert.equal(failedLogin.headers.get('set-cookie'), null)
 
   const successfulLogin = await handleManagePageRoute({
-    request: createFormRequest('https://space-ddf.test/manage/login', {
+    request: createFormRequest('https://space-ddf.test/admin', {
       username: 'ddf',
       password: 'secret-password',
-      next: '/manage/rentals',
+      next: '/admin',
     }),
     env: authEnv,
     next() {
@@ -77,7 +74,7 @@ test('manage login page accepts the configured username and password and sets an
   const sessionCookie = successfulLogin.headers.get('set-cookie')
 
   assert.equal(successfulLogin.status, 302)
-  assert.equal(successfulLogin.headers.get('location'), 'https://space-ddf.test/manage/rentals')
+  assert.equal(successfulLogin.headers.get('location'), 'https://space-ddf.test/admin')
   assert.match(sessionCookie, /space_ddf_manage_session=/)
   assert.match(sessionCookie, /HttpOnly/)
   assert.match(sessionCookie, /SameSite=Lax/)
@@ -89,10 +86,10 @@ test('manage page route serves the admin shell when the signed session cookie is
   } = await import('../src/server/manage-auth.mjs')
 
   const login = await handleManagePageRoute({
-    request: createFormRequest('https://space-ddf.test/manage/login', {
+    request: createFormRequest('https://space-ddf.test/admin', {
       username: 'ddf',
       password: 'secret-password',
-      next: '/manage/rentals',
+      next: '/admin',
     }),
     env: authEnv,
     next() {
@@ -101,7 +98,7 @@ test('manage page route serves the admin shell when the signed session cookie is
   })
   const cookie = login.headers.get('set-cookie').split(';')[0]
   const response = await handleManagePageRoute({
-    request: new Request('https://space-ddf.test/manage/rentals', {
+    request: new Request('https://space-ddf.test/admin', {
       headers: { cookie },
     }),
     env: authEnv,
@@ -130,10 +127,10 @@ test('manage API wrapper rejects missing sessions and delegates when the signed 
   assert.equal(missingSessionPayload.error.code, 'manage_auth_required')
 
   const login = await handleManagePageRoute({
-    request: createFormRequest('https://space-ddf.test/manage/login', {
+    request: createFormRequest('https://space-ddf.test/admin', {
       username: 'ddf',
       password: 'secret-password',
-      next: '/manage/rentals',
+      next: '/admin',
     }),
     env: authEnv,
     next() {
@@ -156,10 +153,10 @@ test('manage API wrapper rejects missing sessions and delegates when the signed 
 test('manage API wrapper requires a same-origin Origin header for state-changing requests', async () => {
   const { handleManageApiRequest, handleManagePageRoute } = await import('../src/server/manage-auth.mjs')
   const login = await handleManagePageRoute({
-    request: createFormRequest('https://space-ddf.test/manage/login', {
+    request: createFormRequest('https://space-ddf.test/admin', {
       username: 'ddf',
       password: 'secret-password',
-      next: '/manage/rentals',
+      next: '/admin',
     }),
     env: authEnv,
     next() { throw new Error('login post should be handled') },
@@ -186,8 +183,8 @@ test('manage API wrapper requires a same-origin Origin header for state-changing
 test('manage API route files require the signed password session before delegating to rental handlers', () => {
   const routes = JSON.parse(readProjectFile('public/_routes.json'))
 
-  assert.deepEqual(routes.include, ['/api/*', '/admin', '/admin/*', '/manage', '/manage/*'])
-  assert.match(readProjectFile('functions/manage/[[path]].js'), /handleManagePageRoute/)
+  assert.deepEqual(routes.include, ['/api/*', '/admin'])
+  assert.match(readProjectFile('functions/admin/[[path]].js'), /handleManagePageRoute/)
   assert.match(readProjectFile('functions/api/manage/rentals/requests/index.js'), /handleManageListRentalRequests/)
   assert.match(
     readProjectFile('functions/api/manage/rentals/requests/[id]/status.js'),

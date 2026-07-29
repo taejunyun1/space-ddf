@@ -5,26 +5,16 @@ const DEFAULT_MANAGE_AUTH_USER = 'ddf'
 export async function handleManagePageRoute(context) {
   const url = new URL(context.request.url)
 
-  if (isLoginPath(url.pathname)) {
-    if (context.request.method === 'POST') return handleLoginPost(context)
-    if (context.request.method === 'GET' || context.request.method === 'HEAD') {
-      return createLoginPageResponse(context.request)
-    }
-
+  if (url.pathname !== '/admin' && url.pathname !== '/admin/') return context.next()
+  if (context.request.method === 'POST') return handleLoginPost(context)
+  if (context.request.method !== 'GET' && context.request.method !== 'HEAD') {
     return new Response('Method Not Allowed', { status: 405 })
   }
-
-  if (isLogoutPath(url.pathname)) return createLogoutResponse(context.request)
 
   const session = await verifyManageSession(context)
 
   if (!session) {
-    return Response.redirect(createLoginUrl(context.request).toString(), 302)
-  }
-
-  if (url.pathname === '/manage' || url.pathname === '/manage/') {
-    url.pathname = '/manage/rentals'
-    return Response.redirect(url.toString(), 302)
+    return createLoginPageResponse(context.request, { nextPath: '/admin' })
   }
 
   return context.next()
@@ -64,7 +54,7 @@ async function handleLoginPost(context) {
   const form = await request.formData()
   const username = normalizeCredential(form.get('username'))
   const password = normalizeCredential(form.get('password'))
-  const nextPath = normalizeNextPath(form.get('next')) || '/manage/rentals'
+  const nextPath = normalizeNextPath(form.get('next')) || '/admin'
   const credentialsValid = await verifyCredentials(context.env || {}, username, password)
 
   if (!credentialsValid) {
@@ -174,7 +164,7 @@ async function secureEqual(left, right) {
 
 function createLoginPageResponse(request, { status = 200, message = '', nextPath = '' } = {}) {
   const loginUrl = new URL(request.url)
-  const resolvedNextPath = normalizeNextPath(nextPath || loginUrl.searchParams.get('next')) || '/manage/rentals'
+  const resolvedNextPath = normalizeNextPath(nextPath || loginUrl.searchParams.get('next')) || '/admin'
   const body = `<!doctype html>
 <html lang="ko">
 <head>
@@ -195,9 +185,9 @@ function createLoginPageResponse(request, { status = 200, message = '', nextPath
 <body>
   <main>
     <h1>관리자 로그인</h1>
-    <p>Space DDF 대관 관리 화면입니다.</p>
+    <p>Space DDF 렌탈·콘텐츠 관리 화면입니다.</p>
     ${message ? `<p class="error">${escapeHtml(message)}</p>` : ''}
-    <form method="post" action="/manage/login">
+    <form method="post" action="/admin">
       <input type="hidden" name="next" value="${escapeAttribute(resolvedNextPath)}" />
       <label>아이디
         <input name="username" autocomplete="username" required />
@@ -220,38 +210,10 @@ function createLoginPageResponse(request, { status = 200, message = '', nextPath
   })
 }
 
-function createLogoutResponse(request) {
-  return new Response(null, {
-    status: 302,
-    headers: {
-      location: new URL('/manage/login', request.url).toString(),
-      'set-cookie': `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`,
-      'cache-control': 'no-store',
-    },
-  })
-}
-
-function createLoginUrl(request) {
-  const requestUrl = new URL(request.url)
-  const loginUrl = new URL('/manage/login', request.url)
-
-  loginUrl.searchParams.set('next', `${requestUrl.pathname}${requestUrl.search}`)
-
-  return loginUrl
-}
-
-function isLoginPath(pathname) {
-  return pathname === '/manage/login' || pathname === '/manage/login/'
-}
-
-function isLogoutPath(pathname) {
-  return pathname === '/manage/logout' || pathname === '/manage/logout/'
-}
-
 function normalizeNextPath(value) {
   const nextPath = normalizeCredential(value)
 
-  if (!nextPath.startsWith('/manage')) return ''
+  if (nextPath !== '/admin') return ''
   if (nextPath.startsWith('//')) return ''
 
   return nextPath

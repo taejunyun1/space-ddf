@@ -23,39 +23,8 @@ const router = createRouter({
     },
     {
       path: '/admin',
-      redirect: { name: 'admin-rentals' }
-    },
-    {
-      path: '/admin/rental',
-      redirect: { name: 'admin-rentals' }
-    },
-    {
-      path: '/admin/rentals',
-      name: 'admin-rentals',
-      component: () => import('@/views/AdminRentalsView.vue')
-    },
-    {
-      path: '/admin/contents',
-      redirect: { name: 'manage-contents' }
-    },
-    {
-      path: '/manage',
-      redirect: { name: 'manage-rentals' }
-    },
-    {
-      path: '/manage/rentals',
-      name: 'manage-rentals',
-      component: () => import('@/views/AdminRentalsView.vue')
-    },
-    {
-      path: '/manage/contents',
-      name: 'manage-contents',
-      component: () => import('@/views/AdminContentsView.vue')
-    },
-    {
-      path: '/manage/contents/:id/preview',
-      name: 'manage-content-preview',
-      component: () => import('@/views/AdminContentPreviewView.vue')
+      name: 'admin',
+      component: () => import('@/views/AdminView.vue')
     },
     {
       path: '/projects/:slug',

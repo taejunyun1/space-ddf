@@ -115,7 +115,7 @@ test('admin rentals page defines the requested password-protected action shell',
   assert.match(source, /답장메일작성/)
 })
 
-test('router and side navigation expose rental and admin rental surfaces', () => {
+test('router and side navigation expose rental and the unified admin surface', () => {
   const routerSource = readProjectFile('src/router/index.js')
   const appSource = readProjectFile('src/App.vue')
   const smokeSource = readProjectFile('scripts/smoke-test.js')
@@ -123,17 +123,12 @@ test('router and side navigation expose rental and admin rental surfaces', () =>
   assert.match(routerSource, /path:\s*'\/rental'/)
   assert.match(routerSource, /name:\s*'rental'/)
   assert.match(routerSource, /path:\s*'\/admin'/)
-  assert.match(routerSource, /path:\s*'\/admin\/rental'/)
-  assert.match(routerSource, /redirect:\s*\{\s*name:\s*'admin-rentals'\s*\}/)
-  assert.match(routerSource, /path:\s*'\/admin\/rentals'/)
-  assert.match(routerSource, /name:\s*'admin-rentals'/)
-  assert.match(routerSource, /path:\s*'\/manage'/)
-  assert.match(routerSource, /path:\s*'\/manage\/rentals'/)
-  assert.match(routerSource, /name:\s*'manage-rentals'/)
+  assert.match(routerSource, /name:\s*'admin'/)
+  assert.doesNotMatch(routerSource, /path:\s*'\/admin\/|path:\s*'\/manage/)
   assert.match(appSource, /to="\/rental"/)
   assert.match(appSource, /대관 신청/)
   assert.match(smokeSource, /'\/rental'/)
-  assert.match(smokeSource, /protectedRoutes = \['\/manage', '\/manage\/rentals'\]/)
+  assert.match(smokeSource, /protectedRoutes = \['\/admin'\]/)
 })
 
 test('mobile app shell clips the off-canvas sidebar from page width', () => {
