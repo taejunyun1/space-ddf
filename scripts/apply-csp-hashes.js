@@ -11,7 +11,12 @@ const CSP_BASE = {
   defaultSrc: ["'self'"],
   styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
   fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://fastly.jsdelivr.net'],
-  scriptSrc: ['https://maps.googleapis.com', 'https://maps.gstatic.com'],
+  scriptSrc: [
+    'https://static.cloudflareinsights.com',
+    'https://maps.googleapis.com',
+    'https://maps.gstatic.com',
+    'https://www.googletagmanager.com',
+  ],
   imgSrc: [
     "'self'",
     'data:',
@@ -20,6 +25,10 @@ const CSP_BASE = {
     'https://maps.gstatic.com',
     'https://*.googleapis.com',
     'https://*.ggpht.com',
+    'https://www.googletagmanager.com',
+    'https://www.google-analytics.com',
+    'https://*.google-analytics.com',
+    'https://stats.g.doubleclick.net',
   ],
   frameSrc: ['https://www.google.com'],
   connectSrc: [
@@ -28,6 +37,11 @@ const CSP_BASE = {
     'https://maps.googleapis.com',
     'https://maps.gstatic.com',
     'https://*.googleapis.com',
+    'https://www.googletagmanager.com',
+    'https://www.google-analytics.com',
+    'https://*.google-analytics.com',
+    'https://stats.g.doubleclick.net',
+    'https://cloudflareinsights.com',
   ],
   manifestSrc: ["'self'"],
 }

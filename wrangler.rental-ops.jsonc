@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "space-ddf-rental-ops",
+  "main": "./workers/rental-ops/index.mjs",
+  "compatibility_date": "2026-07-10",
+  "workers_dev": false,
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "space-ddf-rentals",
+      "database_id": "d70fa016-21db-4e8d-879c-ed3565182e1a",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "services": [
+    {
+      "binding": "RENTAL_NOTIFICATION_EMAIL",
+      "service": "space-ddf-rental-email"
+    }
+  ]
+}

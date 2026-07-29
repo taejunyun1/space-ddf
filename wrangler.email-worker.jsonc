@@ -1,0 +1,14 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "space-ddf-rental-email",
+  "main": "./workers/rental-email/index.mjs",
+  "compatibility_date": "2026-07-10",
+  "workers_dev": false,
+  "send_email": [
+    {
+      "name": "RENTAL_NOTIFICATION_EMAIL_PROVIDER",
+      "destination_address": "space.ddf@gmail.com",
+      "allowed_sender_addresses": ["rental@spaceddf.xyz"]
+    }
+  ]
+}

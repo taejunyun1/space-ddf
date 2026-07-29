@@ -166,8 +166,11 @@ The admin availability tab loads one combined availability payload for manager u
 
 - windows from `rental_windows`
 - unavailable ranges from active `rental_requests`
+- Google Calendar iCal events from the configured `space.ddf@gmail.com` calendar
 
 The public rental page continues to load `/api/rentals/availability`.
+
+Google Calendar events should appear in the admin availability calendar with the same labels and colors used by the public calendar. These events are read-only in the rental window editor. They inform the manager about actual space usage but are not saved into `rental_windows`.
 
 After creating, editing, or deleting a window:
 
@@ -206,6 +209,7 @@ Frontend source tests:
 - Admin page exposes `신청내역 / 가능일정` tabs.
 - Availability tab renders a calendar/editor split.
 - Availability tab uses the same calendar event type labels as the public calendar.
+- Availability tab loads the `space.ddf@gmail.com` iCal-backed calendar events and displays them as read-only calendar marks.
 - Service module calls `/api/manage/rentals/windows`.
 - Editor has save, update, delete, and reset actions.
 

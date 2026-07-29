@@ -10,7 +10,7 @@ function unescapeHtml(s) {
 }
 
 function iso(d) {
-  const m = String(d).match(/(\d{4})[.\-](\d{1,2})[.\-](\d{1,2})/)
+  const m = String(d).match(/(\d{4})[.-](\d{1,2})[.-](\d{1,2})/)
   return m ? `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}` : ''
 }
 
@@ -22,7 +22,7 @@ export function parsePalbokList(html) {
     const titleMatch = seg.match(/[^>]*>([^<]+)/)
     const title = titleMatch ? unescapeHtml(titleMatch[1]).trim() : ''
     const text = unescapeHtml(seg.replace(/<[^>]+>/g, ' '))
-    const dateMatch = text.match(/(\d{4}[.\-]\d{1,2}[.\-]\d{1,2})\s*[~\-]\s*(\d{4}[.\-]\d{1,2}[.\-]\d{1,2})/)
+    const dateMatch = text.match(/(\d{4}[.-]\d{1,2}[.-]\d{1,2})\s*[~-]\s*(\d{4}[.-]\d{1,2}[.-]\d{1,2})/)
     if (!title || !dateMatch) continue
 
     out.push({ title, startDate: iso(dateMatch[1]), endDate: iso(dateMatch[2]) })
@@ -33,7 +33,7 @@ export function parsePalbokList(html) {
 
 export async function scrapePalbok() {
   const res = await fetch(LIST_URL, {
-    headers: { 'user-agent': 'SpaceDDFArchiveScraper/1.0 (+https://www.spaceddf.xyz)', accept: 'text/html' },
+    headers: { 'user-agent': 'SpaceDDFArchiveScraper/1.0 (+https://spaceddf.xyz)', accept: 'text/html' },
   })
   if (!res.ok) throw new Error(`palbok fetch failed: ${res.status}`)
 

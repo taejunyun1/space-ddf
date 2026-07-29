@@ -156,6 +156,12 @@ export async function crawlGwangjuMuseum(env, options = {}) {
     }
 
     await env.DB.prepare(`
+      UPDATE exhibitions
+      SET active = 0, updated_at = ?
+      WHERE source_name = ? AND scraped_at < ? AND active = 1
+    `).bind(new Date().toISOString(), GMA_SOURCE_NAME, startedAt).run()
+
+    await env.DB.prepare(`
       UPDATE crawl_runs
       SET status = 'success',
           finished_at = ?,
@@ -205,7 +211,7 @@ export async function crawlGwangjuMuseum(env, options = {}) {
 async function fetchGwangjuMuseumList(listType, page, fetchOptions) {
   const response = await fetchWithRetry(listUrl(listType, page), {
     headers: {
-      'user-agent': 'Mozilla/5.0 SpaceDDFArchiveCrawler/1.0 (+https://www.spaceddf.xyz)',
+      'user-agent': 'Mozilla/5.0 SpaceDDFArchiveCrawler/1.0 (+https://spaceddf.xyz)',
       accept: 'text/html',
     },
   }, fetchOptions)
@@ -220,7 +226,7 @@ async function fetchGwangjuMuseumList(listType, page, fetchOptions) {
 async function fetchGwangjuMuseumDetail(url, fetchOptions) {
   const response = await fetchWithRetry(url, {
     headers: {
-      'user-agent': 'Mozilla/5.0 SpaceDDFArchiveCrawler/1.0 (+https://www.spaceddf.xyz)',
+      'user-agent': 'Mozilla/5.0 SpaceDDFArchiveCrawler/1.0 (+https://spaceddf.xyz)',
       accept: 'text/html',
     },
   }, fetchOptions)

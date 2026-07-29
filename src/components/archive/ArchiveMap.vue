@@ -30,7 +30,7 @@
 
       <aside v-if="selectedItem" class="map-detail" aria-live="polite">
         <div class="detail-kicker">
-          <span class="ddf-pill">{{ selectedItem.cityLabel }}</span>
+          <span class="ddf-pill city" :class="selectedItem.city">{{ selectedItem.cityLabel }}</span>
           <span class="ddf-pill">{{ archiveTypeLabel(selectedItem) }}</span>
           <span class="ddf-pill status" :class="selectedItem.status">{{ selectedItem.statusLabel }}</span>
         </div>
@@ -82,15 +82,15 @@ const DEFAULT_CENTER = {
   lng: 126.78,
 }
 
-const CITY_COLORS = {
-  gwangju: '#168a4a',
-  jeonju: '#2468d8',
-  jeonnam: '#7a4cc2',
-  unknown: '#6c6c6c',
-}
+const DEFAULT_ZOOM = 10
+const SINGLE_MARKER_ZOOM = 15
+const SELECTED_MARKER_ZOOM = 12
 
-const STATUS_MARKER_COLORS = {
-  ongoing: 'var(--ddf-status-open)',
+const CITY_COLORS = {
+  gwangju: 'var(--ddf-city-gwangju)',
+  jeonju: 'var(--ddf-city-jeonju)',
+  jeonnam: 'var(--ddf-city-jeonnam)',
+  unknown: '#6c6c6c',
 }
 
 const props = defineProps({
@@ -209,7 +209,7 @@ async function initMap() {
 
     googleMap = new GoogleMap(mapElement.value, {
       center: DEFAULT_CENTER,
-      zoom: 9,
+      zoom: DEFAULT_ZOOM,
       clickableIcons: false,
       fullscreenControl: false,
       gestureHandling: 'greedy',
@@ -282,14 +282,14 @@ function fitVisibleMarkers() {
 
   if (!markerGroups.value.length) {
     googleMap.setCenter(DEFAULT_CENTER)
-    googleMap.setZoom(9)
+    googleMap.setZoom(DEFAULT_ZOOM)
     return
   }
 
   if (markerGroups.value.length === 1) {
     const [group] = markerGroups.value
     googleMap.setCenter({ lat: group.lat, lng: group.lng })
-    googleMap.setZoom(14)
+    googleMap.setZoom(SINGLE_MARKER_ZOOM)
     return
   }
 
@@ -306,14 +306,14 @@ function focusSelectedMarker() {
     lng: selectedMarkerGroup.value.lng,
   })
 
-  if (googleMap.getZoom() < 10) {
-    googleMap.setZoom(10)
+  if (googleMap.getZoom() < SELECTED_MARKER_ZOOM) {
+    googleMap.setZoom(SELECTED_MARKER_ZOOM)
   }
 }
 
 function markerContent(group, selected) {
   const marker = document.createElement('button')
-  const color = STATUS_MARKER_COLORS[group.status] || CITY_COLORS[group.city] || CITY_COLORS.unknown
+  const color = CITY_COLORS[group.city] || CITY_COLORS.unknown
   const screening = group.archiveType === 'screening'
   const ongoing = group.status === 'ongoing'
 
@@ -500,6 +500,21 @@ function markerStatus(current, next) {
 .detail-kicker :deep(.ddf-pill) {
   border-color: var(--ddf-line);
   color: var(--ddf-ink);
+}
+
+.detail-kicker .city.gwangju {
+  border-color: var(--ddf-city-gwangju);
+  color: var(--ddf-city-gwangju);
+}
+
+.detail-kicker .city.jeonju {
+  border-color: var(--ddf-city-jeonju);
+  color: var(--ddf-city-jeonju);
+}
+
+.detail-kicker .city.jeonnam {
+  border-color: var(--ddf-city-jeonnam);
+  color: var(--ddf-city-jeonnam);
 }
 
 .detail-kicker .status.ongoing {

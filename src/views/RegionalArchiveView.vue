@@ -1,5 +1,11 @@
 <template>
-  <div class="archive-page">
+  <div
+    class="archive-page"
+    :class="{
+      'mobile-list-view': activeMobileView === 'list',
+      'mobile-map-view': activeMobileView === 'map',
+    }"
+  >
     <section class="archive-list-pane" aria-labelledby="archive-title">
       <header class="archive-header">
         <p class="ddf-kicker">Regional Archive</p>
@@ -17,6 +23,29 @@
         :types="archiveTypes"
       />
 
+      <div class="mobile-view-tabs" role="tablist" aria-label="아카이브 보기 방식">
+        <button
+          type="button"
+          class="mobile-view-tab ddf-focusable"
+          role="tab"
+          :aria-selected="activeMobileView === 'list'"
+          :class="{ 'is-active': activeMobileView === 'list' }"
+          @click="activeMobileView = 'list'"
+        >
+          리스트로 보기
+        </button>
+        <button
+          type="button"
+          class="mobile-view-tab ddf-focusable"
+          role="tab"
+          :aria-selected="activeMobileView === 'map'"
+          :class="{ 'is-active': activeMobileView === 'map' }"
+          @click="activeMobileView = 'map'"
+        >
+          지도로 보기
+        </button>
+      </div>
+
       <div class="archive-count" :class="{ loading: isArchiveLoading }">
         <template v-if="isArchiveLoading">
           <span class="count-skeleton"></span>
@@ -31,28 +60,32 @@
         </template>
       </div>
 
-      <ArchiveList
-        :items="filteredItems"
-        :selected-id="selectedId"
-        :loading="isArchiveLoading"
-        @select="selectItem"
-      />
+      <div class="archive-list-content">
+        <ArchiveList
+          :items="filteredItems"
+          :selected-id="selectedId"
+          :loading="isArchiveLoading"
+          @select="selectArchiveItem"
+        />
+      </div>
     </section>
 
-    <ArchiveMap
-      :title="mapTitle"
-      :cities="mapCities"
-      :items="filteredItems"
-      :selected-id="selectedId"
-      :selected-item="selectedItem"
-      :loading="isArchiveLoading"
-      @select="selectItem"
-    />
+    <div class="archive-map-panel">
+      <ArchiveMap
+        :title="mapTitle"
+        :cities="mapCities"
+        :items="mapItems"
+        :selected-id="mapSelectedId"
+        :selected-item="mapSelectedItem"
+        :loading="isArchiveLoading"
+        @select="selectArchiveItem"
+      />
+    </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import {
   archiveCities,
   archiveStatuses,
@@ -67,6 +100,7 @@ import ArchiveMap from '@/components/archive/ArchiveMap.vue'
 
 const archiveItems = ref([])
 const isArchiveLoading = ref(true)
+const activeMobileView = ref('list')
 
 const {
   activeType,
@@ -76,13 +110,26 @@ const {
   selectedId,
   mapCities,
   filteredItems,
-  selectedItem,
   visibleVenueCount,
   mapTitle,
   selectItem,
 } = useRegionalArchive(archiveItems, archiveCities)
 
+const mapItems = computed(() => (
+  filteredItems.value.filter(item => item.status !== 'closed')
+))
+const mapSelectedItem = computed(() => (
+  mapItems.value.find(item => item.id === selectedId.value) ||
+  mapItems.value[0] ||
+  null
+))
+const mapSelectedId = computed(() => mapSelectedItem.value?.id || '')
+
 onMounted(loadArchiveItems)
+
+function selectArchiveItem(id) {
+  selectItem(id)
+}
 
 async function loadArchiveItems() {
   isArchiveLoading.value = true
@@ -116,6 +163,21 @@ async function loadArchiveItems() {
   flex-direction: column;
   height: calc(100dvh - 120px);
   min-height: 0;
+}
+
+.archive-map-panel {
+  min-width: 0;
+}
+
+.archive-list-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mobile-view-tabs {
+  display: none;
 }
 
 .archive-header {
@@ -200,12 +262,85 @@ async function loadArchiveItems() {
   .archive-list-pane {
     height: auto;
   }
+
+  .archive-page.mobile-list-view {
+    padding-bottom: 0;
+  }
+
+  .mobile-list-view .archive-list-pane {
+    height: calc(100dvh - 58px);
+    min-height: calc(100dvh - 58px);
+  }
+
+  .mobile-view-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    margin: 14px 0 0;
+    border: 1px solid var(--ddf-line);
+    color: var(--ddf-ink);
+    background: var(--ddf-paper);
+  }
+
+  .mobile-view-tab {
+    min-height: 42px;
+    border: 0;
+    border-right: 1px solid var(--ddf-line);
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-family: var(--ddf-font-mono);
+    font-size: 13px;
+    line-height: 1.2;
+    cursor: pointer;
+  }
+
+  .mobile-view-tab:last-child {
+    border-right: 0;
+  }
+
+  .mobile-view-tab.is-active {
+    background: var(--ddf-line);
+    color: var(--ddf-paper);
+  }
+
+  .archive-map-panel {
+    display: none;
+  }
+
+  .mobile-map-view .archive-list-content {
+    display: none;
+  }
+
+  .mobile-map-view .archive-map-panel {
+    display: block;
+  }
+
+  .archive-map-panel :deep(.archive-map-pane) {
+    position: static;
+    min-height: 0;
+  }
+
+  .archive-map-panel :deep(.map-toolbar) {
+    padding-bottom: 12px;
+  }
+
+  .archive-map-panel :deep(.map-shell) {
+    height: min(68dvh, 560px);
+    min-height: 430px;
+  }
 }
 
 @media (max-width: 680px) {
   .archive-page {
     gap: 22px;
     padding-inline: 14px;
+  }
+
+  .archive-map-panel :deep(.map-shell) {
+    height: 62dvh;
+    min-height: 410px;
   }
 }
 </style>

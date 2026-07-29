@@ -103,15 +103,10 @@ async function listExhibitions(request, env) {
   const city = normalizeParam(url.searchParams.get('city'))
   const status = normalizeParam(url.searchParams.get('status'))
   const type = normalizeParam(url.searchParams.get('type'))
-  const visibility = normalizeParam(url.searchParams.get('visibility')) || 'public'
-  const limit = Math.min(Number(url.searchParams.get('limit')) || 200, 500)
-  const values = []
-  const where = []
-
-  if (visibility !== 'all') {
-    where.push('e.visibility = ?')
-    values.push(visibility)
-  }
+  const limit = Math.min(Math.max(numberParam(url.searchParams.get('limit'), 100), 1), 100)
+  const offset = decodeOffsetCursor(url.searchParams.get('cursor'))
+  const values = ['public']
+  const where = ['e.visibility = ?', 'COALESCE(e.active, 1) = 1']
 
   if (city && city !== 'all') {
     where.push('e.city = ?')
@@ -128,7 +123,7 @@ async function listExhibitions(request, env) {
     values.push(type)
   }
 
-  values.push(limit)
+  values.push(limit + 1, offset)
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
   const statement = env.DB.prepare(`
@@ -161,14 +156,20 @@ async function listExhibitions(request, env) {
         ELSE 3
       END,
       COALESCE(e.start_date, e.updated_at) DESC
-    LIMIT ?
+    LIMIT ? OFFSET ?
   `)
 
   const result = await statement.bind(...values).all()
 
+  const rows = result.results || []
+  const pageRows = rows.slice(0, limit)
   return json({
-    data: result.results.map(toArchiveItem),
-    count: result.results.length,
+    data: pageRows.map(toArchiveItem),
+    count: pageRows.length,
+    meta: {
+      nextCursor: rows.length > limit ? encodeOffsetCursor(offset + limit) : null,
+      limit,
+    },
   })
 }
 
@@ -355,8 +356,8 @@ async function runManualUpsert(request, env) {
   try {
     const result = await importManualExhibitions(env, items)
     return json(result)
-  } catch (err) {
-    return error(err instanceof Error ? err.message : 'Invalid manual record', 400)
+  } catch {
+    return error('Invalid manual record', 400)
   }
 }
 
@@ -386,13 +387,19 @@ export default {
 
       if (url.pathname === '/api/archive/exhibitions') return listExhibitions(request, env)
       if (url.pathname === '/api/archive/venues') return listVenues(request, env)
-      if (url.pathname === '/api/archive/sources') return listSources(request, env)
-      if (url.pathname === '/api/archive/crawl/runs') return listCrawlRuns(request, env)
+      if (url.pathname === '/api/archive/sources') {
+        if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+        return listSources(request, env)
+      }
+      if (url.pathname === '/api/archive/crawl/runs') {
+        if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+        return listCrawlRuns(request, env)
+      }
       if (url.pathname === '/api/archive/health') return health(env)
 
       return error('Not found', 404)
-    } catch (err) {
-      return error(err instanceof Error ? err.message : 'Unknown error')
+    } catch {
+      return error('Internal server error')
     }
   },
 
@@ -402,6 +409,20 @@ export default {
       runScheduledCrawl(env, 'gwangju-museum-of-art', 'gwangju-museum-scheduled', () => crawlGwangjuMuseum(env, { visibility: 'public' })),
     ]))
   },
+}
+
+function encodeOffsetCursor(offset) {
+  return btoa(String(offset)).replace(/=+$/g, '')
+}
+
+function decodeOffsetCursor(value) {
+  if (!value) return 0
+  try {
+    const offset = Number.parseInt(atob(value), 10)
+    return Number.isInteger(offset) && offset >= 0 ? offset : 0
+  } catch {
+    return 0
+  }
 }
 
 // Each crawler logs its own crawl_runs row once it starts. This wrapper catches

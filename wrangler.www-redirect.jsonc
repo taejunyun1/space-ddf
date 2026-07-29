@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "space-ddf-www-redirect",
+  "main": "./workers/www-redirect/index.mjs",
+  "compatibility_date": "2026-07-10",
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "www.spaceddf.xyz/*",
+      "zone_name": "spaceddf.xyz"
+    }
+  ]
+}
