@@ -222,7 +222,7 @@ export async function handleCreateRentalRequest(context) {
       db,
       email: context.env.RENTAL_NOTIFICATION_EMAIL,
       request: { id, ...input },
-      adminUrl: new URL('/manage/rentals', context.request.url).href,
+      adminUrl: new URL('/admin', context.request.url).href,
     })
 
     if (typeof context.waitUntil === 'function') {
@@ -601,7 +601,7 @@ export async function handleRetryRentalNotification(context) {
         supportProgram: existing.support_program,
         projectDescription: existing.project_description,
       },
-      adminUrl: new URL('/manage/rentals', context.request.url).href,
+      adminUrl: new URL('/admin', context.request.url).href,
       attemptCount: 1,
     })
     if (typeof context.waitUntil === 'function') context.waitUntil(task)

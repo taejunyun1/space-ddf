@@ -167,7 +167,7 @@ test('public rental request API schedules an administrator email after storage',
 
   assert.equal(sentMessages.length, 1)
   assert.equal(sentMessages[0].to, 'space.ddf@gmail.com')
-  assert.match(sentMessages[0].html, /https:\/\/spaceddf\.xyz\/manage\/rentals/)
+  assert.match(sentMessages[0].html, /https:\/\/spaceddf\.xyz\/admin/)
   assert.ok(db.calls.some(call => (
     call.type === 'batch'
       && call.statements.some(statement => (

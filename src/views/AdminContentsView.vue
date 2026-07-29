@@ -1,8 +1,6 @@
 <template>
-  <main class="admin-contents-page">
+  <section class="admin-contents-page">
     <aside class="admin-content-nav">
-      <header><p>Admin Contents</p><h1>콘텐츠 관리</h1></header>
-      <nav><RouterLink to="/manage/rentals">대관 관리</RouterLink><RouterLink to="/manage/contents">콘텐츠 관리</RouterLink></nav>
       <button class="new-button" type="button" @click="createContent">+ 새 콘텐츠</button>
       <div class="filters">
         <button v-for="item in filters" :key="item.value" type="button" :class="{ active: activeFilter === item.value }" @click="activeFilter = item.value; loadContents()">{{ item.label }}</button>
@@ -20,12 +18,11 @@
       @preview="preview" @publish="publish" @unpublish="unpublish" @trash="trash" @restore="restore" @duplicate="duplicate" @focus-field="focusField" />
     <aside v-else class="empty-panel"></aside>
     <p v-if="notice" class="notice">{{ notice }}</p>
-  </main>
+  </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import ContentEditor from '@/components/admin/ContentEditor.vue'
 import ContentPublishPanel from '@/components/admin/ContentPublishPanel.vue'
 import {
@@ -34,6 +31,7 @@ import {
   unpublishAdminContent, updateAdminContent, updateAdminContentAsset, uploadAdminContentAsset,
 } from '@/services/contents'
 
+const emit = defineEmits(['preview'])
 const contents = ref([])
 const draft = ref(null)
 const activeFilter = ref('')
@@ -123,7 +121,7 @@ async function duplicate() {
   draft.value = await duplicateAdminContent(draft.value.id)
   contents.value.unshift(draft.value)
 }
-function preview() { window.open(`/manage/contents/${draft.value.id}/preview`, '_blank', 'noopener') }
+function preview() { emit('preview', draft.value) }
 function focusField(field) { activeSection.value = field === 'poster' ? 'images' : field === 'credits' || field === 'body' ? 'content' : 'basic' }
 const statusLabel = status => ({ draft: '임시저장', published: '공개', unpublished: '비공개' }[status] || status)
 </script>

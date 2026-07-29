@@ -29,11 +29,12 @@ test('content store keeps static data when public hydration fails', () => {
   assert.match(source, /fallback\.filter\(item => !managed\.has\(item\.slug\)\)/)
 })
 
-test('router exposes protected content manager and admin redirect', () => {
+test('router exposes the unified admin manager', () => {
   const source = read('src/router/index.js')
-  assert.match(source, /path:\s*'\/manage\/contents'/)
-  assert.match(source, /name:\s*'manage-contents'/)
-  assert.match(source, /path:\s*'\/admin\/contents'/)
+  assert.match(source, /path:\s*'\/admin'/)
+  assert.match(source, /name:\s*'admin'/)
+  assert.match(source, /AdminView\.vue/)
+  assert.doesNotMatch(source, /path:\s*'\/manage|path:\s*'\/admin\//)
 })
 
 test('content manager uses the approved navigation editor and publish panels', () => {

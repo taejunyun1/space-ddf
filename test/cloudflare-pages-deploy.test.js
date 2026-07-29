@@ -97,7 +97,7 @@ test('Pages Functions are scoped to API routes so SPA fallback works', () => {
   const routes = JSON.parse(readProjectFile('public/_routes.json'))
 
   assert.equal(routes.version, 1)
-  assert.deepEqual(routes.include, ['/api/*', '/admin', '/admin/*', '/manage', '/manage/*'])
+  assert.deepEqual(routes.include, ['/api/*', '/admin'])
   assert.deepEqual(routes.exclude, [])
 })
 
@@ -106,9 +106,8 @@ test('SEO prerender writes static shells for top-level SPA routes used by Pages'
 
   assert.match(source, /STATIC_SPA_ROUTES/)
   assert.match(source, /\/rental/)
-  assert.match(source, /\/admin\/rentals/)
-  assert.match(source, /\/manage/)
-  assert.match(source, /\/manage\/rentals/)
+  assert.match(source, /'\/admin'/)
+  assert.doesNotMatch(source, /\/admin\/rentals|\/manage/)
 })
 
 function readProjectFile(relativePath) {
