@@ -106,6 +106,7 @@ test('SEO prerender writes static shells for top-level SPA routes used by Pages'
 
   assert.match(source, /STATIC_SPA_ROUTES/)
   assert.match(source, /\/rental/)
+  assert.match(source, /'\/archive-map'/)
   assert.match(source, /'\/admin'/)
   assert.doesNotMatch(source, /\/admin\/rentals|\/manage/)
 })

@@ -11,7 +11,7 @@ const root = path.resolve(__dirname, '..')
 const host = '127.0.0.1'
 const port = Number(process.env.SMOKE_PORT || 4173)
 const baseUrl = process.env.SMOKE_BASE_URL || `http://${host}:${port}`
-const routes = ['/', '/rental', '/shows/jihye/', '/projects/artwall/']
+const routes = ['/', '/rental', '/archive-map', '/shows/jihye/', '/projects/artwall/']
 const protectedRoutes = ['/admin']
 const expectedStops = new WeakSet()
 
