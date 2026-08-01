@@ -292,19 +292,29 @@ for (const type of ['show', 'project']) {
 Implement `scripts/qa-admin-content-roundtrip.mjs` with this exact flow for both `show` and `project`:
 
 ```js
-const auth = `Basic ${Buffer.from(`${process.env.QA_AUTH_USER}:${process.env.QA_AUTH_PASSWORD}`).toString('base64')}`
+const origin = new URL(process.env.QA_BASE_URL).origin
+const login = await fetch(new URL('/admin', origin), {
+  method: 'POST', redirect: 'manual',
+  body: new URLSearchParams({
+    username: process.env.QA_AUTH_USER,
+    password: process.env.QA_AUTH_PASSWORD,
+    next: '/admin',
+  }),
+})
+const cookie = String(login.headers.get('set-cookie') || '').split(';')[0]
 const request = async (path, init = {}) => {
-  const response = await fetch(new URL(path, process.env.QA_BASE_URL), {
-    ...init,
-    headers: { authorization: auth, ...(init.headers || {}) },
-  })
+  const method = String(init.method || 'GET').toUpperCase()
+  const headers = new Headers(init.headers || {})
+  headers.set('cookie', cookie)
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) headers.set('origin', origin)
+  const response = await fetch(new URL(path, origin), { ...init, method, headers })
   const payload = await response.json()
   assert.equal(response.ok, true, JSON.stringify(payload))
   return payload.data
 }
 
 for (const type of ['show', 'project']) {
-  const slug = `qa-${type}-metadata-roundtrip`
+  const slug = `qa-${type}-metadata-${Date.now()}-${crypto.randomUUID().slice(0, 6)}`
   const created = await request('/api/manage/contents', {
     method: 'POST', headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ type, slug, title: `${type} QA` }),
@@ -359,7 +369,9 @@ Prepare and start local Pages in a separate terminal:
 
 ```bash
 npx wrangler d1 migrations apply space-ddf-rentals --local
-MANAGE_AUTH_PASSWORD=qa-local-password npx wrangler pages dev dist --port 8788
+npx wrangler pages dev dist --port 8788 \
+  --binding MANAGE_AUTH_PASSWORD=qa-local-password \
+  --binding MANAGE_AUTH_SECRET=qa-local-signing-secret
 ```
 
 Then run:
@@ -417,7 +429,7 @@ WHERE c.slug IN ('peer-up-2023', 'peer-up-2024')
 GROUP BY c.id;
 ```
 
-Also update the three matching publication JSON snapshots: remove the empty `Artists` element for `community-chat-2025`, set the two Peer-up locations to `''`, and append the Homepage credit only when not already present. Wrap all statements in `BEGIN TRANSACTION; ... COMMIT;`.
+Also update the three matching publication JSON snapshots: remove the empty `Artists` element for `community-chat-2025`, set the two Peer-up locations to `''`, and append the Homepage credit only when not already present. Do not include explicit `BEGIN TRANSACTION` or `COMMIT`; D1 remote file execution rejects transaction statements and Wrangler rolls back a failed import automatically.
 
 Use these exact guarded JSON updates:
 
