@@ -33,6 +33,19 @@ export function normalizeCreditLabel(label) {
   return CREDIT_LABEL_ALIASES.get(trimmed.toLowerCase()) || trimmed
 }
 
+export function normalizeCreditUrl(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+  const candidate = /^www\./i.test(text) ? `https://${text}` : text
+
+  try {
+    const parsed = new URL(candidate)
+    return ['http:', 'https:'].includes(parsed.protocol) ? candidate : ''
+  } catch {
+    return ''
+  }
+}
+
 export function parseCreditLine(text) {
   const original = String(text || '').trim()
   const parts = original ? original.split(/\s+/) : []

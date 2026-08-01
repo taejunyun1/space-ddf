@@ -186,3 +186,10 @@ test('admin basic information uses fixed credit groups with repeatable linked co
   assert.doesNotMatch(editor, /section === 'content'[\s\S]*<strong>크레딧<\/strong>/)
   assert.match(manager, /field === 'credits'[^?]*\? 'basic'/)
 })
+
+test('admin publish validation requires a populated labeled credit', () => {
+  const manager = read('src/views/AdminContentsView.vue')
+
+  assert.match(manager, /credits\?\.some\(credit => credit\?\.label\?\.trim\(\) && credit\?\.value\?\.trim\(\)\)/)
+  assert.match(manager, /내용이 있는 크레딧을 한 개 이상 입력해주세요/)
+})

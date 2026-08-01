@@ -51,7 +51,9 @@ const validation = computed(() => {
   const fields = {}
   if (!draft.value.title?.trim()) fields.title = '제목을 입력해주세요.'
   if (!draft.value.startDate) fields.startDate = '시작일을 입력해주세요.'
-  if (!draft.value.credits?.length) fields.credits = '크레딧을 입력해주세요.'
+  if (!draft.value.credits?.some(credit => credit?.label?.trim() && credit?.value?.trim())) {
+    fields.credits = '내용이 있는 크레딧을 한 개 이상 입력해주세요.'
+  }
   if (!draft.value.body?.trim() && !draft.value.description?.trim()) fields.body = '소개 또는 본문을 입력해주세요.'
   if (!draft.value.assets?.some(item => item.role === 'poster' && item.uploadStatus === 'ready')) fields.poster = '포스터를 업로드해주세요.'
   return fields

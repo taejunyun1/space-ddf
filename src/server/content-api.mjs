@@ -1,3 +1,5 @@
+import { normalizeCreditLabel, normalizeCreditUrl } from '../lib/credit-links.js'
+
 const CONTENT_TYPES = new Set(['show', 'project'])
 const CONTENT_STATUSES = new Set(['draft', 'published', 'unpublished'])
 const ASSET_ROLES = new Set(['poster', 'preview', 'gallery'])
@@ -25,12 +27,12 @@ export function normalizeContentInput(input = {}) {
     credits: Array.isArray(input.credits)
       ? input.credits
         .map((credit, index) => ({
-          label: text(credit?.label),
+          label: normalizeCreditLabel(text(credit?.label)),
           value: text(credit?.value),
-          url: text(credit?.url),
+          url: normalizeCreditUrl(credit?.url),
           sortOrder: integer(credit?.sortOrder ?? index),
         }))
-        .filter(credit => credit.label || credit.value)
+        .filter(credit => credit.value || credit.url)
       : [],
     assets: Array.isArray(input.assets)
       ? input.assets
@@ -76,7 +78,9 @@ export function validateContentForPublish(input = {}) {
   if (!content.title) fields.title = '제목을 입력해주세요.'
   if (!content.startDate) fields.startDate = '시작일을 입력해주세요.'
   if (!content.body && !content.description) fields.body = '소개 또는 본문을 입력해주세요.'
-  if (!content.credits.length) fields.credits = '크레딧을 한 개 이상 입력해주세요.'
+  if (!content.credits.some(credit => credit.label && credit.value)) {
+    fields.credits = '내용이 있는 크레딧을 한 개 이상 입력해주세요.'
+  }
   if (!content.assets.some(asset => asset.role === 'poster' && asset.uploadStatus === 'ready')) {
     fields.poster = '포스터를 업로드해주세요.'
   }

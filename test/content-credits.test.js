@@ -15,6 +15,17 @@ test('credit labels normalize legacy aliases into the standard information label
   assert.equal(creditLinks.normalizeCreditLabel('Homepage'), 'Homepage')
 })
 
+test('credit URLs accept web links and reject unsafe or malformed values', () => {
+  assert.equal(typeof creditLinks.normalizeCreditUrl, 'function')
+  assert.equal(
+    creditLinks.normalizeCreditUrl('https://instagram.com/kmhnsk'),
+    'https://instagram.com/kmhnsk',
+  )
+  assert.equal(creditLinks.normalizeCreditUrl('www.peer-up.com'), 'https://www.peer-up.com')
+  assert.equal(creditLinks.normalizeCreditUrl('javascript:alert(1)'), '')
+  assert.equal(creditLinks.normalizeCreditUrl('not a url'), '')
+})
+
 test('credits group in fixed order while preserving empty standards and custom labels', () => {
   assert.equal(typeof creditLinks.groupContentCredits, 'function')
   const grouped = creditLinks.groupContentCredits([

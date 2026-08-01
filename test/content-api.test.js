@@ -46,13 +46,34 @@ test('content input normalizes repeatable credits and gallery assets', () => {
     type: 'show',
     slug: 'new-show',
     title: '  새 전시  ',
-    credits: [{ label: ' Artist ', value: ' 작가 ' }, { label: '', value: '' }],
+    credits: [
+      { label: ' 참여작가 ', value: ' 작가 ', url: 'https://instagram.com/artist' },
+      { label: 'Artists', value: '   ' },
+      { label: 'Homepage', value: ' peer-up.com ', url: 'javascript:alert(1)' },
+    ],
     assets: [{ id: 'poster', role: 'poster', uploadStatus: 'ready' }],
   })
 
   assert.equal(result.title, '새 전시')
-  assert.deepEqual(result.credits, [{ label: 'Artist', value: '작가', url: '', sortOrder: 0 }])
+  assert.deepEqual(result.credits, [
+    { label: 'Artists', value: '작가', url: 'https://instagram.com/artist', sortOrder: 0 },
+    { label: 'Homepage', value: 'peer-up.com', url: '', sortOrder: 2 },
+  ])
   assert.equal(result.assets[0].role, 'poster')
+})
+
+test('label-only credits do not satisfy publish validation', () => {
+  const result = validateContentForPublish({
+    type: 'show',
+    slug: 'empty-credit',
+    title: '빈 크레딧',
+    startDate: '2026-08-02',
+    body: '본문',
+    credits: [{ label: 'Artists', value: '' }],
+    assets: [{ role: 'poster', uploadStatus: 'ready' }],
+  })
+
+  assert.equal(result.fields.credits, '내용이 있는 크레딧을 한 개 이상 입력해주세요.')
 })
 
 test('published payload matches the existing detail view body and credit contracts', () => {
