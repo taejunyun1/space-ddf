@@ -1,3 +1,34 @@
+UPDATE content_credits
+SET label = CASE
+  WHEN LOWER(TRIM(label)) IN ('artist', 'artists')
+    OR TRIM(label) IN ('참여작가', '작가') THEN 'Artists'
+  WHEN LOWER(TRIM(label)) IN ('curator', 'curating')
+    OR TRIM(label) = '기획' THEN 'Curating'
+  WHEN LOWER(TRIM(label)) = 'critic'
+    OR TRIM(label) = '비평' THEN 'Critic'
+  WHEN LOWER(TRIM(label)) = 'graphic'
+    OR TRIM(label) = '그래픽' THEN 'Graphic'
+  WHEN LOWER(TRIM(label)) = 'support'
+    OR TRIM(label) = '후원' THEN 'Support'
+  WHEN LOWER(TRIM(label)) = 'archive'
+    OR TRIM(label) = '기록' THEN 'Archive'
+  WHEN LOWER(TRIM(label)) = 'directing'
+    OR TRIM(label) = '디렉팅' THEN 'Directing'
+  ELSE TRIM(label)
+END
+WHERE (
+  LOWER(TRIM(label)) IN (
+    'artist', 'artists', 'curator', 'curating', 'critic', 'graphic',
+    'support', 'archive', 'directing'
+  )
+  OR TRIM(label) IN (
+    '참여작가', '작가', '기획', '비평', '그래픽', '후원', '기록', '디렉팅'
+  )
+)
+  AND label NOT IN (
+    'Artists', 'Curating', 'Critic', 'Graphic', 'Support', 'Archive', 'Directing'
+  );
+
 DELETE FROM content_credits
 WHERE content_id = (
   SELECT id FROM contents WHERE slug = 'community-chat-2025'
@@ -34,6 +65,40 @@ UPDATE content_publications
 SET payload_json = json_remove(payload_json, '$.credits[0]')
 WHERE slug = 'community-chat-2025'
   AND json_extract(payload_json, '$.credits[0]') = 'Artists';
+
+UPDATE content_publications
+SET payload_json = json_set(
+  payload_json,
+  '$.credits',
+  json((
+    SELECT json_group_array(
+      CASE
+        WHEN value LIKE '참여작가 %' THEN 'Artists ' || SUBSTR(value, 6)
+        WHEN value LIKE '작가 %' THEN 'Artists ' || SUBSTR(value, 4)
+        WHEN value LIKE '기획 %' THEN 'Curating ' || SUBSTR(value, 4)
+        WHEN value LIKE '비평 %' THEN 'Critic ' || SUBSTR(value, 4)
+        WHEN value LIKE '그래픽 %' THEN 'Graphic ' || SUBSTR(value, 5)
+        WHEN value LIKE '후원 %' THEN 'Support ' || SUBSTR(value, 4)
+        WHEN value LIKE '기록 %' THEN 'Archive ' || SUBSTR(value, 4)
+        WHEN value LIKE '디렉팅 %' THEN 'Directing ' || SUBSTR(value, 5)
+        ELSE value
+      END
+    )
+    FROM json_each(payload_json, '$.credits')
+  ))
+)
+WHERE EXISTS (
+  SELECT 1
+  FROM json_each(payload_json, '$.credits')
+  WHERE value LIKE '참여작가 %'
+    OR value LIKE '작가 %'
+    OR value LIKE '기획 %'
+    OR value LIKE '비평 %'
+    OR value LIKE '그래픽 %'
+    OR value LIKE '후원 %'
+    OR value LIKE '기록 %'
+    OR value LIKE '디렉팅 %'
+);
 
 UPDATE content_publications
 SET payload_json = json_set(payload_json, '$.location', '')

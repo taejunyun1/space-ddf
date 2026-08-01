@@ -401,7 +401,7 @@ git commit -m "test: admin Project·Show 업로드 왕복 검증"
 
 **Interfaces:**
 - Consumes database: `space-ddf-rentals` from `wrangler.jsonc`.
-- Changes only slugs: `community-chat-2025`, `peer-up-2023`, `peer-up-2024`.
+- Changes the three anomaly slugs plus any managed standard-credit aliases found by the all-content audit; custom labels remain untouched.
 - Keeps `contents`, `content_credits`, and `content_publications.payload_json` synchronized.
 
 - [ ] **Step 1: Write idempotent cleanup SQL**
