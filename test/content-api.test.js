@@ -76,6 +76,53 @@ test('label-only credits do not satisfy publish validation', () => {
   assert.equal(result.fields.credits, '내용이 있는 크레딧을 한 개 이상 입력해주세요.')
 })
 
+for (const type of ['show', 'project']) {
+  test(`${type} manager payload preserves every structured field`, () => {
+    const input = {
+      type,
+      slug: `${type}-round-trip`,
+      title: `${type} 제목`,
+      startDate: '2026-08-02',
+      endDate: '2026-08-12',
+      dateDisplay: '2026.08.02. - 2026.08.12.',
+      location: 'Space DDF',
+      body: '짧은 소개',
+      description: '본문',
+      credits: [
+        { label: '참여작가', value: '작가', url: 'https://instagram.com/artist' },
+        { label: 'Homepage', value: '공식 사이트', url: 'https://example.com' },
+      ],
+      assets: [{ id: 'poster', role: 'poster', uploadStatus: 'ready' }],
+    }
+    const normalized = normalizeContentInput(input)
+
+    assert.equal(normalized.type, type)
+    assert.equal(normalized.slug, `${type}-round-trip`)
+    assert.equal(normalized.title, `${type} 제목`)
+    assert.equal(normalized.startDate, '2026-08-02')
+    assert.equal(normalized.endDate, '2026-08-12')
+    assert.equal(normalized.dateDisplay, '2026.08.02. - 2026.08.12.')
+    assert.equal(normalized.location, 'Space DDF')
+    assert.equal(normalized.body, '짧은 소개')
+    assert.equal(normalized.description, '본문')
+    assert.deepEqual(normalized.credits, [
+      { label: 'Artists', value: '작가', url: 'https://instagram.com/artist', sortOrder: 0 },
+      { label: 'Homepage', value: '공식 사이트', url: 'https://example.com', sortOrder: 1 },
+    ])
+    assert.deepEqual(normalized.assets, [{
+      id: 'poster',
+      role: 'poster',
+      url: '',
+      originalUrl: '',
+      altText: '',
+      caption: '',
+      sortOrder: 0,
+      uploadStatus: 'ready',
+    }])
+    assert.equal(validateContentForPublish(normalized).ok, true)
+  })
+}
+
 test('published payload matches the existing detail view body and credit contracts', () => {
   const source = fs.readFileSync(new URL('../src/server/content-api.mjs', import.meta.url), 'utf8')
   assert.match(source, /body:\s*publicBody\(content\.body\)/)

@@ -193,3 +193,22 @@ test('admin publish validation requires a populated labeled credit', () => {
   assert.match(manager, /credits\?\.some\(credit => credit\?\.label\?\.trim\(\) && credit\?\.value\?\.trim\(\)\)/)
   assert.match(manager, /내용이 있는 크레딧을 한 개 이상 입력해주세요/)
 })
+
+test('admin exposes the complete Project and Show basic information format', async () => {
+  const editor = read('src/components/admin/ContentEditor.vue')
+  const { STANDARD_CREDIT_LABELS } = await import('../src/lib/credit-links.js')
+
+  assert.deepEqual(STANDARD_CREDIT_LABELS, [
+    'Artists', 'Curating', 'Critic', 'Graphic', 'Support', 'Archive', 'Directing',
+  ])
+  for (const copy of [
+    '콘텐츠 유형', 'Show', 'Project', 'Slug', '제목', '시작일', '종료일',
+    '표시용 날짜', '장소', '기타 정보', 'Instagram 또는 URL',
+  ]) {
+    assert.match(editor, new RegExp(copy))
+  }
+  assert.match(editor, /@compositionstart=/)
+  assert.match(editor, /@compositionend=/)
+  assert.match(editor, /addStandardCredit/)
+  assert.match(editor, /addCustomCredit/)
+})
