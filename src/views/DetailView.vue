@@ -288,6 +288,7 @@ const descriptionParas = computed(() => {
 const creditGroups = computed(() => {
   const grouped = groupContentCredits(item.value?.credits || [])
   return [...grouped.standard, ...grouped.custom]
+    .filter(group => group.entries.length > 0)
 })
 
 const lightboxVisible = ref(false)

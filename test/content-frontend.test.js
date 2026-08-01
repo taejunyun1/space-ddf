@@ -123,6 +123,14 @@ test('detail basic information renders fixed grouped rows before custom credits'
   assert.doesNotMatch(detail, /v-for="\(credit, i\) in creditLines"/)
 })
 
+test('detail hides empty credit groups while the admin keeps all standard inputs', () => {
+  const detail = read('src/views/DetailView.vue')
+  const editor = read('src/components/admin/ContentEditor.vue')
+
+  assert.match(detail, /\.filter\(group => group\.entries\.length > 0\)/)
+  assert.match(editor, /STANDARD_CREDIT_LABELS/)
+})
+
 test('credit parser distinguishes Instagram, external, and plain-text credits', async () => {
   const { parseCreditLine } = await import('../src/lib/credit-links.js')
 
