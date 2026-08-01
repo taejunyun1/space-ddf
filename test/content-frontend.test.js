@@ -11,6 +11,7 @@ test('content service exposes public hydration and manager mutations', () => {
   const source = read('src/services/contents.js')
   for (const name of [
     'fetchPublishedContents',
+    'fetchFeaturedContent',
     'fetchAdminContents',
     'createAdminContent',
     'updateAdminContent',
@@ -21,12 +22,38 @@ test('content service exposes public hydration and manager mutations', () => {
   }
 })
 
+test('content hydration keeps successful lists when the featured request fails', () => {
+  const source = read('src/stores/lib/content-actions.js')
+
+  assert.match(source, /fetchFeaturedContent/)
+  assert.match(source, /Promise\.allSettled/)
+  assert.match(source, /featuredContent/)
+  assert.match(source, /featuredResult\.status === 'fulfilled'/)
+})
+
+test('Recent Updated prioritizes the server-featured content over exhibition dates', () => {
+  const source = read('src/stores/lib/content-getters.js')
+
+  assert.match(source, /recent\(\)\s*{[\s\S]*return this\.featuredContent \|\| this\.allSortedByDateDesc\[0\] \|\| null/)
+  assert.match(source, /item\?\.preview \|\| item\?\.thumb \|\| state\.defaultThumb/)
+})
+
 test('content store keeps static data when public hydration fails', () => {
   const source = read('src/stores/lib/content-actions.js')
   assert.match(source, /hydratePublishedContents/)
   assert.match(source, /catch[\s\S]*contentSource = 'static'/)
   assert.match(source, /managedSlugs/)
   assert.match(source, /fallback\.filter\(item => !managed\.has\(item\.slug\)\)/)
+})
+
+test('app hydrates managed content before mounting route views', () => {
+  const source = read('src/main.js')
+  const hydration = source.indexOf('await useContentStore(pinia).hydratePublishedContents()')
+  const mount = source.indexOf("app.mount('#app')")
+
+  assert.notEqual(hydration, -1)
+  assert.notEqual(mount, -1)
+  assert.ok(hydration < mount)
 })
 
 test('router exposes the unified admin manager', () => {
@@ -43,4 +70,87 @@ test('content manager uses the approved navigation editor and publish panels', (
   assert.match(source, /<ContentEditor/)
   assert.match(source, /<ContentPublishPanel/)
   assert.match(source, /if \(!await saveDraft\(\)\) return/)
+  assert.match(source, /draft\.value = await publishAdminContent\(draft\.value\.id\)/)
+  assert.match(source, /목록과 Recent Updated에 공개했습니다/)
+})
+
+test('content editor makes Show or Project explicit and removes manual exposure switches', () => {
+  const source = read('src/components/admin/ContentEditor.vue')
+
+  assert.match(source, /<fieldset class="content-type-field">/)
+  assert.match(source, /<legend>콘텐츠 유형<\/legend>/)
+  assert.match(source, /type="radio"[^>]+value="show"/)
+  assert.match(source, /type="radio"[^>]+value="project"/)
+  assert.doesNotMatch(source, /modelValue\.showOnHome/)
+  assert.doesNotMatch(source, /modelValue\.isFeatured/)
+  assert.doesNotMatch(source, /메인 목록에 표시|Recent Updated 대표 콘텐츠/)
+})
+
+test('content editor defers text updates while a Korean IME composition is active', async () => {
+  const { finishTextComposition, startTextComposition, updateTextInput } = await import('../src/lib/text-input.js')
+  const target = { value: 'ㄴ' }
+  const updates = []
+
+  startTextComposition({ target })
+  updateTextInput({ target, isComposing: true }, value => updates.push(value))
+  assert.deepEqual(updates, [])
+
+  target.value = '나'
+  finishTextComposition({ target }, value => updates.push(value))
+  assert.deepEqual(updates, ['나'])
+})
+
+test('detail credits render Instagram URLs as accessible SVG icon links', () => {
+  const detail = read('src/views/DetailView.vue')
+
+  assert.match(detail, /import InstagramIcon from/)
+  assert.match(detail, /credit\.kind === 'instagram'/)
+  assert.match(detail, /<InstagramIcon/)
+  assert.match(detail, /:aria-label="`\$\{credit\.prefix \|\| 'Instagram'\} Instagram 열기`"/)
+  assert.match(detail, /target="_blank"/)
+  assert.match(detail, /rel="noopener noreferrer"/)
+})
+
+test('credit parser distinguishes Instagram, external, and plain-text credits', async () => {
+  const { parseCreditLine } = await import('../src/lib/credit-links.js')
+
+  assert.deepEqual(
+    parseCreditLine('참여작가 김현석 https://www.instagram.com/kmhnsk/'),
+    {
+      prefix: '참여작가 김현석',
+      href: 'https://www.instagram.com/kmhnsk/',
+      label: 'https://www.instagram.com/kmhnsk/',
+      kind: 'instagram',
+    }
+  )
+  assert.equal(parseCreditLine('참여작가 신혜란 https://instagram.com/hr__s12').kind, 'instagram')
+  assert.deepEqual(parseCreditLine('Homepage www.taejunyun.com'), {
+    prefix: 'Homepage',
+    href: 'https://www.taejunyun.com',
+    label: 'www.taejunyun.com',
+    kind: 'external',
+  })
+  assert.deepEqual(parseCreditLine('기획 신수와'), {
+    prefix: '기획 신수와',
+    href: '',
+    label: '',
+    kind: 'none',
+  })
+})
+
+test('admin basic information uses fixed credit groups with repeatable linked contributors', () => {
+  const editor = read('src/components/admin/ContentEditor.vue')
+  const manager = read('src/views/AdminContentsView.vue')
+
+  assert.match(editor, /STANDARD_CREDIT_LABELS/)
+  assert.match(editor, /class="structured-credit-fields wide"/)
+  assert.match(editor, /standardCreditGroups/)
+  assert.match(editor, /addStandardCredit/)
+  assert.match(editor, /setStandardCreditFromInput/)
+  assert.match(editor, /placeholder="Instagram 또는 URL \(선택\)"/)
+  assert.match(editor, /customCreditRows/)
+  assert.match(editor, /기타 정보 추가/)
+  assert.match(editor, /section === 'basic'[\s\S]*structured-credit-fields/)
+  assert.doesNotMatch(editor, /section === 'content'[\s\S]*<strong>크레딧<\/strong>/)
+  assert.match(manager, /field === 'credits'[^?]*\? 'basic'/)
 })

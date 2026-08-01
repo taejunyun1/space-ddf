@@ -108,7 +108,7 @@ async function deleteAsset(asset) {
 }
 async function publish() {
   if (!await saveDraft()) return
-  try { draft.value = await publishAdminContent(draft.value.id); notice.value = '콘텐츠를 공개했습니다.'; await loadContents() }
+  try { draft.value = await publishAdminContent(draft.value.id); notice.value = '콘텐츠를 목록과 Recent Updated에 공개했습니다.'; await loadContents() }
   catch (error) { notice.value = error.message; activeSection.value = error.fields?.poster ? 'images' : 'basic' }
 }
 async function unpublish() { draft.value = await unpublishAdminContent(draft.value.id); await loadContents() }
@@ -122,7 +122,7 @@ async function duplicate() {
   contents.value.unshift(draft.value)
 }
 function preview() { emit('preview', draft.value) }
-function focusField(field) { activeSection.value = field === 'poster' ? 'images' : field === 'credits' || field === 'body' ? 'content' : 'basic' }
+function focusField(field) { activeSection.value = field === 'poster' ? 'images' : field === 'credits' ? 'basic' : field === 'body' ? 'content' : 'basic' }
 const statusLabel = status => ({ draft: '임시저장', published: '공개', unpublished: '비공개' }[status] || status)
 </script>
 
