@@ -162,6 +162,8 @@ test('admin basic information uses fixed credit groups with repeatable linked co
   assert.match(editor, /placeholder="Instagram 또는 URL \(선택\)"/)
   assert.match(editor, /customCreditRows/)
   assert.match(editor, /기타 정보 추가/)
+  assert.match(editor, /:key="`\$\{group\.label\}-\$\{rowIndex\}`"/)
+  assert.doesNotMatch(editor, /:key="`\$\{group\.label\}-\$\{row\.sourceIndex\}-\$\{rowIndex\}`"/)
   assert.match(editor, /section === 'basic'[\s\S]*structured-credit-fields/)
   assert.doesNotMatch(editor, /section === 'content'[\s\S]*<strong>크레딧<\/strong>/)
   assert.match(manager, /field === 'credits'[^?]*\? 'basic'/)

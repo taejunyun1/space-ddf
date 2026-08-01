@@ -43,7 +43,7 @@
             <strong>{{ group.label }}</strong>
             <button type="button" :aria-label="`${group.label} 항목 추가`" @click="addStandardCredit(group.label)">+ 추가</button>
           </div>
-          <div v-for="(row, rowIndex) in group.rows" :key="`${group.label}-${row.sourceIndex}-${rowIndex}`" class="credit-row">
+          <div v-for="(row, rowIndex) in group.rows" :key="`${group.label}-${rowIndex}`" class="credit-row">
             <input
               :value="row.value"
               :aria-label="`${group.label} 이름 또는 내용`"
