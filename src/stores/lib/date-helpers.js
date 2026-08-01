@@ -16,7 +16,9 @@ export function parseDateRange(dateRange) {
 }
 
 export function sortKeyFromRange(item) {
-  const { start, end } = parseDateRange(item?.dateRange)
+  const parsedRange = parseDateRange(item?.dateRange)
+  const start = parseYmd(item?.startDate) || parsedRange.start
+  const end = parseYmd(item?.endDate) || parsedRange.end
   const startTime = start ? start.getTime() : Number.NEGATIVE_INFINITY
   const endTime = end ? end.getTime() : startTime
 
@@ -40,7 +42,7 @@ export function compareByRangeAsc(a, b) {
 function parseYmd(value) {
   if (!value) return null
 
-  const match = value.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/)
+  const match = value.match(/^(\d{4})[.-](\d{1,2})[.-](\d{1,2})\.?$/)
   if (!match) return null
 
   return validDate(+match[1], +match[2] - 1, +match[3])
@@ -49,12 +51,12 @@ function parseYmd(value) {
 function parseMaybeMdWithYear(value, fallbackYear) {
   if (!value) return null
 
-  const fullMatch = value.match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})$/)
+  const fullMatch = value.match(/^(\d{4})[.-](\d{1,2})[.-](\d{1,2})\.?$/)
   if (fullMatch) {
     return validDate(+fullMatch[1], +fullMatch[2] - 1, +fullMatch[3])
   }
 
-  const shortMatch = value.match(/^(\d{1,2})\.(\d{1,2})$/)
+  const shortMatch = value.match(/^(\d{1,2})\.(\d{1,2})\.?$/)
   if (!shortMatch || !Number.isInteger(fallbackYear)) return null
 
   return validDate(fallbackYear, +shortMatch[1] - 1, +shortMatch[2])
