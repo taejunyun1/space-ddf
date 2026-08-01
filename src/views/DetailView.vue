@@ -38,18 +38,33 @@
             </p>
 
             <p
-              v-for="(credit, i) in creditLines"
-              :key="i"
+              v-for="group in creditGroups"
+              :key="group.label"
               class="credit-line"
             >
-              <span>{{ credit.prefix }}</span>
-              <template v-if="credit.href">
-                {{ credit.prefix ? ' ' : '' }}<a
-                  :href="credit.href"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >{{ credit.label }}</a>
-              </template>
+              <span class="credit-label">{{ group.label }}</span>
+              <span v-if="group.entries.length" class="credit-values">
+                <template v-for="(entry, entryIndex) in group.entries" :key="`${group.label}-${entryIndex}`">
+                  <span v-if="entryIndex" class="credit-separator">, </span>
+                  <template v-if="entry.kind === 'instagram'">
+                    <span>{{ entry.value }}</span>
+                    <a
+                      class="instagram-link"
+                      :href="entry.href"
+                      :aria-label="`${entry.value || group.label} Instagram 열기`"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    ><InstagramIcon /></a>
+                  </template>
+                  <a
+                    v-else-if="entry.href"
+                    :href="entry.href"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >{{ entry.value || entry.linkLabel }}</a>
+                  <span v-else>{{ entry.value }}</span>
+                </template>
+              </span>
             </p>
 
             <p v-if="item?.location" class="location-line">
@@ -190,6 +205,8 @@ import {
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useContentStore } from '@/stores/content'
 import VueEasyLightbox from 'vue-easy-lightbox'
+import InstagramIcon from '@/components/icons/InstagramIcon.vue'
+import { groupContentCredits } from '@/lib/credit-links.js'
 
 const props = defineProps({
   type: { type: String, required: false },
@@ -268,10 +285,9 @@ const descriptionParas = computed(() => {
   return Array.isArray(d) ? d : [d]
 })
 
-const creditLines = computed(() => {
-  return (item.value?.credits || [])
-    .map(parseCreditLine)
-    .filter(credit => credit.prefix || credit.href)
+const creditGroups = computed(() => {
+  const grouped = groupContentCredits(item.value?.credits || [])
+  return [...grouped.standard, ...grouped.custom]
 })
 
 const lightboxVisible = ref(false)
@@ -341,36 +357,6 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateSideListState)
 })
 
-/**
- * 크레딧 문자열 끝의 URL을 안전한 링크 데이터로 변환합니다.
- * 예: "Homepage www.taejunyun.com"
- */
-function parseCreditLine(text) {
-  const parts = String(text || '').trim().split(/\s+/)
-  const lastPart = parts[parts.length - 1]
-  const isLink = /^(https?:\/\/|www\.)\S+$/i.test(lastPart)
-
-  if (!isLink) {
-    return { prefix: parts.join(' '), href: '', label: '' }
-  }
-
-  const prefix = parts.slice(0, -1).join(' ')
-  const href = lastPart.match(/^https?:\/\//i)
-    ? lastPart
-    : `https://${lastPart}`
-
-  try {
-    const url = new URL(href)
-
-    if (!['http:', 'https:'].includes(url.protocol)) {
-      return { prefix: parts.join(' '), href: '', label: '' }
-    }
-  } catch {
-    return { prefix: parts.join(' '), href: '', label: '' }
-  }
-
-  return { prefix, href, label: lastPart }
-}
 </script>
 
 
@@ -465,9 +451,21 @@ function parseCreditLine(text) {
 }
 
 .credit-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px;
   color: #666;
-  margin: 4px 0;
+  margin: 0 0 12px;
   line-height: 1.4;
+}
+
+.credit-label {
+  flex: 0 0 auto;
+}
+
+.credit-values {
+  min-width: 0;
 }
 
 .credit-line :deep(a) {
@@ -478,6 +476,14 @@ function parseCreditLine(text) {
 .credit-block .credit-line a {
   color: inherit;
   text-decoration: underline;
+}
+
+.credit-block .credit-line .instagram-link {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  vertical-align: -3px;
+  text-decoration: none;
 }
 
 .location-line {

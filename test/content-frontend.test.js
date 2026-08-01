@@ -104,11 +104,23 @@ test('detail credits render Instagram URLs as accessible SVG icon links', () => 
   const detail = read('src/views/DetailView.vue')
 
   assert.match(detail, /import InstagramIcon from/)
-  assert.match(detail, /credit\.kind === 'instagram'/)
+  assert.match(detail, /entry\.kind === 'instagram'/)
   assert.match(detail, /<InstagramIcon/)
-  assert.match(detail, /:aria-label="`\$\{credit\.prefix \|\| 'Instagram'\} Instagram 열기`"/)
+  assert.match(detail, /:aria-label="`\$\{entry\.value \|\| group\.label\} Instagram 열기`"/)
   assert.match(detail, /target="_blank"/)
   assert.match(detail, /rel="noopener noreferrer"/)
+})
+
+test('detail basic information renders fixed grouped rows before custom credits', () => {
+  const detail = read('src/views/DetailView.vue')
+
+  assert.match(detail, /groupContentCredits/)
+  assert.match(detail, /creditGroups/)
+  assert.match(detail, /v-for="group in creditGroups"/)
+  assert.match(detail, /class="credit-label"/)
+  assert.match(detail, /v-for="\(entry, entryIndex\) in group\.entries"/)
+  assert.match(detail, /class="credit-values"/)
+  assert.doesNotMatch(detail, /v-for="\(credit, i\) in creditLines"/)
 })
 
 test('credit parser distinguishes Instagram, external, and plain-text credits', async () => {
