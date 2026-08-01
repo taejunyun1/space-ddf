@@ -131,6 +131,16 @@ test('detail hides empty credit groups while the admin keeps all standard inputs
   assert.match(editor, /STANDARD_CREDIT_LABELS/)
 })
 
+test('home and detail list summaries use the shared URL-free credit formatter', () => {
+  const home = read('src/views/HomeView.vue')
+  const detail = read('src/views/DetailView.vue')
+
+  assert.match(home, /formatCreditSummary/)
+  assert.match(detail, /formatCreditSummary/)
+  assert.doesNotMatch(home, /credits\.join\(', '\)/)
+  assert.doesNotMatch(detail, /credits[\s\S]*?\.join\(', '\)/)
+})
+
 test('credit parser distinguishes Instagram, external, and plain-text credits', async () => {
   const { parseCreditLine } = await import('../src/lib/credit-links.js')
 

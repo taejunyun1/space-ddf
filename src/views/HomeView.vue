@@ -48,7 +48,7 @@
               <div class="title">{{ p.title }}</div>
               <div class="date">{{ p.dateRange }}</div>
               <div class="meta">
-                {{ Array.isArray(p.credits) ? p.credits.join(', ') : (p.meta || '') }}
+                {{ formatItemCredits(p) }}
               </div>
             </RouterLink>
           </li>
@@ -85,7 +85,7 @@
               <div class="title">{{ s.title }}</div>
               <div class="date">{{ s.dateRange }}</div>
               <div class="meta">
-                {{ Array.isArray(s.credits) ? s.credits.join(', ') : (s.meta || '') }}
+                {{ formatItemCredits(s) }}
               </div>
             </RouterLink>
           </li>
@@ -112,6 +112,7 @@ import { RouterLink } from 'vue-router'
 import { useContentStore } from '@/stores/content'
 import RecentComponent from '@/components/RecentComponent.vue'
 import CalendarComponent from '@/components/CalendarComponent.vue'
+import { formatCreditSummary } from '@/lib/credit-links.js'
 
 const store = useContentStore()
 
@@ -122,6 +123,14 @@ const recent = computed(() => store.recent)
 const recentMeta = computed(() => store.recentMeta)
 const recentThumb = computed(() => store.recentThumb)
 const recentLink = computed(() => store.recentLink)
+
+function formatItemCredits(item) {
+  if (Array.isArray(item?.credits)) {
+    return formatCreditSummary(item.credits)
+  }
+
+  return item?.meta || ''
+}
 
 const projectListRef = ref(null)
 const showListRef = ref(null)

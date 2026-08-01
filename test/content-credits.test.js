@@ -33,3 +33,16 @@ test('credits group in fixed order while preserving empty standards and custom l
   assert.deepEqual(grouped.custom.map(group => group.label), ['Homepage'])
   assert.equal(grouped.custom[0].entries[0].href, 'https://www.taejunyun.com')
 })
+
+test('credit summaries group names and never expose contributor URLs', () => {
+  assert.equal(typeof creditLinks.formatCreditSummary, 'function')
+
+  const summary = creditLinks.formatCreditSummary([
+    '참여작가 김현석 https://www.instagram.com/kmhnsk/',
+    '참여작가 신혜란 https://www.instagram.com/hr__s12/',
+    '기획 신수와',
+  ])
+
+  assert.equal(summary, 'Artists 김현석, 신혜란, Curating 신수와')
+  assert.doesNotMatch(summary, /instagram\.com|https?:\/\//)
+})

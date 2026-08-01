@@ -1,5 +1,6 @@
 // src/stores/lib/content-getters.js
 import { compareByRangeAsc } from './date-helpers'
+import { formatCreditSummary } from '../../lib/credit-links.js'
 
 const safeArray = (value) => (Array.isArray(value) ? value : [])
 
@@ -31,7 +32,7 @@ const getItemMeta = (item) => {
   if (!item) return ''
 
   if (Array.isArray(item.credits)) {
-    return item.credits.join(', ')
+    return formatCreditSummary(item.credits)
   }
 
   return item.meta || ''

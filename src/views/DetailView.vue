@@ -206,7 +206,7 @@ import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useContentStore } from '@/stores/content'
 import VueEasyLightbox from 'vue-easy-lightbox'
 import InstagramIcon from '@/components/icons/InstagramIcon.vue'
-import { groupContentCredits } from '@/lib/credit-links.js'
+import { formatCreditSummary, groupContentCredits } from '@/lib/credit-links.js'
 
 const props = defineProps({
   type: { type: String, required: false },
@@ -255,10 +255,7 @@ function formatSideCredits(it) {
   if (!it) return ''
 
   if (Array.isArray(it.credits)) {
-    return it.credits
-      .map(c => String(c || '').trim())
-      .filter(Boolean)
-      .join(', ')
+    return formatCreditSummary(it.credits)
   }
 
   return it.meta || it.summary || ''

@@ -119,3 +119,18 @@ export function groupContentCredits(records = []) {
 
   return { standard, custom }
 }
+
+export function formatCreditSummary(records = []) {
+  const grouped = groupContentCredits(records)
+
+  return [...grouped.standard, ...grouped.custom]
+    .map((group) => {
+      const values = group.entries
+        .map(entry => entry.value)
+        .filter(Boolean)
+
+      return values.length ? `${group.label} ${values.join(', ')}` : ''
+    })
+    .filter(Boolean)
+    .join(', ')
+}
