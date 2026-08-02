@@ -467,6 +467,7 @@ export const useContentStore = defineStore('content', {
 
     projects: makeProjectsFromSlugs(PROJECT_SLUGS, PROJECT_META),
     shows: makeShowsFromSlugs(SHOW_SLUGS, SHOW_META),
+    featuredContent: null,
     contentHydrated: false,
     contentSource: 'static',
   }),

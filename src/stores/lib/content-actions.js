@@ -1,5 +1,5 @@
 // src/stores/lib/content-actions.js
-import { fetchPublishedContents } from '@/services/contents'
+import { fetchFeaturedContent, fetchPublishedContents } from '@/services/contents'
 
 export const contentActions = {
   async hydratePublishedContents() {
@@ -7,12 +7,20 @@ export const contentActions = {
     this.contentHydrated = true
 
     try {
-      const [shows, projects] = await Promise.all([
+      const [showsResult, projectsResult, featuredResult] = await Promise.allSettled([
         fetchPublishedContents('show'),
         fetchPublishedContents('project'),
+        fetchFeaturedContent(),
       ])
+      if (showsResult.status === 'rejected') throw showsResult.reason
+      if (projectsResult.status === 'rejected') throw projectsResult.reason
+      const shows = showsResult.value
+      const projects = projectsResult.value
       this.shows = mergeBySlug(this.shows, shows.data, shows.managedSlugs, 'show')
       this.projects = mergeBySlug(this.projects, projects.data, projects.managedSlugs, 'project')
+      this.featuredContent = featuredResult.status === 'fulfilled' && featuredResult.value
+        ? { ...featuredResult.value, _kind: featuredResult.value.type }
+        : null
       this.contentSource = 'api'
     } catch {
       this.contentSource = 'static'
