@@ -145,6 +145,8 @@ test('biennale reset endpoint is POST-only, authenticated, validates edition, an
   assert.match(update.sql, /last_attempt_at = NULL/)
   assert.match(update.sql, /last_attempt_status = NULL/)
   assert.match(update.sql, /last_error = NULL/)
+  assert.match(update.sql, /claim_token = NULL/)
+  assert.match(update.sql, /claim_expires_at = NULL/)
   assert.deepEqual(update.values, [16])
 })
 

@@ -32,11 +32,18 @@ const MONTHS = {
   december: 12,
 }
 
-const KOREAN_PAVILION_URL = 'https://www.gwangjubiennale.org/'
-const ENGLISH_PAVILION_URL = 'https://www.gwangjubiennale.org/eng/'
+export const BIENNALE_OFFICIAL_URLS = Object.freeze({
+  koreanMain: 'https://www.gwangjubiennale.org/gb/exhibition/biennale/mainexhibition.do?subPage=overview',
+  englishMain: 'https://www.gwangjubiennale.org/en/exhibition/biennale/mainexhibition.do?subPage=overview',
+  koreanVenues: 'https://www.gwangjubiennale.org/gb/exhibition/biennale/venues.do',
+  englishVenues: 'https://www.gwangjubiennale.org/en/exhibition/biennale/venues.do',
+  koreanPavilion: 'https://www.gwangjubiennale.org/gb/exhibition/biennale/pavilion.do',
+  englishPavilion: 'https://www.gwangjubiennale.org/en/exhibition/biennale/pavilion.do',
+})
 const BIENNALE_SOURCE_ID = 'gwangju-biennale-pavilion'
 const BIENNALE_SOURCE_NAME = '광주비엔날레 파빌리온'
 const BIENNALE_CRAWL_TYPE = 'biennale-pavilions'
+const CLAIM_LEASE_MS = 15 * 60 * 1000
 
 export function shouldRunBiennaleCrawl(edition, today) {
   if (!edition || edition.crawlCompletedAt) return false
@@ -53,32 +60,65 @@ export async function runBiennaleEditionIfDue(env, options = {}) {
 
   if (skippedStatus) return { status: skippedStatus }
 
+  const claimToken = options.claimToken || crypto.randomUUID()
+  const claimExpiresAt = new Date(new Date(attemptAt).getTime() + CLAIM_LEASE_MS).toISOString()
+  const claimed = await claimBiennaleEdition(env, edition.edition, claimToken, claimExpiresAt, attemptAt)
+  if (!claimed) return { status: 'skipped_in_progress' }
+
   const fetchImpl = options.fetchImpl || globalThis.fetch
   const persistPavilions = options.persistPavilions || env.persistBiennalePavilions || persistBiennalePavilions
-  const runId = `biennale-pavilion-${Date.now()}`
-
-  await createBiennaleCrawlRun(env, runId, attemptAt)
+  const runId = `biennale-pavilion-${claimToken}`
+  let requestUrl = BIENNALE_OFFICIAL_URLS.koreanMain
 
   try {
-    const koreanHtml = await fetchOfficialPavilionPage(fetchImpl, KOREAN_PAVILION_URL)
-    assertMatchingEdition(parseBiennaleEdition(koreanHtml), edition)
-    let records = parseBiennalePavilions(koreanHtml, edition)
+    await createBiennaleCrawlRun(env, runId, attemptAt, requestUrl)
+    const koreanMainHtml = await fetchOfficialPage(fetchImpl, requestUrl)
+    let mainEdition = parseBiennaleMainEdition(koreanMainHtml)
+
+    if (!mainEdition) {
+      requestUrl = BIENNALE_OFFICIAL_URLS.englishMain
+      const englishMainHtml = await fetchOfficialPage(fetchImpl, requestUrl)
+      mainEdition = parseBiennaleMainEdition(englishMainHtml)
+    }
+    assertMatchingEdition(mainEdition, edition, 'main exhibition')
+
+    requestUrl = BIENNALE_OFFICIAL_URLS.koreanVenues
+    const koreanVenueHtml = await fetchOfficialPage(fetchImpl, requestUrl)
+    let venueEdition = parseBiennaleVenueEdition(koreanVenueHtml)
+    let records = parseBiennalePavilions(koreanVenueHtml, edition)
 
     if (records.length === 0 || records.some(record => !record.address)) {
-      const englishHtml = await fetchOfficialPavilionPage(fetchImpl, ENGLISH_PAVILION_URL)
-      assertMatchingEdition(parseBiennaleEdition(englishHtml), edition)
-      records = parseBiennalePavilions(englishHtml, edition)
+      requestUrl = BIENNALE_OFFICIAL_URLS.englishVenues
+      const englishVenueHtml = await fetchOfficialPage(fetchImpl, requestUrl)
+      venueEdition = parseBiennaleVenueEdition(englishVenueHtml)
+      records = parseBiennalePavilions(englishVenueHtml, edition)
     }
 
+    assertMatchingEdition(venueEdition, mainEdition, 'venue')
+    assertMatchingEdition(venueEdition, edition, 'venue')
+
     validatePavilionRecords(records)
-    const persistence = await persistPavilions(env, records, edition, { scrapedAt: attemptAt })
-    await finalizeSuccessfulBiennaleRun(env, {
+    const finalization = {
       runId,
       edition: edition.edition,
       attemptAt,
       recordsFound: records.length,
-      recordsSaved: persistence?.saved ?? records.length,
+      recordsSaved: records.length,
+      requestUrl,
+      claimToken,
+    }
+    const usesAtomicDefaultPersistence = persistPavilions === persistBiennalePavilions
+    const persistence = await persistPavilions(env, records, edition, {
+      scrapedAt: attemptAt,
+      sourceUrl: requestUrl,
+      finalization: usesAtomicDefaultPersistence ? finalization : null,
     })
+    if (!persistence?.finalized) {
+      await finalizeSuccessfulBiennaleRun(env, {
+        ...finalization,
+        recordsSaved: persistence?.saved ?? records.length,
+      })
+    }
 
     return {
       status: 'completed',
@@ -88,8 +128,18 @@ export async function runBiennaleEditionIfDue(env, options = {}) {
     }
   } catch (error) {
     const message = errorMessage(error)
-    await recordFailedBiennaleAttempt(env, edition.edition, attemptAt, message)
-    await finishBiennaleCrawlRun(env, runId, 'failed', 0, 0, message)
+    try {
+      await finalizeFailedBiennaleRun(env, {
+        runId,
+        edition: edition.edition,
+        attemptAt,
+        message,
+        requestUrl,
+        claimToken,
+      })
+    } catch {
+      await releaseBiennaleClaim(env, edition.edition, claimToken)
+    }
 
     if (error instanceof EditionMismatchError) {
       return { status: 'edition_mismatch', saved: 0 }
@@ -102,7 +152,8 @@ export async function runBiennaleEditionIfDue(env, options = {}) {
 async function readCurrentBiennaleEdition(env) {
   const incompleteEdition = await env.DB.prepare(`
     SELECT edition, edition_year, start_date, end_date,
-           crawl_completed_at, last_attempt_at, last_attempt_status, last_error
+           crawl_completed_at, last_attempt_at, last_attempt_status, last_error,
+           claim_token, claim_expires_at
     FROM biennale_editions
     WHERE crawl_completed_at IS NULL
     ORDER BY edition_year DESC
@@ -113,11 +164,29 @@ async function readCurrentBiennaleEdition(env) {
 
   return env.DB.prepare(`
     SELECT edition, edition_year, start_date, end_date,
-           crawl_completed_at, last_attempt_at, last_attempt_status, last_error
+           crawl_completed_at, last_attempt_at, last_attempt_status, last_error,
+           claim_token, claim_expires_at
     FROM biennale_editions
     ORDER BY edition_year DESC
     LIMIT 1
   `).bind().first()
+}
+
+async function claimBiennaleEdition(env, edition, claimToken, claimExpiresAt, claimedAt) {
+  const result = await env.DB.prepare(`
+    UPDATE biennale_editions
+    SET claim_token = ?,
+        claim_expires_at = ?
+    WHERE edition = ?
+      AND crawl_completed_at IS NULL
+      AND (
+        claim_token IS NULL
+        OR claim_expires_at IS NULL
+        OR claim_expires_at <= ?
+      )
+  `).bind(claimToken, claimExpiresAt, edition, claimedAt).run()
+
+  return Number(result?.meta?.changes || 0) === 1
 }
 
 function normalizeEdition(edition) {
@@ -146,7 +215,7 @@ function isoTimestamp(now) {
   return date.toISOString()
 }
 
-async function fetchOfficialPavilionPage(fetchImpl, url) {
+async function fetchOfficialPage(fetchImpl, url) {
   if (typeof fetchImpl !== 'function') throw new Error('A fetch implementation is required')
 
   const response = await fetchImpl(url, {
@@ -155,7 +224,7 @@ async function fetchOfficialPavilionPage(fetchImpl, url) {
       'user-agent': 'SpaceDDFArchiveCrawler/1.0 (+https://spaceddf.xyz)',
     },
   })
-  if (!response?.ok) throw new Error(`Biennale pavilion request failed: ${response?.status || 'unknown status'}`)
+  if (!response?.ok) throw new Error(`Biennale official page request failed: ${response?.status || 'unknown status'}`)
   return response.text()
 }
 
@@ -166,9 +235,9 @@ function validatePavilionRecords(records) {
 
 class EditionMismatchError extends Error {}
 
-function assertMatchingEdition(discoveredEdition, storedEdition) {
+function assertMatchingEdition(discoveredEdition, storedEdition, pageLabel = 'pavilion') {
   if (!discoveredEdition) {
-    throw new EditionMismatchError('Official pavilion edition metadata is missing')
+    throw new EditionMismatchError(`Official ${pageLabel} edition metadata is missing`)
   }
 
   const comparisons = [
@@ -182,45 +251,35 @@ function assertMatchingEdition(discoveredEdition, storedEdition) {
     const expected = storedEdition[field]
     const discovered = discoveredEdition[field]
     if (String(discovered) !== String(expected)) {
-      throw new EditionMismatchError(`Official pavilion ${label} mismatch: stored ${expected}, found ${discovered}`)
+      throw new EditionMismatchError(`Official ${pageLabel} ${label} mismatch: stored ${expected}, found ${discovered}`)
     }
   }
 }
 
-async function createBiennaleCrawlRun(env, runId, startedAt) {
+async function createBiennaleCrawlRun(env, runId, startedAt, requestUrl) {
   await env.DB.prepare(`
     INSERT INTO crawl_runs (id, source_id, status, crawl_type, request_url, started_at)
     VALUES (?, ?, 'running', ?, ?, ?)
-  `).bind(runId, BIENNALE_SOURCE_ID, BIENNALE_CRAWL_TYPE, KOREAN_PAVILION_URL, startedAt).run()
+  `).bind(runId, BIENNALE_SOURCE_ID, BIENNALE_CRAWL_TYPE, requestUrl, startedAt).run()
 }
 
-async function finishBiennaleCrawlRun(env, runId, status, recordsFound, recordsSaved, message = null) {
-  await buildFinishBiennaleCrawlRunStatement(
-    env,
-    runId,
-    status,
-    recordsFound,
-    recordsSaved,
-    message,
-  ).run()
-}
-
-function buildFinishBiennaleCrawlRunStatement(env, runId, status, recordsFound, recordsSaved, message = null) {
+function buildFinishBiennaleCrawlRunStatement(env, runId, status, recordsFound, recordsSaved, message = null, requestUrl = null) {
   return env.DB.prepare(`
     UPDATE crawl_runs
     SET status = ?,
         finished_at = ?,
         records_found = ?,
         records_saved = ?,
-        error_message = ?
+        error_message = ?,
+        request_url = COALESCE(?, request_url)
     WHERE id = ?
-  `).bind(status, new Date().toISOString(), recordsFound, recordsSaved, message, runId)
+  `).bind(status, new Date().toISOString(), recordsFound, recordsSaved, message, requestUrl, runId)
 }
 
 export async function persistBiennalePavilions(env, records, edition, options = {}) {
   const scrapedAt = options.scrapedAt || new Date().toISOString()
   const statements = records.flatMap(pavilion => {
-    const record = archiveRecordForPavilion(pavilion, edition, scrapedAt)
+    const record = archiveRecordForPavilion(pavilion, edition, scrapedAt, options.sourceUrl)
     record.venueId = venueIdForRecord(record)
     const exhibitionId = biennaleExhibitionId(record)
 
@@ -233,23 +292,55 @@ export async function persistBiennalePavilions(env, records, edition, options = 
     ]
   })
 
-  // D1 batch executes this ordered sequence as one transaction. Stale records
-  // are deactivated last, only if all replacement records have been written.
+  // D1 batch executes this ordered sequence as one transaction. Seen records
+  // reset their omission state in the upsert. Unseen records are reconciled
+  // only after every replacement record has been prepared.
   statements.push(env.DB.prepare(`
     UPDATE exhibitions
-    SET active = 0, updated_at = ?
+    SET biennale_miss_count = biennale_miss_count + 1,
+        active = CASE
+          WHEN biennale_miss_count + 1 >= 2 THEN 0
+          ELSE active
+        END,
+        updated_at = ?
     WHERE source_name = ?
       AND edition = ?
-      AND scraped_at < ?
       AND active = 1
+      AND (
+        biennale_last_seen_at IS NULL
+        OR biennale_last_seen_at < ?
+      )
   `).bind(scrapedAt, BIENNALE_SOURCE_NAME, edition.edition, scrapedAt))
 
-  await env.DB.batch(statements)
+  if (options.finalization) {
+    statements.push(
+      buildFinishBiennaleCrawlRunStatement(
+        env,
+        options.finalization.runId,
+        'success',
+        options.finalization.recordsFound,
+        options.finalization.recordsSaved,
+        null,
+        options.finalization.requestUrl,
+      ),
+      buildSuccessfulBiennaleAttemptStatement(
+        env,
+        options.finalization.edition,
+        options.finalization.attemptAt,
+        options.finalization.claimToken,
+      ),
+    )
+  }
 
-  return { saved: records.length }
+  const results = await env.DB.batch(statements)
+  if (options.finalization && Number(results?.at(-1)?.meta?.changes || 0) !== 1) {
+    throw new Error('Biennale crawl claim was lost before atomic persistence finalization')
+  }
+
+  return { saved: records.length, finalized: Boolean(options.finalization) }
 }
 
-function archiveRecordForPavilion(pavilion, edition, scrapedAt) {
+function archiveRecordForPavilion(pavilion, edition, scrapedAt, sourceUrl = BIENNALE_OFFICIAL_URLS.koreanVenues) {
   const title = `${pavilion.pavilionName} Pavilion`
   const externalId = pavilion.dedupeKey
   const publicRecord = Number(pavilion.edition) === Number(edition.edition)
@@ -262,7 +353,7 @@ function archiveRecordForPavilion(pavilion, edition, scrapedAt) {
     sourceRecordId: `biennale-pavilion-${encodeURIComponent(externalId)}`,
     sourceId: BIENNALE_SOURCE_ID,
     externalId,
-    sourceUrl: pavilion.mapUrl || KOREAN_PAVILION_URL,
+    sourceUrl,
     title,
     normalizedTitle: normalizeForKey(title),
     venueName: pavilion.venueName,
@@ -293,7 +384,7 @@ function archiveRecordForPavilion(pavilion, edition, scrapedAt) {
     description: pavilion.hours ? `Hours: ${pavilion.hours}` : '',
     artists: [],
     categories: [],
-    canonicalSourceUrl: KOREAN_PAVILION_URL,
+    canonicalSourceUrl: sourceUrl,
     sourceName: BIENNALE_SOURCE_NAME,
     sourceType: 'crawl',
     scrapedAt,
@@ -332,9 +423,10 @@ export function buildUpsertBiennaleExhibitionStatement(env, record) {
       address, lat, lng, start_date, end_date, status, summary, description, thumbnail_url,
       canonical_source_url, source_name, source_type, scraped_at, visibility, archive_type,
       region_confidence, review_reason, updated_at, edition, edition_year, pavilion_name,
-      venue_group_key, geocode_status, crawl_warning, active
+      venue_group_key, geocode_status, crawl_warning, biennale_last_seen_at,
+      biennale_miss_count, active
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 1)
     ON CONFLICT(dedupe_key) DO UPDATE SET
       title = excluded.title,
       normalized_title = excluded.normalized_title,
@@ -365,6 +457,8 @@ export function buildUpsertBiennaleExhibitionStatement(env, record) {
       venue_group_key = excluded.venue_group_key,
       geocode_status = excluded.geocode_status,
       crawl_warning = excluded.crawl_warning,
+      biennale_last_seen_at = excluded.biennale_last_seen_at,
+      biennale_miss_count = 0,
       active = 1,
       updated_at = excluded.updated_at
   `).bind(
@@ -400,35 +494,73 @@ export function buildUpsertBiennaleExhibitionStatement(env, record) {
     record.venueGroupKey,
     record.geocodeStatus,
     record.crawlWarning,
+    record.scrapedAt,
   )
 }
 
-async function finalizeSuccessfulBiennaleRun(env, { runId, edition, attemptAt, recordsFound, recordsSaved }) {
-  await env.DB.batch([
-    buildFinishBiennaleCrawlRunStatement(env, runId, 'success', recordsFound, recordsSaved),
-    buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt),
+async function finalizeSuccessfulBiennaleRun(env, {
+  runId,
+  edition,
+  attemptAt,
+  recordsFound,
+  recordsSaved,
+  requestUrl,
+  claimToken,
+}) {
+  const results = await env.DB.batch([
+    buildFinishBiennaleCrawlRunStatement(env, runId, 'success', recordsFound, recordsSaved, null, requestUrl),
+    buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt, claimToken),
   ])
+  if (Number(results?.[1]?.meta?.changes || 0) !== 1) {
+    throw new Error('Biennale crawl claim was lost before success finalization')
+  }
 }
 
-function buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt) {
+function buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt, claimToken) {
   return env.DB.prepare(`
     UPDATE biennale_editions
     SET crawl_completed_at = ?,
         last_attempt_at = ?,
         last_attempt_status = 'success',
-        last_error = NULL
+        last_error = NULL,
+        claim_token = NULL,
+        claim_expires_at = NULL
     WHERE edition = ?
-  `).bind(attemptAt, attemptAt, edition)
+      AND claim_token = ?
+  `).bind(attemptAt, attemptAt, edition, claimToken)
 }
 
-async function recordFailedBiennaleAttempt(env, edition, attemptAt, message) {
-  await env.DB.prepare(`
+async function finalizeFailedBiennaleRun(env, {
+  runId,
+  edition,
+  attemptAt,
+  message,
+  requestUrl,
+  claimToken,
+}) {
+  await env.DB.batch([
+    buildFinishBiennaleCrawlRunStatement(env, runId, 'failed', 0, 0, message, requestUrl),
+    env.DB.prepare(`
     UPDATE biennale_editions
     SET last_attempt_at = ?,
         last_attempt_status = 'failed',
-        last_error = ?
+        last_error = ?,
+        claim_token = NULL,
+        claim_expires_at = NULL
     WHERE edition = ?
-  `).bind(attemptAt, message, edition).run()
+      AND claim_token = ?
+  `).bind(attemptAt, message, edition, claimToken),
+  ])
+}
+
+async function releaseBiennaleClaim(env, edition, claimToken) {
+  await env.DB.prepare(`
+    UPDATE biennale_editions
+    SET claim_token = NULL,
+        claim_expires_at = NULL
+    WHERE edition = ?
+      AND claim_token = ?
+  `).bind(edition, claimToken).run()
 }
 
 function errorMessage(error) {
@@ -436,25 +568,40 @@ function errorMessage(error) {
 }
 
 export function parseBiennaleEdition(html) {
-  const heading = headingBlocks(html).find(block => /\bgwangju\s+biennale\s+pavilion\b/i.test(block.text))
-  if (!heading) return null
+  return parseBiennaleMainEdition(html)
+}
 
-  const editionMatch = heading.text.match(/\b(\d+)(?:st|nd|rd|th)?\s+gwangju\s+biennale\b/i)
-  const dates = parseDateRange(heading.content)
-  if (!editionMatch || !dates) return null
+export function parseBiennaleMainEdition(html) {
+  const visibleHtml = stripIgnoredHtml(html)
 
-  return {
-    edition: Number(editionMatch[1]),
-    editionYear: dates.year,
-    startDate: dates.startDate,
-    endDate: dates.endDate,
+  for (const heading of headingBlocks(visibleHtml).filter(block => block.level <= 3)) {
+    const boundedText = cleanText(`${heading.text} ${heading.content}`)
+    const edition = editionNumberFromText(boundedText)
+    const dates = parseDateRange(boundedText)
+    if (edition && dates) return editionMetadata(edition.edition, edition.editionYear, dates)
   }
+
+  return null
+}
+
+export function parseBiennaleVenueEdition(html) {
+  const visibleHtml = stripIgnoredHtml(html)
+  const pageTitle = menuTitleText(visibleHtml)
+  const edition = editionNumberFromText(pageTitle)
+  const dates = parseDateRange(cleanText(visibleHtml))
+  if (!edition || !dates) return null
+  if (edition.editionYear && edition.editionYear !== dates.year) return null
+
+  return editionMetadata(edition.edition, edition.editionYear, dates)
 }
 
 export function parseBiennalePavilions(html, edition) {
   if (!edition?.edition || !edition.startDate || !edition.endDate) return []
 
-  return headingBlocks(html)
+  const section = pavilionVenueSection(stripIgnoredHtml(html))
+  if (!section) return []
+
+  return headingBlocks(section)
     .filter(block => block.level === 4)
     .map(block => parsePavilionBlock(block, edition))
     .filter(Boolean)
@@ -529,9 +676,18 @@ function headingBlocks(html) {
 
 function parseDateRange(content) {
   const text = cleanText(content)
+  const dotMatch = text.match(/\b(\d{4})\s*[.]\s*(\d{1,2})\s*[.]\s*(\d{1,2})\s*[-–—~]\s*(\d{4})\s*[.]\s*(\d{1,2})\s*[.]\s*(\d{1,2})\b/)
+  if (dotMatch) {
+    return {
+      year: Number(dotMatch[1]),
+      startDate: formatDate(Number(dotMatch[1]), Number(dotMatch[2]), Number(dotMatch[3])),
+      endDate: formatDate(Number(dotMatch[4]), Number(dotMatch[5]), Number(dotMatch[6])),
+    }
+  }
+
   const monthNames = Object.keys(MONTHS).join('|')
   const pattern = new RegExp(
-    `\\b(${monthNames})\\s+(\\d{1,2})(?:,\\s*(\\d{4}))?\\s*[-–—~]\\s*(${monthNames})\\s+(\\d{1,2}),\\s*(\\d{4})\\b`,
+    `\\b(${monthNames})\\s+(\\d{1,2})(?:\\s*\\([^)]*\\))?(?:,\\s*(\\d{4}))?\\s*[-–—~]\\s*(${monthNames})\\s+(\\d{1,2})(?:\\s*\\([^)]*\\))?,\\s*(\\d{4})\\b`,
     'i',
   )
   const match = text.match(pattern)
@@ -552,8 +708,52 @@ function parseDateRange(content) {
   }
 }
 
+function editionMetadata(edition, explicitYear, dates) {
+  return {
+    edition,
+    editionYear: explicitYear || dates.year,
+    startDate: dates.startDate,
+    endDate: dates.endDate,
+  }
+}
+
+function editionNumberFromText(value) {
+  const text = cleanText(value)
+  const korean = text.match(/제\s*(\d+)\s*회\s*광주비엔날레(?:\s*\((\d{4})\))?/)
+  if (korean) return { edition: Number(korean[1]), editionYear: Number(korean[2]) || null }
+
+  const english = text.match(/\b(\d+)(?:st|nd|rd|th)\s+(?:Gwangju\s+)?Biennale(?:\s*\((\d{4})\))?/i)
+  if (english) return { edition: Number(english[1]), editionYear: Number(english[2]) || null }
+  return null
+}
+
+function menuTitleText(html) {
+  const headings = String(html || '').match(/<h[12]\b[^>]*class\s*=\s*(?:"[^"]*menu-big-title[^"]*"|'[^']*menu-big-title[^']*')[^>]*>[\s\S]*?<\/h[12]\s*>/gi) || []
+  return cleanText(headings[0] || '')
+}
+
+function pavilionVenueSection(html) {
+  const source = String(html || '')
+  const headings = headingBlocks(source)
+  const sectionHeading = headings.find(block => block.level === 3 && (
+    /gwangju\s+biennale\s+pavilion\s*\|\s*venue/i.test(block.text)
+    || /광주비엔날레\s*파빌리온\s*\|\s*(?:장소|전시장)/.test(block.text)
+  ))
+  if (!sectionHeading) return ''
+
+  const nextSection = headings.find(block => block.start > sectionHeading.start && block.level <= 3)
+  return source.slice(sectionHeading.contentStart, nextSection?.start || source.length)
+}
+
+function stripIgnoredHtml(html) {
+  return String(html || '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+}
+
 function labeledValue(content, label) {
-  const labelPattern = new RegExp(`^${escapeRegExp(label)}\\s*:\\s*`, 'i')
+  const labels = label === 'Address' ? ['Address', '주소'] : ['Hours', '관람시간', '운영시간']
+  const labelPattern = new RegExp(`^(?:${labels.map(escapeRegExp).join('|')})\\s*:\\s*`, 'i')
   const labeledBlock = labeledBlockTexts(content).find(text => labelPattern.test(text))
   return labeledBlock ? labeledBlock.replace(labelPattern, '').trim() : ''
 }
@@ -629,7 +829,9 @@ function normalizeKeyComponent(value) {
 
 function labeledBlockTexts(content) {
   const blocks = []
-  const source = String(content || '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+  const source = String(content || '')
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+    .replace(/<a\b[^>]*>[\s\S]*?<\/a\s*>/gi, '')
   const pattern = /<(p|div)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi
   let match
 

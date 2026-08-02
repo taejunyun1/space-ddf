@@ -465,9 +465,21 @@ Google Maps API key는 HTTP referrer 제한 필수
 
 ### 광주비엔날레 파빌리온 수집
 
-예약 작업과 인증된 `POST /api/archive/crawl/gwangju-biennale`는 모두 동일한 회차 게이트를 사용한다. 저장된 회차의 전시 기간 안에서만 공식 페이지를 요청하며, 수집과 저장이 성공하면 `crawl_completed_at`을 기록해 해당 회차는 한 번만 수집한다. 실패한 실행은 완료 상태를 남기지 않아 다음 예약 실행에서 재시도한다. 요청의 `force` 같은 쿼리나 본문 값으로 이 게이트를 우회할 수 없다.
+예약 작업과 인증된 `POST /api/archive/crawl/gwangju-biennale`는 모두 동일한 회차 게이트를 사용한다. 저장된 회차의 전시 기간 안에서만 공식 페이지를 요청하며, 네트워크 요청 전에 D1에 15분 임대 `claim_token`/`claim_expires_at`를 원자적으로 설정한다. 동시 실행 중 임대를 얻지 못한 요청은 `skipped_in_progress`를 반환하고 공식 사이트를 요청하지 않는다. 실패하면 완료 상태를 남기지 않고 자신의 임대를 해제하며, 유기된 임대는 만료 후 다음 실행이 회수한다.
 
-공식 정보가 바뀌어 긴급 재수집이 필요할 때에만 인증된 운영자가 명시적 회차 번호로 아래 요청을 보낸다. 이 요청은 지정된 회차 하나의 완료 및 마지막 시도 필드만 비우며, 다음 일반 실행도 전시 기간 게이트를 다시 통과해야 한다.
+공식 소스는 2026-08-02에 확인한 다음 경로로 제한한다.
+
+- 한국어 본전시(우선): `https://www.gwangjubiennale.org/gb/exhibition/biennale/mainexhibition.do?subPage=overview`
+- 영어 본전시(한국어 회차 메타데이터 누락 시만): `https://www.gwangjubiennale.org/en/exhibition/biennale/mainexhibition.do?subPage=overview`
+- 한국어 장소(우선): `https://www.gwangjubiennale.org/gb/exhibition/biennale/venues.do`
+- 영어 장소(한국어 장소 블록·주소 누락 시만): `https://www.gwangjubiennale.org/en/exhibition/biennale/venues.do`
+- 파빌리온 개요: `https://www.gwangjubiennale.org/gb/exhibition/biennale/pavilion.do`, `https://www.gwangjubiennale.org/en/exhibition/biennale/pavilion.do`
+
+먼저 본전시 페이지에서 회차·연도·시작일·종료일을 검증한 뒤 실제 장소 페이지를 별도로 요청한다. 장소 페이지도 독립적으로 같은 회차와 기간을 입증해야 한다. 2026-08-02 현재 본전시는 제16회 `2026-09-05`~`2026-11-15`를 표시하지만 현재 장소 페이지에는 검증 가능한 장소·기간 내용이 아직 없고 파빌리온 개요는 제15회 내용을 유지하고 있다. 이 상태는 `edition_mismatch`로 기록하고 전시 데이터를 쓰거나 비활성화하지 않는다.
+
+완전한 응답을 검증한 뒤 보인 레코드는 `biennale_last_seen_at`을 갱신하고 `biennale_miss_count=0`으로 초기화한다. 보이지 않는 같은 회차의 활성 레코드는 성공한 재수집마다 누락 횟수를 하나 늘리며, 연속 2회 누락될 때만 비활성화한다. 신규/보인 저장, 누락 조정, `crawl_runs` 성공 기록, `crawl_completed_at`, 임대 해제는 하나의 D1 배치에서 원자적으로 처리한다. 성공 후 동일 회차는 재실행하지 않으며, 요청의 `force` 같은 쿼리나 본문 값으로 이 게이트를 우회할 수 없다.
+
+공식 정보가 바뀌어 긴급 재수집이 필요할 때에만 인증된 운영자가 명시적 회차 번호로 아래 요청을 보낸다. 이 요청은 지정된 회차 하나의 완료·마지막 시도·임대 필드를 비우며, 다음 일반 실행도 전시 기간 게이트를 다시 통과해야 한다. 재수집은 반드시 이 인증된 초기화 후에만 수행한다.
 
 ```bash
 curl -X POST https://space-ddf-archive-api.taejunyun.workers.dev/api/archive/crawl/gwangju-biennale/reset \

@@ -413,7 +413,9 @@ async function resetBiennaleCrawl(request, env) {
     SET crawl_completed_at = NULL,
         last_attempt_at = NULL,
         last_attempt_status = NULL,
-        last_error = NULL
+        last_error = NULL,
+        claim_token = NULL,
+        claim_expires_at = NULL
     WHERE edition = ?
   `).bind(edition).run()
 
