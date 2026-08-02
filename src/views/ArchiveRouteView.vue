@@ -1,5 +1,50 @@
 <template>
   <main class="route-planner-page">
+    <aside class="route-planner-panel" aria-labelledby="route-controls-title">
+      <div class="route-controls">
+        <h2 id="route-controls-title">오늘의 이동 경로</h2>
+
+        <fieldset class="route-fieldset">
+          <legend>출발지</legend>
+          <label v-for="origin in ARCHIVE_ROUTE_ORIGINS" :key="origin.id" class="route-choice">
+            <input v-model="originId" type="radio" name="archive-route-origin" :value="origin.id">
+            <span>{{ origin.label }}</span>
+          </label>
+        </fieldset>
+
+        <div class="route-line" aria-label="선택한 이동 경로">
+          <div>
+            <span>출발</span>
+            <strong>{{ selectedOrigin.label }}</strong>
+          </div>
+          <div>
+            <span>도착</span>
+            <strong>{{ selectedItem ? selectedItem.venue : '목적지를 선택하세요' }}</strong>
+            <small v-if="selectedItem">{{ selectedItem.address || selectedItem.cityLabel }}</small>
+          </div>
+        </div>
+
+        <fieldset class="route-fieldset">
+          <legend>이동 방식</legend>
+          <label v-for="mode in ARCHIVE_ROUTE_MODES" :key="mode.id" class="route-choice">
+            <input v-model="modeId" type="radio" name="archive-route-mode" :value="mode.id">
+            <span>{{ mode.label }}</span>
+          </label>
+        </fieldset>
+
+        <a
+          v-if="directionsUrl"
+          class="route-directions-link ddf-focusable"
+          :href="directionsUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google Maps에서 길찾기
+        </a>
+        <p v-else class="route-directions-help">목적지를 선택하면 길찾기 링크가 활성화됩니다.</p>
+      </div>
+    </aside>
+
     <section class="route-destinations" aria-labelledby="route-planner-title">
       <RouterLink class="route-back-link ddf-focusable" :to="{ name: 'regional-archive' }">
         ← 지역 아카이브로 돌아가기
@@ -58,50 +103,6 @@
       <p v-else-if="!loading" class="route-empty">조건에 맞는 진행 중 전시가 없습니다.</p>
     </section>
 
-    <aside class="route-planner-panel" aria-labelledby="route-controls-title">
-      <h2 id="route-controls-title">오늘의 이동 경로</h2>
-
-      <div class="route-controls">
-        <fieldset class="route-fieldset">
-          <legend>출발지</legend>
-          <label v-for="origin in ARCHIVE_ROUTE_ORIGINS" :key="origin.id" class="route-choice">
-            <input v-model="originId" type="radio" name="archive-route-origin" :value="origin.id">
-            <span>{{ origin.label }}</span>
-          </label>
-        </fieldset>
-
-        <div class="route-line" aria-label="선택한 이동 경로">
-          <div>
-            <span>출발</span>
-            <strong>{{ selectedOrigin.label }}</strong>
-          </div>
-          <div>
-            <span>도착</span>
-            <strong>{{ selectedItem ? selectedItem.venue : '목적지를 선택하세요' }}</strong>
-            <small v-if="selectedItem">{{ selectedItem.address || selectedItem.cityLabel }}</small>
-          </div>
-        </div>
-
-        <fieldset class="route-fieldset">
-          <legend>이동 방식</legend>
-          <label v-for="mode in ARCHIVE_ROUTE_MODES" :key="mode.id" class="route-choice">
-            <input v-model="modeId" type="radio" name="archive-route-mode" :value="mode.id">
-            <span>{{ mode.label }}</span>
-          </label>
-        </fieldset>
-
-        <a
-          v-if="directionsUrl"
-          class="route-directions-link ddf-focusable"
-          :href="directionsUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Google Maps에서 길찾기
-        </a>
-        <p v-else class="route-directions-help">목적지를 선택하면 길찾기 링크가 활성화됩니다.</p>
-      </div>
-    </aside>
   </main>
 </template>
 
@@ -169,6 +170,7 @@ async function loadArchiveItems() {
   min-height: 100dvh;
   padding: var(--ddf-page-top) var(--ddf-page-x) 60px;
   display: grid;
+  grid-template-areas: 'destinations planner';
   grid-template-columns: minmax(0, 1fr) minmax(300px, 380px);
   gap: var(--ddf-grid-gap);
   color: var(--ddf-ink);
@@ -178,6 +180,10 @@ async function loadArchiveItems() {
 .route-destinations,
 .route-planner-panel {
   min-width: 0;
+}
+
+.route-destinations {
+  grid-area: destinations;
 }
 
 .route-back-link {
@@ -292,6 +298,7 @@ async function loadArchiveItems() {
 }
 
 .route-planner-panel {
+  grid-area: planner;
   align-self: start;
   position: sticky;
   top: 24px;
@@ -299,7 +306,7 @@ async function loadArchiveItems() {
   padding: 20px;
 }
 
-.route-planner-panel h2 {
+.route-controls h2 {
   margin: 0;
   font-size: 18px;
 }
@@ -321,6 +328,11 @@ async function loadArchiveItems() {
 
 .route-choice input {
   accent-color: var(--ddf-ink);
+}
+
+.route-choice input:focus-visible {
+  outline: 2px solid var(--ddf-line);
+  outline-offset: 3px;
 }
 
 .route-line {
@@ -370,29 +382,36 @@ async function loadArchiveItems() {
 
 @media (max-width: 780px) {
   .route-planner-page {
+    grid-template-areas: 'destinations';
     grid-template-columns: 1fr;
-    gap: 28px;
+    gap: 0;
     padding: 58px 16px 20px;
   }
 
   .route-planner-panel {
+    grid-area: auto;
     position: static;
+    height: 0;
     border: 0;
     padding: 0;
   }
 
-  .route-planner-panel h2 {
-    margin-bottom: 12px;
-  }
-
   .route-controls {
-    position: sticky;
+    position: fixed;
+    right: 16px;
+    left: 16px;
     bottom: 0;
-    z-index: 1;
+    z-index: 10;
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
     border: 1px solid var(--ddf-line);
     padding: 14px;
     padding-bottom: calc(14px + env(safe-area-inset-bottom));
     background: var(--ddf-paper);
+  }
+
+  .route-destinations {
+    padding-bottom: calc(520px + env(safe-area-inset-bottom));
   }
 
   .route-fieldset:first-child legend {

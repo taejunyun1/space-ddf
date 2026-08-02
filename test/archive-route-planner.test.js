@@ -68,6 +68,21 @@ test('planner follows DDF tokens and responsive layout without embedded maps', (
   assert.doesNotMatch(view, /<iframe|google-map-canvas/)
 })
 
+test('mobile planner controls are a viewport bottom sheet before the destination list', () => {
+  const view = readProjectFile('src/views/ArchiveRouteView.vue')
+  const panelIndex = view.indexOf('<aside class="route-planner-panel"')
+  const destinationListIndex = view.indexOf('class="route-destination-list"')
+
+  assert.ok(panelIndex >= 0 && panelIndex < destinationListIndex)
+  assert.match(view, /@media \(max-width:\s*780px\)[\s\S]*?\.route-controls\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?bottom:\s*0;/)
+  assert.match(view, /@media \(max-width:\s*780px\)[\s\S]*?\.route-destinations\s*\{[\s\S]*?padding-bottom:\s*calc\([^)]*env\(safe-area-inset-bottom\)\)/)
+})
+
+test('route planner radio inputs keep the DDF keyboard focus treatment', () => {
+  const view = readProjectFile('src/views/ArchiveRouteView.vue')
+  assert.match(view, /\.route-choice input:focus-visible\s*\{[\s\S]*?outline:\s*2px solid var\(--ddf-line\);[\s\S]*?outline-offset:\s*3px;/)
+})
+
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8')
 }
