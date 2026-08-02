@@ -630,8 +630,9 @@ async function loadArchiveItems() {
 }
 
 .route-directions-link:hover {
-  color: var(--ddf-ink);
-  background: var(--ddf-paper);
+  color: var(--ddf-paper);
+  background: var(--ddf-ink);
+  box-shadow: inset 0 0 0 2px var(--ddf-paper);
 }
 
 @media (max-width: 780px) {

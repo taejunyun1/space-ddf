@@ -107,6 +107,7 @@ test('planner exposes ordered multi-selection controls and a readable route acti
   assert.match(view, /곳 경로 열기/)
   assert.match(view, /<svg[^>]*aria-hidden="true"/)
   assert.match(view, /min-height:\s*48px/)
+  assert.match(view, /\.route-directions-link:hover\s*{[\s\S]*?color:\s*var\(--ddf-paper\);[\s\S]*?background:\s*var\(--ddf-ink\);/)
 })
 
 test('planner follows DDF tokens and responsive layout without embedded maps', () => {
