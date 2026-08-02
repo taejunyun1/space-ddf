@@ -432,6 +432,8 @@ GET /api/archive/crawl/runs
 GET /api/archive/nearby?lat={latitude}&lng={longitude}
 POST /api/archive/crawl/artmap
 POST /api/archive/crawl/gwangju-museum
+POST /api/archive/crawl/gwangju-biennale
+POST /api/archive/crawl/gwangju-biennale/reset
 POST /api/archive/transport/sync
 ```
 
@@ -454,10 +456,25 @@ transport_points
 
 ```txt
 POST /api/archive/crawl/artmap 호출에는 x-crawl-secret 필요
+POST /api/archive/crawl/gwangju-biennale 및 /reset 호출에는 x-crawl-secret 필요
 POST /api/archive/transport/sync 호출에는 x-crawl-secret 필요
 Google Maps API key는 HTTP referrer 제한 필수
 이미지는 저작권 검토 전 직접 저장하지 않고 원문 URL만 보관
 ```
+
+### 광주비엔날레 파빌리온 수집
+
+예약 작업과 인증된 `POST /api/archive/crawl/gwangju-biennale`는 모두 동일한 회차 게이트를 사용한다. 저장된 회차의 전시 기간 안에서만 공식 페이지를 요청하며, 수집과 저장이 성공하면 `crawl_completed_at`을 기록해 해당 회차는 한 번만 수집한다. 실패한 실행은 완료 상태를 남기지 않아 다음 예약 실행에서 재시도한다. 요청의 `force` 같은 쿼리나 본문 값으로 이 게이트를 우회할 수 없다.
+
+공식 정보가 바뀌어 긴급 재수집이 필요할 때에만 인증된 운영자가 명시적 회차 번호로 아래 요청을 보낸다. 이 요청은 지정된 회차 하나의 완료 및 마지막 시도 필드만 비우며, 다음 일반 실행도 전시 기간 게이트를 다시 통과해야 한다.
+
+```bash
+curl -X POST https://space-ddf-archive-api.taejunyun.workers.dev/api/archive/crawl/gwangju-biennale/reset \
+  -H "x-crawl-secret: <SECRET>" -H "content-type: application/json" \
+  -d '{"edition":16}'
+```
+
+`edition`은 양의 정수여야 한다. 존재하지 않는 회차는 `404`, 잘못된 값은 `400`으로 응답한다.
 
 ### 주변 교통정보 동기화
 

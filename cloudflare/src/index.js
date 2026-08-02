@@ -1,4 +1,5 @@
 import { crawlArtmap } from './artmap-crawler.js'
+import { runBiennaleEditionIfDue } from './biennale-pavilion-crawler.js'
 import { crawlGwangjuMuseum } from './gwangju-museum-crawler.js'
 import { importManualExhibitions } from './manual-source.js'
 import { listNearbyTransport } from './nearby-transport.js'
@@ -394,6 +395,32 @@ async function runGwangjuMuseumCrawl(request, env) {
   return json(result)
 }
 
+async function runBiennaleCrawl(request, env) {
+  if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+
+  return json(await runBiennaleEditionIfDue(env, { now: new Date() }))
+}
+
+async function resetBiennaleCrawl(request, env) {
+  if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+
+  const body = await parseJsonBody(request)
+  const edition = body.edition
+  if (!Number.isInteger(edition) || edition <= 0) return error('A positive integer edition is required', 400)
+
+  const result = await env.DB.prepare(`
+    UPDATE biennale_editions
+    SET crawl_completed_at = NULL,
+        last_attempt_at = NULL,
+        last_attempt_status = NULL,
+        last_error = NULL
+    WHERE edition = ?
+  `).bind(edition).run()
+
+  if (!result?.meta?.changes) return error('Biennale edition not found', 404)
+  return json({ edition, status: 'reset' })
+}
+
 // Manual / submission entry for alternative spaces. Accepts a single record or
 // { items: [...] }. Upserts into the same exhibitions table as sourceType=manual.
 async function runManualUpsert(request, env) {
@@ -433,6 +460,16 @@ export default {
         return runGwangjuMuseumCrawl(request, env)
       }
 
+      if (url.pathname === '/api/archive/crawl/gwangju-biennale') {
+        if (request.method !== 'POST') return error('Method not allowed', 405)
+        return runBiennaleCrawl(request, env)
+      }
+
+      if (url.pathname === '/api/archive/crawl/gwangju-biennale/reset') {
+        if (request.method !== 'POST') return error('Method not allowed', 405)
+        return resetBiennaleCrawl(request, env)
+      }
+
       if (url.pathname === '/api/archive/manual') {
         if (request.method !== 'POST') return error('Method not allowed', 405)
         return runManualUpsert(request, env)
@@ -468,6 +505,7 @@ export default {
     ctx.waitUntil(Promise.allSettled([
       runScheduledCrawl(env, 'artmap', 'artmap-scheduled', () => crawlArtmap(env, { visibility: 'public' })),
       runScheduledCrawl(env, 'gwangju-museum-of-art', 'gwangju-museum-scheduled', () => crawlGwangjuMuseum(env, { visibility: 'public' })),
+      runScheduledCrawl(env, 'gwangju-biennale-pavilion', 'biennale-pavilions-scheduled', () => runBiennaleEditionIfDue(env, { now: new Date() })),
     ]))
   },
 }

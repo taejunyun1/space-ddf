@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
 const test = require('node:test')
 
 test('shared crawl-secret helper verifies equal and unequal values asynchronously', async () => {
@@ -70,6 +71,88 @@ test('transport sync API requires the crawl secret and accepts only POST', async
   assert.equal(get.status, 405)
 })
 
+test('biennale crawl endpoint is POST-only, authenticated, and keeps the edition gate', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+  const get = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale'),
+    { DB: createBiennaleDb(), CRAWL_SECRET: 'secret' },
+  )
+  const denied = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale', { method: 'POST' }),
+    { DB: createBiennaleDb(), CRAWL_SECRET: 'secret' },
+  )
+  const completedDb = createBiennaleDb({ crawl_completed_at: '2026-09-06T00:00:00.000Z' })
+  const completed = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale?force=true', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-crawl-secret': 'secret' },
+      body: JSON.stringify({ force: true }),
+    }),
+    { DB: completedDb, CRAWL_SECRET: 'secret' },
+  )
+
+  assert.equal(get.status, 405)
+  assert.equal(denied.status, 401)
+  assert.equal(completed.status, 200)
+  assert.deepEqual(await completed.json(), { status: 'skipped_completed' })
+  assert.equal(completedDb.calls.some(call => /INSERT INTO crawl_runs/i.test(call.sql)), false)
+})
+
+test('biennale reset endpoint is POST-only, authenticated, validates edition, and only resets that edition', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+  const get = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale/reset'),
+    { DB: createBiennaleDb(), CRAWL_SECRET: 'secret' },
+  )
+  const denied = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale/reset', { method: 'POST' }),
+    { DB: createBiennaleDb(), CRAWL_SECRET: 'secret' },
+  )
+  const invalid = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale/reset', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-crawl-secret': 'secret' },
+      body: JSON.stringify({ edition: '16 OR 1=1' }),
+    }),
+    { DB: createBiennaleDb(), CRAWL_SECRET: 'secret' },
+  )
+  const missing = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale/reset', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-crawl-secret': 'secret' },
+      body: JSON.stringify({ edition: 17 }),
+    }),
+    { DB: createBiennaleDb(), CRAWL_SECRET: 'secret' },
+  )
+  const db = createBiennaleDb()
+  const reset = await worker.fetch(
+    new Request('https://archive.test/api/archive/crawl/gwangju-biennale/reset', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-crawl-secret': 'secret' },
+      body: JSON.stringify({ edition: 16 }),
+    }),
+    { DB: db, CRAWL_SECRET: 'secret' },
+  )
+
+  assert.equal(get.status, 405)
+  assert.equal(denied.status, 401)
+  assert.equal(invalid.status, 400)
+  assert.equal(missing.status, 404)
+  assert.equal(reset.status, 200)
+  assert.deepEqual(await reset.json(), { edition: 16, status: 'reset' })
+  const update = db.calls.find(call => /UPDATE biennale_editions/i.test(call.sql))
+  assert.match(update.sql, /crawl_completed_at = NULL/)
+  assert.match(update.sql, /last_attempt_at = NULL/)
+  assert.match(update.sql, /last_attempt_status = NULL/)
+  assert.match(update.sql, /last_error = NULL/)
+  assert.deepEqual(update.values, [16])
+})
+
+test('scheduled crawl dispatch includes the gated biennale runner', () => {
+  const source = fs.readFileSync('cloudflare/src/index.js', 'utf8')
+  assert.match(source, /runScheduledCrawl\(env, 'gwangju-biennale-pavilion', 'biennale-pavilions-scheduled', \(\) => runBiennaleEditionIfDue\(env, \{ now: new Date\(\) \}\)\)/)
+})
+
 test('nearby API rejects invalid raw and numeric coordinates before querying D1', async () => {
   const worker = (await import('../cloudflare/src/index.js')).default
 
@@ -139,6 +222,46 @@ function createDb() {
         bind(...values) { this.values = values; return this },
         async all() { calls.push({ sql, values: this.values }); return { results: [] } },
         async first() { calls.push({ sql, values: this.values }); return { count: 0 } },
+      }
+    },
+  }
+}
+
+function createBiennaleDb(edition = {}) {
+  const calls = []
+  const row = {
+    edition: 16,
+    edition_year: 2026,
+    start_date: '2026-09-05',
+    end_date: '2026-11-15',
+    crawl_completed_at: null,
+    ...edition,
+  }
+  return {
+    calls,
+    prepare(sql) {
+      return {
+        sql, values: [],
+        bind(...values) { this.values = values; return this },
+        async first() {
+          calls.push({ sql, values: this.values })
+          if (/FROM biennale_editions/i.test(sql)) {
+            if (/WHERE crawl_completed_at IS NULL/i.test(sql) && row.crawl_completed_at) return null
+            return row
+          }
+          return null
+        },
+        async run() {
+          calls.push({ sql, values: this.values })
+          if (/UPDATE biennale_editions/i.test(sql) && this.values[0] === row.edition) {
+            row.crawl_completed_at = null
+            row.last_attempt_at = null
+            row.last_attempt_status = null
+            row.last_error = null
+            return { meta: { changes: 1 } }
+          }
+          return { meta: { changes: 0 } }
+        },
       }
     },
   }
