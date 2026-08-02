@@ -452,6 +452,10 @@ async function loadArchiveItems() {
     padding: 0;
   }
 
+  .route-destinations {
+    padding-bottom: calc(44px + 14px + 12px + env(safe-area-inset-bottom));
+  }
+
   .route-controls {
     display: none;
   }
