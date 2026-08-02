@@ -9,6 +9,8 @@ const DEFAULT_IMAGE = '/og-default.jpg'
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
 const ARCHIVE_TITLE = '지역 전시·상영 아카이브 | Space DDF'
 const ARCHIVE_DESCRIPTION = '광주, 전주, 전남 지역의 전시와 상영 정보를 지도와 리스트로 모아보는 Space DDF 지역 전시·상영 아카이브입니다.'
+const ARCHIVE_ROUTE_TITLE = '진행 중 전시 길찾기 | Space DDF'
+const ARCHIVE_ROUTE_DESCRIPTION = '현재 위치, 광주비엔날레전시관, ACC에서 진행 중인 지역 전시장까지 이동 경로를 선택합니다.'
 
 function compactText(value) {
   return String(value || '')
@@ -220,7 +222,8 @@ export function updateSeo(route, pinia) {
   const item = getItem(route, store)
   const isNotFound = route.name === 'not-found'
   const isArchive = route.name === 'regional-archive'
-  const canonicalPath = item ? route.path : isArchive ? '/archive-map' : '/'
+  const isArchiveRoute = route.name === 'archive-route'
+  const canonicalPath = item ? route.path : isArchive ? '/archive-map' : isArchiveRoute ? '/archive-route' : '/'
   const canonical = absoluteUrl(canonicalPath)
   const title = item
     ? `${compactText(item.title)} | ${SITE_NAME}`
@@ -228,8 +231,10 @@ export function updateSeo(route, pinia) {
       ? `페이지를 찾을 수 없습니다 | ${SITE_NAME}`
       : isArchive
         ? ARCHIVE_TITLE
-        : DEFAULT_TITLE
-  const sourceDescription = item?.summary || item?.description || item?.body?.[0] || (isArchive ? ARCHIVE_DESCRIPTION : DEFAULT_DESCRIPTION)
+        : isArchiveRoute
+          ? ARCHIVE_ROUTE_TITLE
+          : DEFAULT_TITLE
+  const sourceDescription = item?.summary || item?.description || item?.body?.[0] || (isArchive ? ARCHIVE_DESCRIPTION : isArchiveRoute ? ARCHIVE_ROUTE_DESCRIPTION : DEFAULT_DESCRIPTION)
   const description = truncate(sourceDescription) || DEFAULT_DESCRIPTION
   const image = absoluteUrl(item?.hero || item?.thumb || DEFAULT_IMAGE)
   const robots = isNotFound ? 'noindex, nofollow' : DEFAULT_ROBOTS

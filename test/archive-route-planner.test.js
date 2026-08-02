@@ -2,6 +2,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 const test = require('node:test')
+const parser = require('@babel/parser')
 
 const projectRoot = path.resolve(__dirname, '..')
 
@@ -90,6 +91,74 @@ test('route planner radio inputs reuse the DDF keyboard focus treatment', () => 
   assert.match(view, /<input class="ddf-focusable" v-model="modeId" type="radio"/)
   assert.doesNotMatch(view, /\.route-choice input:focus-visible/)
 })
+
+test('archive route has dedicated canonical Korean SEO metadata', () => {
+  const seo = readProjectFile('src/lib/seo.js')
+
+  assert.match(seo, /route\.name === 'archive-route'/)
+  assert.match(seo, /전시 길찾기/)
+  assert.match(seo, /archive-route.*'\/archive-route'|'\/archive-route'.*archive-route/s)
+})
+
+test('archive route dependency graph has no Google Maps API client', () => {
+  const graph = collectLocalImportGraph('src/views/ArchiveRouteView.vue')
+  const forbidden = /google-maps\.js|maps\.googleapis\.com|DirectionsService|Routes API/i
+
+  assert.ok(graph.has('src/lib/archive-route.mjs'), 'guard must inspect route utility imports')
+  assert.ok(graph.has('src/services/archive-api.js'), 'guard must inspect archive data imports')
+
+  for (const relativePath of graph) {
+    assert.doesNotMatch(readProjectFile(relativePath), forbidden, `${relativePath} imports or invokes a Google Maps API client`)
+  }
+})
+
+function collectLocalImportGraph(entry) {
+  const visited = new Set()
+  const pending = [entry]
+
+  while (pending.length) {
+    const relativePath = pending.pop()
+    if (visited.has(relativePath)) continue
+    visited.add(relativePath)
+
+    for (const specifier of staticImportSpecifiers(readProjectFile(relativePath), relativePath)) {
+      const resolved = resolveLocalImport(relativePath, specifier)
+      if (resolved && !visited.has(resolved)) pending.push(resolved)
+    }
+  }
+
+  return visited
+}
+
+function staticImportSpecifiers(source, relativePath) {
+  const script = relativePath.endsWith('.vue')
+    ? Array.from(source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g), match => match[1]).join('\n')
+    : source
+  const ast = parser.parse(script, { sourceType: 'module' })
+
+  return ast.program.body
+    .filter(node => node.type === 'ImportDeclaration')
+    .map(node => node.source.value)
+}
+
+function resolveLocalImport(fromRelativePath, specifier) {
+  const sourceRoot = path.join(projectRoot, 'src')
+  const basePath = specifier.startsWith('@/')
+    ? path.join(sourceRoot, specifier.slice(2))
+    : specifier.startsWith('.')
+      ? path.resolve(path.dirname(path.join(projectRoot, fromRelativePath)), specifier)
+      : null
+
+  if (!basePath) return null
+
+  for (const candidate of [basePath, ...['.js', '.mjs', '.vue'].map(extension => `${basePath}${extension}`), path.join(basePath, 'index.js')]) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+      return path.relative(projectRoot, candidate)
+    }
+  }
+
+  throw new Error(`Unable to resolve local import ${specifier} from ${fromRelativePath}`)
+}
 
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8')
