@@ -17,6 +17,11 @@ const router = createRouter({
       alias: ['/map']
     },
     {
+      path: '/archive-route',
+      name: 'archive-route',
+      component: () => import('@/views/ArchiveRouteView.vue'),
+    },
+    {
       path: '/rental',
       name: 'rental',
       component: () => import('@/views/RentalView.vue')

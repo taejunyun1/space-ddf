@@ -1,5 +1,9 @@
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const path = require('node:path')
 const test = require('node:test')
+
+const projectRoot = path.resolve(__dirname, '..')
 
 test('archive route utilities keep only ongoing records', async () => {
   const { ongoingArchiveItems } = await import('../src/lib/archive-route.mjs')
@@ -36,3 +40,21 @@ test('fixed origins and recommended mode use the approved values', async () => {
   assert.equal(url.searchParams.get('destination'), '목적지, 35.1,126.9')
   assert.equal(url.searchParams.has('travelmode'), false)
 })
+
+test('router and planner expose the approved route contract', () => {
+  const router = readProjectFile('src/router/index.js')
+  const view = readProjectFile('src/views/ArchiveRouteView.vue')
+  assert.match(router, /path:\s*'\/archive-route'/)
+  assert.match(router, /name:\s*'archive-route'/)
+  assert.match(view, /fetchArchiveItems/)
+  assert.match(view, /ongoingArchiveItems/)
+  assert.match(view, /route\.query\.to/)
+  assert.match(view, /router\.replace/)
+  assert.match(view, /target="_blank"/)
+  assert.match(view, /rel="noopener noreferrer"/)
+  assert.doesNotMatch(view, /loadGoogleMapsLibrary|maps\/api\/js|DirectionsService|Routes API/)
+})
+
+function readProjectFile(relativePath) {
+  return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8')
+}
