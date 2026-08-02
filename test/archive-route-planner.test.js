@@ -91,6 +91,24 @@ test('router and planner expose the approved route contract', () => {
   assert.doesNotMatch(view, /loadGoogleMapsLibrary|maps\/api\/js|DirectionsService|Routes API/)
 })
 
+test('planner exposes ordered multi-selection controls and a readable route action', () => {
+  const view = readProjectFile('src/views/ArchiveRouteView.vue')
+
+  assert.match(view, /const selectedIds = computed/)
+  assert.match(view, /const selectedItems = computed/)
+  assert.match(view, /const destinationItem = computed/)
+  assert.match(view, /:aria-pressed="selectedIds\.includes\(item\.id\)"/)
+  assert.match(view, /selectedOrder\(item\.id\)/)
+  assert.match(view, /moveSelectedItem\(index, -1\)/)
+  assert.match(view, /moveSelectedItem\(index, 1\)/)
+  assert.match(view, /removeSelectedItem\(item\.id\)/)
+  assert.match(view, /clearSelectedItems/)
+  assert.match(view, /1곳 길찾기 열기/)
+  assert.match(view, /곳 경로 열기/)
+  assert.match(view, /<svg[^>]*aria-hidden="true"/)
+  assert.match(view, /min-height:\s*48px/)
+})
+
 test('planner follows DDF tokens and responsive layout without embedded maps', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
   assert.match(view, /var\(--ddf-paper\)/)
@@ -186,13 +204,13 @@ test('nearby transport summary keeps empty transport types out of the route plan
   assert.doesNotMatch(component, /정보가 없습니다|없음|empty/i)
 })
 
-test('route planner loads nearby transport only for the selected destination and cancels stale work', () => {
+test('route planner loads nearby transport only for the final destination and cancels stale work', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
 
   assert.match(view, /import ArchiveNearbyTransport from '@\/components\/archive\/ArchiveNearbyTransport\.vue'/)
   assert.match(view, /import \{[^}]*fetchNearbyTransport[^}]*\} from '@\/services\/archive-api'/)
   assert.match(view, /<ArchiveNearbyTransport[\s\S]*?:transport="nearbyTransport"[\s\S]*?:loading="nearbyLoading"[\s\S]*?:error="nearbyError"/)
-  assert.match(view, /watch\(selectedItem, loadNearbyTransport, \{ immediate: true \}\)/)
+  assert.match(view, /watch\(destinationItem, loadNearbyTransport, \{ immediate: true \}\)/)
   assert.match(view, /nearbyTransport\.value = null[\s\S]*?nearbyError\.value = false[\s\S]*?nearbyLoading\.value = false[\s\S]*?if \(!item/)
   assert.match(view, /if \(!item \|\| !Number\.isFinite\(item\.lat\) \|\| !Number\.isFinite\(item\.lng\)\) return/)
   assert.match(view, /fetchNearbyTransport\(\{ lat: item\.lat, lng: item\.lng, signal: nearbyAbortController\.value\.signal \}\)/)

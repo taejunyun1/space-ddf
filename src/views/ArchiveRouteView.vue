@@ -8,7 +8,7 @@
       <header class="route-header">
         <p class="ddf-kicker">Archive Route</p>
         <h1 id="route-planner-title" class="ddf-section-title">진행 중 전시 길찾기</h1>
-        <p>진행 중인 전시를 목적지로 선택하면 Google Maps에서 경로를 엽니다.</p>
+        <p>방문할 전시를 순서대로 선택하면 Google Maps에서 경유 경로를 엽니다.</p>
       </header>
 
       <label class="route-search-label" for="route-search">전시장 검색</label>
@@ -44,10 +44,13 @@
           <button
             type="button"
             class="route-destination ddf-focusable"
-            :class="{ 'is-selected': selectedItem?.id === item.id }"
-            :aria-pressed="selectedItem?.id === item.id"
-            @click="selectDestination(item.id)"
+            :class="{ 'is-selected': selectedIds.includes(item.id) }"
+            :aria-pressed="selectedIds.includes(item.id)"
+            @click="toggleDestination(item.id)"
           >
+            <span v-if="selectedOrder(item.id)" class="route-order-badge" aria-hidden="true">
+              {{ selectedOrder(item.id) }}
+            </span>
             <span class="ddf-pill status">진행 중</span>
             <strong>{{ item.title }}</strong>
             <span>{{ item.venue }}</span>
@@ -71,7 +74,7 @@
         :aria-expanded="routeControlsOpen"
         @click="openRouteControls"
       >
-        경로 설정 열기
+        {{ selectedItems.length ? `${selectedItems.length}곳 경로 설정` : '경로 설정 열기' }}
       </button>
 
       <div id="route-controls" class="route-controls" :class="{ 'is-open': routeControlsOpen }">
@@ -96,19 +99,57 @@
         </fieldset>
 
         <div class="route-line" aria-label="선택한 이동 경로">
-          <div>
+          <div class="route-stop route-origin">
             <span>출발</span>
             <strong>{{ selectedOrigin.label }}</strong>
           </div>
-          <div>
+          <div v-if="!selectedItems.length" class="route-stop route-empty-stop">
             <span>도착</span>
-            <strong>{{ selectedItem ? selectedItem.venue : '목적지를 선택하세요' }}</strong>
-            <small v-if="selectedItem">{{ selectedItem.address || selectedItem.cityLabel }}</small>
+            <strong>목적지를 선택하세요</strong>
+          </div>
+          <div
+            v-for="(item, index) in selectedItems"
+            v-else
+            :key="item.id"
+            class="route-stop route-selected-stop"
+          >
+            <span>{{ index === selectedItems.length - 1 ? '도착' : `경유 ${index + 1}` }}</span>
+            <strong>{{ item.venue }}</strong>
+            <small>{{ item.address || item.cityLabel }}</small>
+            <div class="route-stop-actions">
+              <button
+                type="button"
+                class="route-stop-action ddf-focusable"
+                :disabled="index === 0"
+                :aria-label="`${item.venue} 순서를 위로 이동`"
+                @click="moveSelectedItem(index, -1)"
+              >↑</button>
+              <button
+                type="button"
+                class="route-stop-action ddf-focusable"
+                :disabled="index === selectedItems.length - 1"
+                :aria-label="`${item.venue} 순서를 아래로 이동`"
+                @click="moveSelectedItem(index, 1)"
+              >↓</button>
+              <button
+                type="button"
+                class="route-stop-action route-stop-remove ddf-focusable"
+                :aria-label="`${item.venue} 경로에서 삭제`"
+                @click="removeSelectedItem(item.id)"
+              >삭제</button>
+            </div>
           </div>
         </div>
 
+        <button
+          v-if="selectedItems.length >= 2"
+          type="button"
+          class="route-clear-button ddf-focusable"
+          @click="clearSelectedItems"
+        >경로 전체 지우기</button>
+
         <ArchiveNearbyTransport
-          v-if="selectedItem"
+          v-if="destinationItem"
           :transport="nearbyTransport"
           :loading="nearbyLoading"
           :error="nearbyError"
@@ -129,9 +170,12 @@
           target="_blank"
           rel="noopener noreferrer"
         >
-          Google Maps에서 길찾기
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
+            <path d="M5 12h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+          </svg>
+          <span>{{ routeActionLabel }}</span>
         </a>
-        <p v-else class="route-directions-help">목적지를 선택하면 길찾기 링크가 활성화됩니다.</p>
+        <p v-else class="route-directions-help">방문할 전시를 선택하면 길찾기 버튼이 활성화됩니다.</p>
       </div>
     </aside>
   </main>
@@ -146,7 +190,11 @@ import {
   ARCHIVE_ROUTE_MODES,
   ARCHIVE_ROUTE_ORIGINS,
   buildArchiveRouteUrl,
+  moveArchiveRouteId,
   ongoingArchiveItems,
+  parseArchiveRouteIds,
+  serializeArchiveRouteIds,
+  toggleArchiveRouteId,
 } from '@/lib/archive-route.mjs'
 import { fetchArchiveItems, fetchNearbyTransport } from '@/services/archive-api'
 
@@ -167,15 +215,27 @@ const nearbyError = ref(false)
 const nearbyAbortController = ref(null)
 const ongoingItems = computed(() => ongoingArchiveItems(allItems.value))
 const visibleItems = computed(() => ongoingItems.value.filter(matchesFilters))
-const selectedItem = computed(() => ongoingItems.value.find(item => item.id === String(route.query.to || '')) || null)
+const selectedIds = computed(() => {
+  const ongoingIds = new Set(ongoingItems.value.map(item => item.id))
+  return parseArchiveRouteIds(route.query.to).filter(id => ongoingIds.has(id))
+})
+const selectedItems = computed(() => {
+  const itemsById = new Map(ongoingItems.value.map(item => [item.id, item]))
+  return selectedIds.value.map(id => itemsById.get(id)).filter(Boolean)
+})
+const destinationItem = computed(() => selectedItems.value.at(-1) || null)
 const selectedOrigin = computed(() => (
   ARCHIVE_ROUTE_ORIGINS.find(origin => origin.id === originId.value) || ARCHIVE_ROUTE_ORIGINS[0]
 ))
-const directionsUrl = computed(() => buildArchiveRouteUrl({ item: selectedItem.value, originId: originId.value, modeId: modeId.value }))
+const directionsUrl = computed(() => buildArchiveRouteUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
+const routeActionLabel = computed(() => selectedItems.value.length === 1
+  ? '1곳 길찾기 열기'
+  : `${selectedItems.value.length}곳 경로 열기`)
 
 onMounted(loadArchiveItems)
 onBeforeUnmount(cancelNearbyTransport)
-watch(selectedItem, loadNearbyTransport, { immediate: true })
+watch(destinationItem, loadNearbyTransport, { immediate: true })
+watch([() => route.query.to, ongoingItems, loading], normalizeSelectedQuery)
 
 function matchesFilters(item) {
   const matchesCity = activeCity.value === 'all' || item.city === activeCity.value
@@ -187,8 +247,37 @@ function matchesFilters(item) {
   return matchesCity && (!normalizedQuery || searchText.includes(normalizedQuery))
 }
 
-function selectDestination(id) {
-  router.replace({ name: 'archive-route', query: { ...route.query, to: id } })
+function selectedOrder(id) {
+  const index = selectedIds.value.indexOf(id)
+  return index === -1 ? 0 : index + 1
+}
+
+function replaceSelectedIds(ids) {
+  const to = serializeArchiveRouteIds(ids)
+  router.replace({ name: 'archive-route', query: { ...route.query, to: to || undefined } })
+}
+
+function toggleDestination(id) {
+  replaceSelectedIds(toggleArchiveRouteId(selectedIds.value, id))
+}
+
+function moveSelectedItem(index, offset) {
+  replaceSelectedIds(moveArchiveRouteId(selectedIds.value, index, offset))
+}
+
+function removeSelectedItem(id) {
+  replaceSelectedIds(selectedIds.value.filter(current => current !== id))
+}
+
+function clearSelectedItems() {
+  replaceSelectedIds([])
+}
+
+function normalizeSelectedQuery() {
+  if (loading.value) return
+  const current = serializeArchiveRouteIds(parseArchiveRouteIds(route.query.to))
+  const normalized = serializeArchiveRouteIds(selectedIds.value)
+  if (current !== normalized) replaceSelectedIds(selectedIds.value)
 }
 
 async function openRouteControls() {
@@ -357,6 +446,7 @@ async function loadArchiveItems() {
 }
 
 .route-destination {
+  position: relative;
   display: grid;
   width: 100%;
   gap: 4px;
@@ -368,6 +458,22 @@ async function loadArchiveItems() {
 .route-destination.is-selected {
   border-color: var(--ddf-status-open);
   outline: 1px solid var(--ddf-status-open);
+  padding-left: 52px;
+}
+
+.route-order-badge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  color: var(--ddf-paper) !important;
+  background: var(--ddf-ink);
+  font-family: var(--ddf-font-mono);
+  font-size: 12px !important;
+  font-weight: 700;
 }
 
 .route-destination strong {
@@ -443,13 +549,13 @@ async function loadArchiveItems() {
   border-left: 1px solid var(--ddf-line);
 }
 
-.route-line div {
+.route-stop {
   position: relative;
   display: grid;
   gap: 3px;
 }
 
-.route-line div::before {
+.route-stop::before {
   position: absolute;
   top: 5px;
   left: -25px;
@@ -468,16 +574,64 @@ async function loadArchiveItems() {
   font-size: 11px;
 }
 
+.route-stop-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.route-stop-action,
+.route-clear-button {
+  border: 1px solid var(--ddf-line);
+  border-radius: 0;
+  color: var(--ddf-ink);
+  background: var(--ddf-paper);
+  font-family: var(--ddf-font-mono);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.route-stop-action {
+  min-width: 30px;
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.route-stop-action:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.route-stop-remove {
+  margin-left: auto;
+}
+
+.route-clear-button {
+  width: 100%;
+  min-height: 34px;
+  margin: -10px 0 6px;
+}
+
 .route-directions-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
   margin-top: 24px;
-  padding: 13px;
+  border: 2px solid var(--ddf-ink);
+  padding: 0 16px;
   color: var(--ddf-paper);
   background: var(--ddf-ink);
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   text-align: center;
   text-decoration: none;
+}
+
+.route-directions-link:hover {
+  color: var(--ddf-ink);
+  background: var(--ddf-paper);
 }
 
 @media (max-width: 780px) {
