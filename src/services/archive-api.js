@@ -37,6 +37,17 @@ export async function fetchArchiveItems({ limit = 500 } = {}) {
   return items.slice(0, limit).map(normalizeArchiveItem)
 }
 
+export async function fetchNearbyTransport({ lat, lng, signal }) {
+  const baseUrl = import.meta.env.VITE_ARCHIVE_API_BASE_URL || DEFAULT_ARCHIVE_API_BASE_URL
+  const url = new URL('/api/archive/nearby', baseUrl)
+  url.searchParams.set('lat', String(lat))
+  url.searchParams.set('lng', String(lng))
+
+  const response = await fetch(url.toString(), { headers: { accept: 'application/json' }, signal })
+  if (!response.ok) throw new Error(`Nearby transport request failed: ${response.status}`)
+  return response.json()
+}
+
 function normalizeArchiveItem(item) {
   const sourceType = item.sourceType || ''
   const archiveType = item.archiveType || item.type || 'exhibition'

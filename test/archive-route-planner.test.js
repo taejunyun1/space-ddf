@@ -112,6 +112,44 @@ test('archive route dependency graph has no Google Maps API client', () => {
   }
 })
 
+test('nearby transport client requests the archive nearby endpoint with destination coordinates', () => {
+  const service = readProjectFile('src/services/archive-api.js')
+
+  assert.match(service, /export async function fetchNearbyTransport\(\{ lat, lng, signal \}\)/)
+  assert.match(service, /new URL\('\/api\/archive\/nearby', baseUrl\)/)
+  assert.match(service, /url\.searchParams\.set\('lat', String\(lat\)\)/)
+  assert.match(service, /url\.searchParams\.set\('lng', String\(lng\)\)/)
+  assert.match(service, /fetch\(url\.toString\(\), \{ headers: \{ accept: 'application\/json' \}, signal \}\)/)
+})
+
+test('nearby transport summary keeps empty transport types out of the route planner', () => {
+  const componentPath = path.join(projectRoot, 'src/components/archive/ArchiveNearbyTransport.vue')
+  assert.ok(fs.existsSync(componentPath), 'nearby transport summary component must exist')
+
+  const component = fs.readFileSync(componentPath, 'utf8')
+  assert.match(component, /버스/)
+  assert.match(component, /지하철/)
+  assert.match(component, /공영주차장/)
+  assert.match(component, /v-if="busStops\.length"/)
+  assert.match(component, /v-if="subwayStations\.length"/)
+  assert.match(component, /v-if="publicParking\.length"/)
+  assert.match(component, /distanceMeters/)
+  assert.doesNotMatch(component, /정보가 없습니다|없음|empty/i)
+})
+
+test('route planner loads nearby transport only for the selected destination and cancels stale work', () => {
+  const view = readProjectFile('src/views/ArchiveRouteView.vue')
+
+  assert.match(view, /import ArchiveNearbyTransport from '@\/components\/archive\/ArchiveNearbyTransport\.vue'/)
+  assert.match(view, /import \{[^}]*fetchNearbyTransport[^}]*\} from '@\/services\/archive-api'/)
+  assert.match(view, /<ArchiveNearbyTransport[\s\S]*?:transport="nearbyTransport"[\s\S]*?:loading="nearbyLoading"[\s\S]*?:error="nearbyError"/)
+  assert.match(view, /watch\(selectedItem, loadNearbyTransport, \{ immediate: true \}\)/)
+  assert.match(view, /nearbyTransport\.value = null[\s\S]*?nearbyError\.value = false[\s\S]*?nearbyLoading\.value = false[\s\S]*?if \(!item/)
+  assert.match(view, /if \(!item \|\| !Number\.isFinite\(item\.lat\) \|\| !Number\.isFinite\(item\.lng\)\) return/)
+  assert.match(view, /fetchNearbyTransport\(\{ lat: item\.lat, lng: item\.lng, signal: nearbyAbortController\.value\.signal \}\)/)
+  assert.match(view, /onBeforeUnmount\(cancelNearbyTransport\)/)
+})
+
 function collectLocalImportGraph(entry) {
   const visited = new Set()
   const pending = [entry]

@@ -107,6 +107,13 @@
           </div>
         </div>
 
+        <ArchiveNearbyTransport
+          v-if="selectedItem"
+          :transport="nearbyTransport"
+          :loading="nearbyLoading"
+          :error="nearbyError"
+        />
+
         <fieldset class="route-fieldset">
           <legend>이동 방식</legend>
           <label v-for="mode in ARCHIVE_ROUTE_MODES" :key="mode.id" class="route-choice">
@@ -131,8 +138,9 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ArchiveNearbyTransport from '@/components/archive/ArchiveNearbyTransport.vue'
 import { archiveCities, regionalArchiveItems } from '@/data/regionalArchive'
 import {
   ARCHIVE_ROUTE_MODES,
@@ -140,7 +148,7 @@ import {
   buildArchiveRouteUrl,
   ongoingArchiveItems,
 } from '@/lib/archive-route.mjs'
-import { fetchArchiveItems } from '@/services/archive-api'
+import { fetchArchiveItems, fetchNearbyTransport } from '@/services/archive-api'
 
 const route = useRoute()
 const router = useRouter()
@@ -153,6 +161,10 @@ const modeId = ref('recommended')
 const routeControlsOpen = ref(false)
 const routeControlsToggle = ref(null)
 const routeControlsClose = ref(null)
+const nearbyTransport = ref(null)
+const nearbyLoading = ref(false)
+const nearbyError = ref(false)
+const nearbyAbortController = ref(null)
 const ongoingItems = computed(() => ongoingArchiveItems(allItems.value))
 const visibleItems = computed(() => ongoingItems.value.filter(matchesFilters))
 const selectedItem = computed(() => ongoingItems.value.find(item => item.id === String(route.query.to || '')) || null)
@@ -162,6 +174,8 @@ const selectedOrigin = computed(() => (
 const directionsUrl = computed(() => buildArchiveRouteUrl({ item: selectedItem.value, originId: originId.value, modeId: modeId.value }))
 
 onMounted(loadArchiveItems)
+onBeforeUnmount(cancelNearbyTransport)
+watch(selectedItem, loadNearbyTransport, { immediate: true })
 
 function matchesFilters(item) {
   const matchesCity = activeCity.value === 'all' || item.city === activeCity.value
@@ -187,6 +201,36 @@ async function closeRouteControls() {
   routeControlsOpen.value = false
   await nextTick()
   routeControlsToggle.value?.focus()
+}
+
+function cancelNearbyTransport() {
+  nearbyAbortController.value?.abort()
+  nearbyAbortController.value = null
+}
+
+async function loadNearbyTransport(item) {
+  cancelNearbyTransport()
+  nearbyTransport.value = null
+  nearbyError.value = false
+  nearbyLoading.value = false
+
+  if (!item || !Number.isFinite(item.lat) || !Number.isFinite(item.lng)) return
+
+  const requestController = new AbortController()
+  nearbyAbortController.value = requestController
+  nearbyLoading.value = true
+
+  try {
+    const transport = await fetchNearbyTransport({ lat: item.lat, lng: item.lng, signal: nearbyAbortController.value.signal })
+    if (nearbyAbortController.value === requestController) nearbyTransport.value = transport
+  } catch (error) {
+    if (error.name !== 'AbortError' && nearbyAbortController.value === requestController) nearbyError.value = true
+  } finally {
+    if (nearbyAbortController.value === requestController) {
+      nearbyLoading.value = false
+      nearbyAbortController.value = null
+    }
+  }
 }
 
 async function loadArchiveItems() {
