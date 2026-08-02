@@ -55,7 +55,7 @@
       <section class="location-wrap" aria-label="공간 위치">
         <h3 class="side-title">Location</h3>
 
-        <figure class="side-map-box">
+        <figure v-if="showSidebarMap" class="side-map-box">
           <iframe
             class="side-map"
             src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3262.2521703589455!2d126.90988227667317!3d35.150331258953756!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x35718dcb0676ea25%3A0xe52a9bee2121a68e!2z7Iqk7Y6Y7J207IqkIOuUlOuUlOyXkO2UhA!5e0!3m2!1sko!2skr!4v1754984708875!5m2!1sko!2skr"
@@ -69,6 +69,14 @@
         <div class="location-info">
           <div class="location-name">스페이스 디디에프</div>
           <div class="location-line">광주광역시 동구 충장로46번길 8-8 1층</div>
+          <a
+            class="location-link"
+            href="https://www.google.com/maps/search/?api=1&query=%EC%8A%A4%ED%8E%98%EC%9D%B4%EC%8A%A4%20%EB%94%94%EB%94%94%EC%97%90%ED%94%84%2C%20%EA%B4%91%EC%A3%BC%EA%B4%91%EC%97%AD%EC%8B%9C%20%EB%8F%99%EA%B5%AC%20%EC%B6%A9%EC%9E%A5%EB%A1%9C46%EB%B2%88%EA%B8%B8%208-8"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google Maps에서 위치 보기
+          </a>
           <div class="location-line">운영시간 11:00–18:00</div>
           <div class="location-line">월요일 및 공휴일 휴관</div>
         </div>
@@ -96,9 +104,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
 
+const route = useRoute()
 const isAsideOpen = ref(false)
+const showSidebarMap = computed(() => Boolean(route.name) && route.name !== 'archive-route')
 
 const toggleAside = () => {
   isAsideOpen.value = !isAsideOpen.value
@@ -256,6 +267,18 @@ overscroll-behavior: none;
 
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+
+.location-link {
+  width: fit-content;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.location-link:hover,
+.location-link:focus-visible {
+  text-decoration-thickness: 2px;
 }
 
 .left-body {

@@ -69,6 +69,20 @@ test('planner follows DDF tokens and responsive layout without embedded maps', (
   assert.doesNotMatch(view, /<iframe|google-map-canvas/)
 })
 
+test('archive route suppresses the sidebar map iframe while preserving accessible location details', () => {
+  const app = readProjectFile('src/App.vue')
+
+  assert.match(app, /import \{[^}]*computed[^}]*\} from 'vue'/)
+  assert.match(app, /import \{ useRoute \} from 'vue-router'/)
+  assert.match(app, /const route = useRoute\(\)/)
+  assert.match(app, /const showSidebarMap = computed\(\(\) => Boolean\(route\.name\) && route\.name !== 'archive-route'\)/)
+  assert.match(app, /<figure(?=[^>]*class="side-map-box")(?=[^>]*v-if="showSidebarMap")[^>]*>[\s\S]*?<iframe[\s\S]*?https:\/\/www\.google\.com\/maps\/embed/)
+  assert.match(app, /<a[^>]*class="location-link"[^>]*href="https:\/\/www\.google\.com\/maps\/search\/\?api=1&query=/)
+  assert.match(app, /target="_blank"/)
+  assert.match(app, /rel="noopener noreferrer"/)
+  assert.match(app, /광주광역시 동구 충장로46번길 8-8 1층/)
+})
+
 test('mobile planner controls are collapsed by default and retain page-first source order', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
   const titleIndex = view.indexOf('<h1 id="route-planner-title"')
