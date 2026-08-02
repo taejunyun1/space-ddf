@@ -11,7 +11,7 @@ export const ARCHIVE_ROUTE_MODES = Object.freeze([
 ])
 
 export function ongoingArchiveItems(items) {
-  return (Array.isArray(items) ? items : []).filter(item => item.status === 'ongoing')
+  return (Array.isArray(items) ? items : []).filter(item => String(item?.status ?? '').trim().toLowerCase() === 'ongoing')
 }
 
 export function archiveDestination(item) {

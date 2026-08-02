@@ -7,6 +7,12 @@ test('archive route utilities keep only ongoing records', async () => {
   assert.deepEqual(ongoingArchiveItems(items).map(item => item.id), ['a'])
 })
 
+test('archive route utilities normalize ongoing statuses', async () => {
+  const { ongoingArchiveItems } = await import('../src/lib/archive-route.mjs')
+  const items = [{ id: 'a', status: ' ONGOING ' }, { id: 'b', status: 'closed' }]
+  assert.deepEqual(ongoingArchiveItems(items).map(item => item.id), ['a'])
+})
+
 test('current-location directions omit origin and encode destination', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({
