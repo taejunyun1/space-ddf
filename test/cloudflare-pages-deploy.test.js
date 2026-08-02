@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict')
+const childProcess = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 const test = require('node:test')
@@ -110,6 +111,20 @@ test('SEO prerender writes static shells for top-level SPA routes used by Pages'
   assert.match(source, /'\/archive-route'/)
   assert.match(source, /'\/admin'/)
   assert.doesNotMatch(source, /\/admin\/rentals|\/manage/)
+})
+
+test('Pages prerender gives the archive route its canonical SEO metadata without planner queries', () => {
+  childProcess.execFileSync('npm', ['run', 'build:pages'], {
+    cwd: root,
+    stdio: 'pipe',
+  })
+
+  const html = readProjectFile('dist/archive-route/index.html')
+
+  assert.match(html, /<title>진행 중 전시 길찾기 \| Space DDF<\/title>/)
+  assert.match(html, /<meta name="description" content="현재 위치, 광주비엔날레전시관, ACC에서 진행 중인 지역 전시장까지 이동 경로를 선택합니다\." \/>/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/spaceddf\.xyz\/archive-route" \/>/)
+  assert.doesNotMatch(html, /<link rel="canonical" href="[^"]*\?to=/)
 })
 
 function readProjectFile(relativePath) {

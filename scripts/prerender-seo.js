@@ -15,6 +15,8 @@ const DEFAULT_DESCRIPTION = 'Space DDF는 광주 동구 충장로에 위치한 �
 const DEFAULT_IMAGE = '/og-default.jpg'
 const DEFAULT_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
 const STATIC_SPA_ROUTES = ['/rental', '/archive-map', '/archive-route', '/admin']
+const ARCHIVE_ROUTE_TITLE = '진행 중 전시 길찾기 | Space DDF'
+const ARCHIVE_ROUTE_DESCRIPTION = '현재 위치, 광주비엔날레전시관, ACC에서 진행 중인 지역 전시장까지 이동 경로를 선택합니다.'
 
 function main() {
   if (!fs.existsSync(indexFile)) {
@@ -43,7 +45,7 @@ function main() {
     const target = path.join(distDir, routePath, 'index.html')
 
     fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.writeFileSync(target, template)
+    fs.writeFileSync(target, renderStaticRouteHtml(template, routePath))
   }
 
   console.log(`Prerendered ${routes.length} detail routes.`)
@@ -153,6 +155,29 @@ function renderRouteHtml(template, item, routePath) {
     /<script id="route-structured-data" type="application\/ld\+json">[\s\S]*?<\/script>/,
     `<script id="route-structured-data" type="application/ld+json">\n${structuredData}\n  </script>`,
   )
+
+  return html
+}
+
+function renderStaticRouteHtml(template, routePath) {
+  if (routePath !== '/archive-route') return template
+
+  const canonical = absoluteUrl(routePath)
+  const image = absoluteUrl(DEFAULT_IMAGE)
+  let html = template
+
+  html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeText(ARCHIVE_ROUTE_TITLE)}</title>`)
+  html = replaceCanonical(html, canonical)
+  html = replaceMeta(html, 'name', 'description', ARCHIVE_ROUTE_DESCRIPTION)
+  html = replaceMeta(html, 'property', 'og:title', ARCHIVE_ROUTE_TITLE)
+  html = replaceMeta(html, 'property', 'og:description', ARCHIVE_ROUTE_DESCRIPTION)
+  html = replaceMeta(html, 'property', 'og:url', canonical)
+  html = replaceMeta(html, 'property', 'og:image', image)
+  html = replaceMeta(html, 'property', 'og:image:alt', 'Space DDF 전시공간 대표 이미지')
+  html = replaceMeta(html, 'name', 'twitter:title', ARCHIVE_ROUTE_TITLE)
+  html = replaceMeta(html, 'name', 'twitter:description', ARCHIVE_ROUTE_DESCRIPTION)
+  html = replaceMeta(html, 'name', 'twitter:image', image)
+  html = replaceMeta(html, 'name', 'twitter:image:alt', 'Space DDF 전시공간 대표 이미지')
 
   return html
 }
