@@ -192,3 +192,43 @@ test('keeps an addressless verified venue in review while retaining its coordina
   assert.equal(record.crawlWarning, 'missing_address')
   assert.match(record.venueGroupKey, /^biennale-venue-coordinate-v1\|/)
 })
+
+test('parses named and numeric em dash entities in bounded edition dates', () => {
+  for (const separator of ['&mdash;', '&#8212;', '&#x2014;']) {
+    const html = `
+      <h3>The 16th Gwangju Biennale Pavilion</h3>
+      <p>Dates: September 5 ${separator} November 15, 2026</p>
+    `
+
+    assert.deepEqual(parseBiennaleEdition(html), {
+      edition: 16,
+      editionYear: 2026,
+      startDate: '2026-09-05',
+      endDate: '2026-11-15',
+    }, separator)
+  }
+})
+
+test('extracts bounded div labels without reading script, style, or the next pavilion block', () => {
+  const edition = {
+    edition: 16,
+    editionYear: 2026,
+    startDate: '2026-09-05',
+    endDate: '2026-11-15',
+  }
+  const html = `
+    <h4>1 First Pavilion | First Venue</h4>
+    <script><div>Address: Scripted Address</div></script>
+    <style>.hours::before { content: 'Hours: Scripted Hours'; }</style>
+    <div><strong>Address:</strong> First &amp; Main Street, Gwangju</div>
+    <div>Hours: 10:00 &#8212; 18:00</div>
+    <h4>2 Second Pavilion | Second Venue</h4>
+    <div><strong>Address:</strong> Second Address, Gwangju</div>
+    <div>Hours: 11:00-19:00</div>
+  `
+
+  assert.deepEqual(parseBiennalePavilions(html, edition).map(record => [record.address, record.hours]), [
+    ['First & Main Street, Gwangju', '10:00 — 18:00'],
+    ['Second Address, Gwangju', '11:00-19:00'],
+  ])
+})

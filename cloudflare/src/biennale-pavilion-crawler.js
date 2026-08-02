@@ -116,7 +116,7 @@ function parseDateRange(content) {
   const text = cleanText(content)
   const monthNames = Object.keys(MONTHS).join('|')
   const pattern = new RegExp(
-    `\\b(${monthNames})\\s+(\\d{1,2})(?:,\\s*(\\d{4}))?\\s*[-–~]\\s*(${monthNames})\\s+(\\d{1,2}),\\s*(\\d{4})\\b`,
+    `\\b(${monthNames})\\s+(\\d{1,2})(?:,\\s*(\\d{4}))?\\s*[-–—~]\\s*(${monthNames})\\s+(\\d{1,2}),\\s*(\\d{4})\\b`,
     'i',
   )
   const match = text.match(pattern)
@@ -139,8 +139,8 @@ function parseDateRange(content) {
 
 function labeledValue(content, label) {
   const labelPattern = new RegExp(`^${escapeRegExp(label)}\\s*:\\s*`, 'i')
-  const paragraph = paragraphTexts(content).find(text => labelPattern.test(text))
-  return paragraph ? paragraph.replace(labelPattern, '').trim() : ''
+  const labeledBlock = labeledBlockTexts(content).find(text => labelPattern.test(text))
+  return labeledBlock ? labeledBlock.replace(labelPattern, '').trim() : ''
 }
 
 function mapUrlFromBlock(content) {
@@ -212,16 +212,17 @@ function normalizeKeyComponent(value) {
   return cleanText(value).normalize('NFC').toLowerCase()
 }
 
-function paragraphTexts(content) {
-  const paragraphs = []
-  const pattern = /<p\b[^>]*>([\s\S]*?)<\/p\s*>/gi
+function labeledBlockTexts(content) {
+  const blocks = []
+  const source = String(content || '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, '')
+  const pattern = /<(p|div)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi
   let match
 
-  while ((match = pattern.exec(String(content || ''))) !== null) {
-    paragraphs.push(cleanText(match[1]))
+  while ((match = pattern.exec(source)) !== null) {
+    blocks.push(cleanText(match[2]))
   }
 
-  return paragraphs
+  return blocks
 }
 
 function cleanText(value) {
