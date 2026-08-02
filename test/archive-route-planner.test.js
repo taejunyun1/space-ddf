@@ -68,19 +68,26 @@ test('planner follows DDF tokens and responsive layout without embedded maps', (
   assert.doesNotMatch(view, /<iframe|google-map-canvas/)
 })
 
-test('mobile planner controls are a viewport bottom sheet before the destination list', () => {
+test('mobile planner controls are collapsed by default and retain page-first source order', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
-  const panelIndex = view.indexOf('<aside class="route-planner-panel"')
-  const destinationListIndex = view.indexOf('class="route-destination-list"')
+  const titleIndex = view.indexOf('<h1 id="route-planner-title"')
+  const panelIndex = view.search(/<aside\s+class="route-planner-panel"/)
 
-  assert.ok(panelIndex >= 0 && panelIndex < destinationListIndex)
-  assert.match(view, /@media \(max-width:\s*780px\)[\s\S]*?\.route-controls\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?bottom:\s*0;/)
-  assert.match(view, /@media \(max-width:\s*780px\)[\s\S]*?\.route-destinations\s*\{[\s\S]*?padding-bottom:\s*calc\([^)]*env\(safe-area-inset-bottom\)\)/)
+  assert.ok(titleIndex >= 0 && titleIndex < panelIndex)
+  assert.match(view, /const routeControlsOpen = ref\(false\)/)
+  assert.match(view, /ref="routeControlsToggle"[\s\S]*?class="route-controls-toggle ddf-focusable"[\s\S]*?:aria-expanded="routeControlsOpen"[\s\S]*?@click="openRouteControls"/)
+  assert.match(view, /ref="routeControlsClose"[\s\S]*?class="route-controls-close ddf-focusable"[\s\S]*?@click="closeRouteControls"/)
+  assert.match(view, /async function openRouteControls\(\)\s*\{[\s\S]*?routeControlsOpen\.value = true[\s\S]*?routeControlsClose\.value\?\.focus\(\)/)
+  assert.match(view, /async function closeRouteControls\(\)\s*\{[\s\S]*?routeControlsOpen\.value = false[\s\S]*?routeControlsToggle\.value\?\.focus\(\)/)
+  assert.match(view, /@media \(max-width:\s*780px\)[\s\S]*?\.route-controls\s*\{[\s\S]*?display:\s*none;/)
+  assert.match(view, /@media \(max-width:\s*780px\)[\s\S]*?\.route-controls\.is-open\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?bottom:\s*0;[\s\S]*?max-height:\s*calc\(100dvh - 24px\);[\s\S]*?overflow-y:\s*auto;[\s\S]*?env\(safe-area-inset-bottom\)/)
 })
 
-test('route planner radio inputs keep the DDF keyboard focus treatment', () => {
+test('route planner radio inputs reuse the DDF keyboard focus treatment', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
-  assert.match(view, /\.route-choice input:focus-visible\s*\{[\s\S]*?outline:\s*2px solid var\(--ddf-line\);[\s\S]*?outline-offset:\s*3px;/)
+  assert.match(view, /<input class="ddf-focusable" v-model="originId" type="radio"/)
+  assert.match(view, /<input class="ddf-focusable" v-model="modeId" type="radio"/)
+  assert.doesNotMatch(view, /\.route-choice input:focus-visible/)
 })
 
 function readProjectFile(relativePath) {

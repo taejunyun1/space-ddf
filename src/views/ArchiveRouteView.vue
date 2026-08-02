@@ -1,50 +1,5 @@
 <template>
   <main class="route-planner-page">
-    <aside class="route-planner-panel" aria-labelledby="route-controls-title">
-      <div class="route-controls">
-        <h2 id="route-controls-title">오늘의 이동 경로</h2>
-
-        <fieldset class="route-fieldset">
-          <legend>출발지</legend>
-          <label v-for="origin in ARCHIVE_ROUTE_ORIGINS" :key="origin.id" class="route-choice">
-            <input v-model="originId" type="radio" name="archive-route-origin" :value="origin.id">
-            <span>{{ origin.label }}</span>
-          </label>
-        </fieldset>
-
-        <div class="route-line" aria-label="선택한 이동 경로">
-          <div>
-            <span>출발</span>
-            <strong>{{ selectedOrigin.label }}</strong>
-          </div>
-          <div>
-            <span>도착</span>
-            <strong>{{ selectedItem ? selectedItem.venue : '목적지를 선택하세요' }}</strong>
-            <small v-if="selectedItem">{{ selectedItem.address || selectedItem.cityLabel }}</small>
-          </div>
-        </div>
-
-        <fieldset class="route-fieldset">
-          <legend>이동 방식</legend>
-          <label v-for="mode in ARCHIVE_ROUTE_MODES" :key="mode.id" class="route-choice">
-            <input v-model="modeId" type="radio" name="archive-route-mode" :value="mode.id">
-            <span>{{ mode.label }}</span>
-          </label>
-        </fieldset>
-
-        <a
-          v-if="directionsUrl"
-          class="route-directions-link ddf-focusable"
-          :href="directionsUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Google Maps에서 길찾기
-        </a>
-        <p v-else class="route-directions-help">목적지를 선택하면 길찾기 링크가 활성화됩니다.</p>
-      </div>
-    </aside>
-
     <section class="route-destinations" aria-labelledby="route-planner-title">
       <RouterLink class="route-back-link ddf-focusable" :to="{ name: 'regional-archive' }">
         ← 지역 아카이브로 돌아가기
@@ -103,11 +58,80 @@
       <p v-else-if="!loading" class="route-empty">조건에 맞는 진행 중 전시가 없습니다.</p>
     </section>
 
+    <aside
+      class="route-planner-panel"
+      :class="{ 'is-mobile-controls-open': routeControlsOpen }"
+      aria-labelledby="route-controls-title"
+    >
+      <button
+        ref="routeControlsToggle"
+        class="route-controls-toggle ddf-focusable"
+        type="button"
+        aria-controls="route-controls"
+        :aria-expanded="routeControlsOpen"
+        @click="openRouteControls"
+      >
+        경로 설정 열기
+      </button>
+
+      <div id="route-controls" class="route-controls" :class="{ 'is-open': routeControlsOpen }">
+        <div class="route-controls-header">
+          <h2 id="route-controls-title">오늘의 이동 경로</h2>
+          <button
+            ref="routeControlsClose"
+            class="route-controls-close ddf-focusable"
+            type="button"
+            @click="closeRouteControls"
+          >
+            닫기
+          </button>
+        </div>
+
+        <fieldset class="route-fieldset">
+          <legend>출발지</legend>
+          <label v-for="origin in ARCHIVE_ROUTE_ORIGINS" :key="origin.id" class="route-choice">
+            <input class="ddf-focusable" v-model="originId" type="radio" name="archive-route-origin" :value="origin.id">
+            <span>{{ origin.label }}</span>
+          </label>
+        </fieldset>
+
+        <div class="route-line" aria-label="선택한 이동 경로">
+          <div>
+            <span>출발</span>
+            <strong>{{ selectedOrigin.label }}</strong>
+          </div>
+          <div>
+            <span>도착</span>
+            <strong>{{ selectedItem ? selectedItem.venue : '목적지를 선택하세요' }}</strong>
+            <small v-if="selectedItem">{{ selectedItem.address || selectedItem.cityLabel }}</small>
+          </div>
+        </div>
+
+        <fieldset class="route-fieldset">
+          <legend>이동 방식</legend>
+          <label v-for="mode in ARCHIVE_ROUTE_MODES" :key="mode.id" class="route-choice">
+            <input class="ddf-focusable" v-model="modeId" type="radio" name="archive-route-mode" :value="mode.id">
+            <span>{{ mode.label }}</span>
+          </label>
+        </fieldset>
+
+        <a
+          v-if="directionsUrl"
+          class="route-directions-link ddf-focusable"
+          :href="directionsUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Google Maps에서 길찾기
+        </a>
+        <p v-else class="route-directions-help">목적지를 선택하면 길찾기 링크가 활성화됩니다.</p>
+      </div>
+    </aside>
   </main>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { archiveCities, regionalArchiveItems } from '@/data/regionalArchive'
 import {
@@ -126,6 +150,9 @@ const query = ref('')
 const activeCity = ref('all')
 const originId = ref('current')
 const modeId = ref('recommended')
+const routeControlsOpen = ref(false)
+const routeControlsToggle = ref(null)
+const routeControlsClose = ref(null)
 const ongoingItems = computed(() => ongoingArchiveItems(allItems.value))
 const visibleItems = computed(() => ongoingItems.value.filter(matchesFilters))
 const selectedItem = computed(() => ongoingItems.value.find(item => item.id === String(route.query.to || '')) || null)
@@ -148,6 +175,18 @@ function matchesFilters(item) {
 
 function selectDestination(id) {
   router.replace({ name: 'archive-route', query: { ...route.query, to: id } })
+}
+
+async function openRouteControls() {
+  routeControlsOpen.value = true
+  await nextTick()
+  routeControlsClose.value?.focus()
+}
+
+async function closeRouteControls() {
+  routeControlsOpen.value = false
+  await nextTick()
+  routeControlsToggle.value?.focus()
 }
 
 async function loadArchiveItems() {
@@ -306,6 +345,28 @@ async function loadArchiveItems() {
   padding: 20px;
 }
 
+.route-controls-toggle,
+.route-controls-close {
+  border: 1px solid var(--ddf-line);
+  border-radius: 0;
+  color: var(--ddf-ink);
+  background: var(--ddf-paper);
+  font: inherit;
+  cursor: pointer;
+}
+
+.route-controls-toggle,
+.route-controls-close {
+  display: none;
+}
+
+.route-controls-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .route-controls h2 {
   margin: 0;
   font-size: 18px;
@@ -328,11 +389,6 @@ async function loadArchiveItems() {
 
 .route-choice input {
   accent-color: var(--ddf-ink);
-}
-
-.route-choice input:focus-visible {
-  outline: 2px solid var(--ddf-line);
-  outline-offset: 3px;
 }
 
 .route-line {
@@ -397,6 +453,27 @@ async function loadArchiveItems() {
   }
 
   .route-controls {
+    display: none;
+  }
+
+  .route-planner-panel.is-mobile-controls-open .route-controls-toggle {
+    display: none;
+  }
+
+  .route-controls-toggle {
+    position: fixed;
+    right: 16px;
+    left: 16px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 14px;
+  }
+
+  .route-controls.is-open {
     position: fixed;
     right: 16px;
     left: 16px;
@@ -410,8 +487,12 @@ async function loadArchiveItems() {
     background: var(--ddf-paper);
   }
 
-  .route-destinations {
-    padding-bottom: calc(520px + env(safe-area-inset-bottom));
+  .route-controls-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    padding: 0 10px;
   }
 
   .route-fieldset:first-child legend {
