@@ -429,8 +429,10 @@ GET /api/archive/venues
 GET /api/archive/sources
 GET /api/archive/health
 GET /api/archive/crawl/runs
+GET /api/archive/nearby?lat={latitude}&lng={longitude}
 POST /api/archive/crawl/artmap
 POST /api/archive/crawl/gwangju-museum
+POST /api/archive/transport/sync
 ```
 
 테이블:
@@ -451,9 +453,25 @@ priority_venues
 
 ```txt
 POST /api/archive/crawl/artmap 호출에는 x-crawl-secret 필요
+POST /api/archive/transport/sync 호출에는 x-crawl-secret 필요
 Google Maps API key는 HTTP referrer 제한 필수
 이미지는 저작권 검토 전 직접 저장하지 않고 원문 URL만 보관
 ```
+
+### 주변 교통정보 동기화
+
+`POST /api/archive/transport/sync`는 인증된 운영 요청만 받을 수 있으며, 외부 공공데이터를 Worker에서 정규화해 D1 `transport_points` 캐시에 저장한다. 브라우저나 클라이언트 번들에는 공공데이터 키를 넣지 않는다.
+
+버스는 광주 BIS의 `stationInfo`, `lineInfo`, `lineStationInfo`를 사용한다. 주차장은 광주 공영·민영 주차장 데이터 중 `주차장구분=공영`만 저장하고, 지하철은 광주교통공사 문화노선도 데이터의 역 좌표를 사용한다. Worker는 HTTPS 데이터 URL만 요청하며, URL에 `serviceKey`를 추가해도 키를 응답·로그·저장하지 않는다.
+
+Worker secret은 값 없이 이름만 등록한다. `cloudflare` 디렉터리에서 아래 명령을 실행한 뒤 Wrangler의 프롬프트에만 값을 붙여 넣는다.
+
+```bash
+npx wrangler secret put GWANGJU_BUS_API_KEY
+npx wrangler secret put PUBLIC_DATA_API_KEY
+```
+
+공개 설정인 `GWANGJU_PARKING_DATA_URL`과 `GWANGJU_SUBWAY_DATA_URL`은 `cloudflare/wrangler.jsonc`에 검증된 HTTPS 공공데이터 URL로 둔다. 키가 없으면 각각 `bus_key_missing`, `public_data_key_missing` 경고를 반환하고 해당 소스만 건너뛴다. 동기화는 예약 작업이 아니므로 운영자가 필요할 때만 인증된 POST로 실행한다.
 
 ## 업데이트 (v1.3) — 무료 자동 스크레이퍼 (GitHub Actions)
 

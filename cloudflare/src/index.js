@@ -2,6 +2,7 @@ import { crawlArtmap } from './artmap-crawler.js'
 import { crawlGwangjuMuseum } from './gwangju-museum-crawler.js'
 import { importManualExhibitions } from './manual-source.js'
 import { listNearbyTransport } from './nearby-transport.js'
+import { syncTransportPoints } from './transport-sync.js'
 
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
@@ -391,6 +392,12 @@ async function runManualUpsert(request, env) {
   }
 }
 
+async function runTransportSync(request, env) {
+  if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+
+  return json(await syncTransportPoints(env))
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: jsonHeaders })
@@ -411,6 +418,11 @@ export default {
       if (url.pathname === '/api/archive/manual') {
         if (request.method !== 'POST') return error('Method not allowed', 405)
         return runManualUpsert(request, env)
+      }
+
+      if (url.pathname === '/api/archive/transport/sync') {
+        if (request.method !== 'POST') return error('Method not allowed', 405)
+        return runTransportSync(request, env)
       }
 
       if (request.method !== 'GET') return error('Method not allowed', 405)

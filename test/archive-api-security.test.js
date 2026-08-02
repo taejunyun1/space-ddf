@@ -33,6 +33,31 @@ test('Archive operational source and crawl-run APIs require the crawl secret', a
   assert.equal(allowed.status, 200)
 })
 
+test('transport sync API requires the crawl secret and accepts only POST', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+  const db = createDb()
+  const denied = await worker.fetch(
+    new Request('https://archive.test/api/archive/transport/sync', { method: 'POST' }),
+    { DB: db, CRAWL_SECRET: 'secret' },
+  )
+  const allowed = await worker.fetch(
+    new Request('https://archive.test/api/archive/transport/sync', {
+      method: 'POST',
+      headers: { 'x-crawl-secret': 'secret' },
+    }),
+    { DB: db, CRAWL_SECRET: 'secret' },
+  )
+  const get = await worker.fetch(
+    new Request('https://archive.test/api/archive/transport/sync'),
+    { DB: db, CRAWL_SECRET: 'secret' },
+  )
+
+  assert.equal(denied.status, 401)
+  assert.equal(allowed.status, 200)
+  assert.deepEqual(await allowed.json(), { saved: 0, warnings: ['bus_key_missing', 'public_data_key_missing'] })
+  assert.equal(get.status, 405)
+})
+
 test('nearby API rejects invalid raw and numeric coordinates before querying D1', async () => {
   const worker = (await import('../cloudflare/src/index.js')).default
 
