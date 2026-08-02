@@ -33,17 +33,50 @@ test('Archive operational source and crawl-run APIs require the crawl secret', a
   assert.equal(allowed.status, 200)
 })
 
-test('nearby API validates finite, physically valid coordinates before querying D1', async () => {
+test('nearby API rejects invalid raw and numeric coordinates before querying D1', async () => {
   const worker = (await import('../cloudflare/src/index.js')).default
 
-  for (const query of ['lat=x&lng=126.9', 'lat=91&lng=126.9', 'lat=35.15&lng=181']) {
+  const cases = [
+    ['missing latitude', 'lng=126.9'],
+    ['missing longitude', 'lat=35.15'],
+    ['empty latitude', 'lat=&lng=126.9'],
+    ['empty longitude', 'lat=35.15&lng='],
+    ['whitespace latitude', 'lat=%20&lng=126.9'],
+    ['whitespace longitude', 'lat=35.15&lng=%20'],
+    ['NaN latitude', 'lat=NaN&lng=126.9'],
+    ['NaN longitude', 'lat=35.15&lng=NaN'],
+    ['out-of-range latitude', 'lat=91&lng=126.9'],
+    ['out-of-range longitude', 'lat=35.15&lng=181'],
+  ]
+
+  for (const [description, query] of cases) {
     const db = createDb()
     const response = await worker.fetch(new Request(`https://archive.test/api/archive/nearby?${query}`), { DB: db })
 
-    assert.equal(response.status, 400)
+    assert.equal(response.status, 400, description)
     assert.deepEqual(await response.json(), { error: 'Valid lat and lng are required' })
     assert.equal(db.calls.length, 0)
   }
+})
+
+test('nearby API is GET-only and matches only its exact path', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+
+  const postDb = createDb()
+  const post = await worker.fetch(
+    new Request('https://archive.test/api/archive/nearby?lat=35.15&lng=126.9', { method: 'POST' }),
+    { DB: postDb },
+  )
+  assert.equal(post.status, 405)
+  assert.equal(postDb.calls.length, 0)
+
+  const extraPathDb = createDb()
+  const extraPath = await worker.fetch(
+    new Request('https://archive.test/api/archive/nearby/extra?lat=35.15&lng=126.9'),
+    { DB: extraPathDb },
+  )
+  assert.equal(extraPath.status, 404)
+  assert.equal(extraPathDb.calls.length, 0)
 })
 
 test('nearby API returns public transport sections with shared-cache headers', async () => {

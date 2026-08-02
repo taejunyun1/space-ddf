@@ -225,13 +225,19 @@ async function nearbyTransport(request, env) {
   const url = new URL(request.url)
   const latValue = url.searchParams.get('lat')
   const lngValue = url.searchParams.get('lng')
+
+  if (
+    typeof latValue !== 'string'
+    || latValue.trim() === ''
+    || typeof lngValue !== 'string'
+    || lngValue.trim() === ''
+  ) return error('Valid lat and lng are required', 400)
+
   const lat = Number(latValue)
   const lng = Number(lngValue)
 
   if (
-    !latValue
-    || !lngValue
-    || !Number.isFinite(lat)
+    !Number.isFinite(lat)
     || !Number.isFinite(lng)
     || lat < -90
     || lat > 90
