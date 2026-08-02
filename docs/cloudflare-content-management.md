@@ -54,7 +54,7 @@ npm run build:pages
 
 배포 후 확인:
 
-- `/manage/contents`가 로그인 뒤 열리는지 확인
+- `/admin`의 콘텐츠 관리 화면이 로그인 뒤 열리는지 확인
 - Show와 Project 임시 콘텐츠 각각 한 개 생성
 - 포스터와 갤러리 업로드
 - 공개 후 메인 목록과 상세 URL 확인
@@ -64,4 +64,3 @@ npm run build:pages
 ## 롤백
 
 이전 Pages 배포 버전으로 되돌리면 프런트엔드는 기존 정적 `content.js`와 `src/assets`를 그대로 사용한다. D1과 R2 데이터는 삭제하지 않고 유지한다. 공개 API 장애 시 현재 프런트엔드도 정적 콘텐츠 fallback을 사용한다.
-

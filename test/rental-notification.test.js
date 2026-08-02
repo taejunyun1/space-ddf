@@ -12,7 +12,7 @@ test('builds escaped HTML and plain text for the Space DDF manager', async () =>
     requestedEndDate: '2026-09-20',
     supportProgram: 'k-art',
     projectDescription: '사진 & 사운드',
-  }, 'https://spaceddf.xyz/manage/rentals')
+  }, 'https://spaceddf.xyz/admin')
 
   assert.deepEqual(message.from, {
     email: 'rental@spaceddf.xyz',
@@ -26,7 +26,7 @@ test('builds escaped HTML and plain text for the Space DDF manager', async () =>
   assert.match(message.html, /&lt;script&gt;/)
   assert.match(message.html, /사진 &amp; 사운드/)
   assert.match(message.html, /K-ART/)
-  assert.match(message.text, /https:\/\/spaceddf\.xyz\/manage\/rentals/)
+  assert.match(message.text, /https:\/\/spaceddf\.xyz\/admin/)
 })
 
 test('records sent after the binding accepts the message', async () => {
@@ -40,7 +40,7 @@ test('records sent after the binding accepts the message', async () => {
     db,
     email: { send: async message => sent.push(message) },
     request,
-    adminUrl: 'https://spaceddf.xyz/manage/rentals',
+    adminUrl: 'https://spaceddf.xyz/admin',
     now: () => '2026-07-10T00:00:00.000Z',
   })
 
@@ -76,7 +76,7 @@ test('records sent after the email service Worker accepts the message', async ()
       },
     },
     request,
-    adminUrl: 'https://spaceddf.xyz/manage/rentals',
+    adminUrl: 'https://spaceddf.xyz/admin',
     now: () => '2026-07-10T00:00:30.000Z',
   })
 
@@ -105,7 +105,7 @@ test('records a sanitized failure when the binding is unavailable', async () => 
     db,
     email: undefined,
     request: validNotificationRequest(),
-    adminUrl: 'https://spaceddf.xyz/manage/rentals',
+    adminUrl: 'https://spaceddf.xyz/admin',
     now: () => '2026-07-10T00:01:00.000Z',
   })
 
@@ -130,7 +130,7 @@ test('records a sanitized failure when the provider rejects delivery', async () 
       },
     },
     request: validNotificationRequest(),
-    adminUrl: 'https://spaceddf.xyz/manage/rentals',
+    adminUrl: 'https://spaceddf.xyz/admin',
     now: () => '2026-07-10T00:02:00.000Z',
   })
 

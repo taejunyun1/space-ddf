@@ -1,5 +1,5 @@
 <template>
-  <main class="rental-page">
+  <main class="rental-page" data-build-revision="2026-08-01">
     <header class="rental-header">
       <div>
         <p class="rental-kicker">Space DDF Rental</p>

@@ -29,7 +29,7 @@ export async function processRentalOperations(env, now = new Date()) {
         supportProgram: row.support_program,
         projectDescription: row.project_description,
       },
-      adminUrl: 'https://spaceddf.xyz/manage/rentals',
+      adminUrl: 'https://spaceddf.xyz/admin',
       now: () => nowIso,
       attemptCount: Number(row.attempt_count || 0) + 1,
     })

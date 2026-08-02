@@ -38,11 +38,11 @@ test('content preview is emitted to the admin modal instead of opening a route',
   assert.match(modal, /@click\.self="\$emit\('close'\)"/)
 })
 
-test('Cloudflare Pages protects and serves only /admin as a frontend function route', () => {
+test('Cloudflare Pages protects /admin and serves managed detail fallbacks as frontend function routes', () => {
   const routes = JSON.parse(read('public/_routes.json'))
   const adminFunction = read('functions/admin/[[path]].js')
 
-  assert.deepEqual(routes.include, ['/api/*', '/admin'])
+  assert.deepEqual(routes.include, ['/api/*', '/admin', '/shows/*', '/projects/*'])
   assert.match(adminFunction, /handleManagePageRoute/)
   assert.equal(fs.existsSync(path.join(root, 'functions/manage/[[path]].js')), false)
   assert.equal(fs.existsSync(path.join(root, 'src/server/admin-page.mjs')), false)

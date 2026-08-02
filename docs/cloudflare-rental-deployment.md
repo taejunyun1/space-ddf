@@ -65,7 +65,7 @@ npx wrangler pages secret put MANAGE_AUTH_PASSWORD --project-name space-ddf-home
 npx wrangler pages secret put MANAGE_AUTH_SECRET --project-name space-ddf-home
 ```
 
-`MANAGE_AUTH_PASSWORD` is the password typed on the `/manage` login screen. `MANAGE_AUTH_SECRET` signs the manager session cookie and should be a long random string. Do not commit either value.
+`MANAGE_AUTH_PASSWORD` is the password typed on the `/admin` login screen. `MANAGE_AUTH_SECRET` signs the manager session cookie and should be a long random string. Do not commit either value.
 
 ## Rental Notification Email
 
@@ -88,7 +88,7 @@ npx wrangler pages secret put MANAGE_AUTH_SECRET --project-name space-ddf-home
 6. Pages 프로젝트의 `RENTAL_NOTIFICATION_EMAIL` Service Binding이 `space-ddf-rental-email`을 가리키는지 확인합니다.
 7. 공개 대관 페이지에서 테스트 신청을 한 건 접수합니다.
 8. `space.ddf@gmail.com` 수신 여부와 답장 주소를 확인합니다.
-9. `/manage/rentals` 상세 화면에서 `메일 발송됨` 상태를 확인한 뒤 테스트 신청을 삭제합니다.
+9. `/admin`의 렌탈 관리 화면에서 `메일 발송됨` 상태를 확인한 뒤 테스트 신청을 삭제합니다.
 
 메일 발송이 실패해도 신청은 D1에 정상 저장됩니다. 관리자 상세 화면에는 `메일 발송 실패`로 표시되며, 공급자 오류 원문이나 신청자의 개인정보는 오류 필드에 저장하지 않습니다.
 
@@ -108,12 +108,9 @@ The Pages Function `GET /api/calendar/google` reads this secret server-side, exp
 
 ## Admin Access
 
-The current production setup does not use Google or Cloudflare Access login for the active manager surface. The manager enters through:
+The current production setup does not use Google or Cloudflare Access login for the active manager surface. The only manager entry path is `/admin`.
 
-- `/manage`
-- `/manage/rentals`
-
-Unauthenticated visitors are redirected to `/manage/login`. After login, the site sets a signed `HttpOnly` session cookie for 12 hours.
+Unauthenticated visitors see the login form at `/admin`. After login, the site sets a signed `HttpOnly` session cookie for 12 hours.
 
 The active manager APIs are:
 
@@ -122,7 +119,7 @@ The active manager APIs are:
 
 These APIs require the same signed manager session cookie, so the "신청내역 불러오기" and status action buttons work only after the password login.
 
-`/admin` is a legacy entry path and redirects to `/manage/rentals` when the request reaches Pages Functions. If a Cloudflare Access application is still attached to `/admin*`, Cloudflare will intercept the request before this redirect runs. Remove the Access application or exclude `/admin*` when switching fully to password login.
+Legacy manager page paths are not deployed. If a Cloudflare Access application is attached to `/admin*`, Cloudflare will intercept the request before the password login page. Remove the Access application or exclude `/admin*` when using the built-in password login.
 
 All state-changing manager API requests also require a same-origin `Origin` header.
 
