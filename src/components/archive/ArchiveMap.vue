@@ -44,6 +44,23 @@
         </div>
         <h3>{{ selectedItem.title }}</h3>
         <p>{{ selectedItem.venue }}</p>
+        <section v-if="selectedGroupItems.length > 1" class="detail-pavilion-list" aria-labelledby="venue-pavilions-title">
+          <h4 id="venue-pavilions-title">이 장소의 파빌리온</h4>
+          <div>
+            <button
+              v-for="item in selectedGroupItems"
+              :key="item.id"
+              type="button"
+              class="detail-pavilion ddf-focusable"
+              :class="{ 'is-selected': item.id === selectedItem.id }"
+              :aria-pressed="item.id === selectedItem.id"
+              @click="selectGroupedItem(item.id)"
+            >
+              <span>{{ pavilionTitle(item) }}</span>
+              <small v-if="item.id === selectedItem.id">선택됨</small>
+            </button>
+          </div>
+        </section>
         <dl>
           <div>
             <dt>기간</dt>
@@ -151,12 +168,13 @@ const markerGroups = computed(() => {
   props.items
     .filter(item => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)))
     .forEach(item => {
-      const key = [
+      const fallbackKey = [
         item.city,
         item.venue,
         Number(item.lat).toFixed(5),
         Number(item.lng).toFixed(5),
       ].join('|')
+      const key = item.venueGroupKey || fallbackKey
       const current = groups.get(key)
 
       if (current) {
@@ -190,6 +208,15 @@ const markerGroups = computed(() => {
 const selectedMarkerGroup = computed(() => (
   markerGroups.value.find(group => group.itemIds.includes(props.selectedId)) || null
 ))
+
+const selectedGroupItems = computed(() => {
+  if (!selectedMarkerGroup.value) return []
+
+  const itemsById = new Map(props.items.map(item => [item.id, item]))
+  return selectedMarkerGroup.value.itemIds
+    .map(id => itemsById.get(id))
+    .filter(Boolean)
+})
 
 onMounted(initMap)
 onBeforeUnmount(() => {
@@ -335,11 +362,12 @@ function markerContent(group, selected) {
   const ongoing = group.status === 'ongoing'
 
   marker.type = 'button'
+  marker.className = 'ddf-focusable'
   marker.textContent = group.count > 1 ? String(group.count) : ongoing ? '현' : screening ? '상' : group.cityLabel.slice(0, 1)
   marker.setAttribute('aria-label', `${markerTitle(group)} 위치 선택`)
   marker.addEventListener('click', event => {
     event.stopPropagation()
-    emit('select', group.primaryId)
+    emit('select', group.itemIds.includes(props.selectedId) ? props.selectedId : group.primaryId)
   })
 
   Object.assign(marker.style, {
@@ -372,6 +400,14 @@ function markerTitle(group) {
   const label = group.archiveType === 'screening' ? '상영' : group.archiveType === 'mixed' ? '기록' : '전시'
   const statusLabel = group.status === 'ongoing' ? '현재 관람 가능 ' : ''
   return `${group.venue} ${statusLabel}${label} ${group.count}개`
+}
+
+function pavilionTitle(item) {
+  return item.pavilionName || item.title
+}
+
+function selectGroupedItem(id) {
+  emit('select', id)
 }
 
 function markerStatus(current, next) {
@@ -571,6 +607,59 @@ function markerStatus(current, next) {
   margin: 0;
   color: #333;
   font-size: 13px;
+}
+
+.detail-pavilion-list {
+  display: grid;
+  gap: 7px;
+  border-top: 1px solid #d6d6d2;
+  padding-top: 10px;
+}
+
+.detail-pavilion-list h4 {
+  margin: 0;
+  color: var(--ddf-muted);
+  font-family: var(--ddf-font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.detail-pavilion-list > div {
+  display: grid;
+  gap: 5px;
+}
+
+.detail-pavilion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid #cfcfca;
+  background: var(--ddf-paper);
+  padding: 7px 9px;
+  color: var(--ddf-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.detail-pavilion.is-selected {
+  border-color: var(--ddf-status-open);
+  background: var(--ddf-status-open-soft);
+  font-weight: 700;
+}
+
+.detail-pavilion small {
+  flex: 0 0 auto;
+  color: var(--ddf-status-open);
+  font-family: var(--ddf-font-mono);
+  font-size: 10px;
+  font-weight: 400;
 }
 
 .map-detail dl {

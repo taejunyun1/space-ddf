@@ -38,6 +38,49 @@ test('regional archive map defaults to a closer zoom level', () => {
   assert.match(source, /googleMap\.setZoom\(SELECTED_MARKER_ZOOM\)/)
 })
 
+test('regional archive map groups Biennale pavilions by their shared venue key', () => {
+  const source = readProjectFile('src/components/archive/ArchiveMap.vue')
+  const groups = markerGroupsFromMapSource(source, [
+    {
+      id: 'malaysia-pavilion',
+      city: 'gwangju',
+      cityLabel: '광주',
+      venue: 'ACC 국제전시관 1',
+      venueGroupKey: 'biennale-venue-coordinate-v1|acc',
+      lat: 35.1462,
+      lng: 126.9218,
+      status: 'ongoing',
+      archiveType: 'exhibition',
+    },
+    {
+      id: 'myanmar-pavilion',
+      city: 'gwangju',
+      cityLabel: '광주',
+      venue: 'ACC 국제전시관 1층 로비',
+      venueGroupKey: 'biennale-venue-coordinate-v1|acc',
+      lat: 35.14624,
+      lng: 126.92184,
+      status: 'ongoing',
+      archiveType: 'exhibition',
+    },
+  ])
+
+  assert.equal(groups.length, 1)
+  assert.equal(groups[0].count, 2)
+  assert.deepEqual(groups[0].itemIds, ['malaysia-pavilion', 'myanmar-pavilion'])
+})
+
+test('regional archive map keeps the active pavilion selectable within a shared venue', () => {
+  const source = readProjectFile('src/components/archive/ArchiveMap.vue')
+
+  assert.match(source, /const selectedGroupItems = computed\(/)
+  assert.match(source, /v-for="item in selectedGroupItems"/)
+  assert.match(source, /@click="selectGroupedItem\(item\.id\)"/)
+  assert.match(source, /:aria-pressed="item\.id === selectedItem\.id"/)
+  assert.match(source, /emit\('select', group\.itemIds\.includes\(props\.selectedId\) \? props\.selectedId : group\.primaryId\)/)
+  assert.match(source, /query:\s*{\s*to:\s*selectedItem\.id\s*}/)
+})
+
 test('regional archive map contains only ongoing records and links to the planner', () => {
   const view = readProjectFile('src/views/RegionalArchiveView.vue')
   const map = readProjectFile('src/components/archive/ArchiveMap.vue')
@@ -67,4 +110,16 @@ test('regional archive uses distinct city colors for Gwangju, Jeonbuk, and Jeonn
 
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8')
+}
+
+function markerGroupsFromMapSource(source, items) {
+  const match = source.match(/const markerGroups = computed\(\(\) => \{([\s\S]*?)\n\}\)\n\nconst selectedMarkerGroup/)
+  assert.ok(match, 'ArchiveMap marker grouping must remain a computed collection')
+
+  const groupBody = match[1].replace(/props\.items/g, 'items')
+  return Function('items', 'archiveTypeValue', 'markerStatus', groupBody)(
+    items,
+    item => item.archiveType,
+    current => current,
+  )
 }
