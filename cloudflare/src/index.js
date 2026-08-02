@@ -405,7 +405,7 @@ async function resetBiennaleCrawl(request, env) {
   if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
 
   const body = await parseJsonBody(request)
-  const edition = body.edition
+  const edition = body && typeof body === 'object' && !Array.isArray(body) ? body.edition : undefined
   if (!Number.isInteger(edition) || edition <= 0) return error('A positive integer edition is required', 400)
 
   const result = await env.DB.prepare(`

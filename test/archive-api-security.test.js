@@ -148,6 +148,34 @@ test('biennale reset endpoint is POST-only, authenticated, validates edition, an
   assert.deepEqual(update.values, [16])
 })
 
+test('biennale reset rejects malformed or non-object payloads without querying D1', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+  const cases = [
+    ['JSON null', { headers: { 'content-type': 'application/json' }, body: 'null' }],
+    ['JSON array', { headers: { 'content-type': 'application/json' }, body: '[16]' }],
+    ['float edition', { headers: { 'content-type': 'application/json' }, body: '{"edition":16.5}' }],
+    ['malformed JSON', { headers: { 'content-type': 'application/json' }, body: '{"edition":' }],
+    ['absent body', {}],
+    ['wrong content type', { headers: { 'content-type': 'text/plain' }, body: '{"edition":16}' }],
+  ]
+
+  for (const [description, init] of cases) {
+    const db = createBiennaleDb()
+    const response = await worker.fetch(
+      new Request('https://archive.test/api/archive/crawl/gwangju-biennale/reset', {
+        method: 'POST',
+        ...init,
+        headers: { ...init.headers, 'x-crawl-secret': 'secret' },
+      }),
+      { DB: db, CRAWL_SECRET: 'secret' },
+    )
+
+    assert.equal(response.status, 400, description)
+    assert.deepEqual(await response.json(), { error: 'A positive integer edition is required' }, description)
+    assert.equal(db.calls.length, 0, description)
+  }
+})
+
 test('scheduled crawl dispatch includes the gated biennale runner', () => {
   const source = fs.readFileSync('cloudflare/src/index.js', 'utf8')
   assert.match(source, /runScheduledCrawl\(env, 'gwangju-biennale-pavilion', 'biennale-pavilions-scheduled', \(\) => runBiennaleEditionIfDue\(env, \{ now: new Date\(\) \}\)\)/)

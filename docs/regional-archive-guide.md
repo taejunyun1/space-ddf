@@ -442,6 +442,7 @@ POST /api/archive/transport/sync
 ```txt
 sources
 crawl_runs
+biennale_editions
 source_records
 venues
 exhibitions
