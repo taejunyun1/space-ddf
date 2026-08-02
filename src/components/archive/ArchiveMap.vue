@@ -166,7 +166,7 @@ const markerGroups = computed(() => {
   const groups = new Map()
 
   props.items
-    .filter(item => Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng)))
+    .filter(hasValidCoordinates)
     .forEach(item => {
       const fallbackKey = [
         item.city,
@@ -228,8 +228,8 @@ watch(markerGroups, () => {
   syncMarkers()
 })
 
-watch(selectedMarkerGroup, () => {
-  focusSelectedMarker()
+watch(() => props.selectedId, () => {
+  syncMarkers()
 })
 
 async function initMap() {
@@ -404,6 +404,20 @@ function markerTitle(group) {
 
 function pavilionTitle(item) {
   return item.pavilionName || item.title
+}
+
+function hasValidCoordinates(item) {
+  const { lat, lng } = item || {}
+  const isValidCoordinate = (value, min, max) => {
+    if ((typeof value !== 'number' && typeof value !== 'string') || (typeof value === 'string' && !value.trim())) {
+      return false
+    }
+
+    const coordinate = Number(value)
+    return Number.isFinite(coordinate) && coordinate >= min && coordinate <= max
+  }
+
+  return isValidCoordinate(lat, -90, 90) && isValidCoordinate(lng, -180, 180)
 }
 
 function selectGroupedItem(id) {

@@ -70,6 +70,28 @@ test('regional archive map groups Biennale pavilions by their shared venue key',
   assert.deepEqual(groups[0].itemIds, ['malaysia-pavilion', 'myanmar-pavilion'])
 })
 
+test('regional archive map accepts only valid scalar latitude and longitude values', () => {
+  const source = readProjectFile('src/components/archive/ArchiveMap.vue')
+  const invalidCoordinates = [
+    [null, 126.9],
+    [undefined, 126.9],
+    ['', 126.9],
+    ['   ', 126.9],
+    [true, 126.9],
+    [35.1, false],
+    [NaN, 126.9],
+    [91, 126.9],
+    [35.1, 181],
+  ]
+  const groups = markerGroupsFromMapSource(source, [
+    ...invalidCoordinates.map(([lat, lng], index) => archiveMapItem(`invalid-${index}`, lat, lng)),
+    archiveMapItem('numeric-strings', '35.1', '126.9'),
+    archiveMapItem('equator-prime-meridian', 0, 0),
+  ])
+
+  assert.deepEqual(groups.flatMap(group => group.itemIds), ['numeric-strings', 'equator-prime-meridian'])
+})
+
 test('regional archive map keeps the active pavilion selectable within a shared venue', () => {
   const source = readProjectFile('src/components/archive/ArchiveMap.vue')
 
@@ -79,6 +101,15 @@ test('regional archive map keeps the active pavilion selectable within a shared 
   assert.match(source, /:aria-pressed="item\.id === selectedItem\.id"/)
   assert.match(source, /emit\('select', group\.itemIds\.includes\(props\.selectedId\) \? props\.selectedId : group\.primaryId\)/)
   assert.match(source, /query:\s*{\s*to:\s*selectedItem\.id\s*}/)
+})
+
+test('regional archive map refreshes existing marker selection content when selection changes groups', () => {
+  const source = readProjectFile('src/components/archive/ArchiveMap.vue')
+
+  assert.match(source, /watch\(\(\) => props\.selectedId, \(\) => \{\s*syncMarkers\(\)\s*}\)/)
+  assert.match(source, /const marker = markerMap\.get\(group\.id\) \|\| createMarker\(group\)/)
+  assert.match(source, /marker\.content = markerContent\(group, selected\)/)
+  assert.match(source, /marker\.zIndex = selected \? 20 : 10 \+ group\.count/)
 })
 
 test('regional archive map contains only ongoing records and links to the planner', () => {
@@ -117,9 +148,28 @@ function markerGroupsFromMapSource(source, items) {
   assert.ok(match, 'ArchiveMap marker grouping must remain a computed collection')
 
   const groupBody = match[1].replace(/props\.items/g, 'items')
-  return Function('items', 'archiveTypeValue', 'markerStatus', groupBody)(
+  return Function('items', 'archiveTypeValue', 'markerStatus', 'hasValidCoordinates', groupBody)(
     items,
     item => item.archiveType,
     current => current,
+    sourceFunction(source, 'hasValidCoordinates') || (() => true),
   )
+}
+
+function archiveMapItem(id, lat, lng) {
+  return {
+    id,
+    city: 'gwangju',
+    cityLabel: '광주',
+    venue: id,
+    lat,
+    lng,
+    status: 'ongoing',
+    archiveType: 'exhibition',
+  }
+}
+
+function sourceFunction(source, name) {
+  const match = source.match(new RegExp(`function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}`))
+  return match ? Function(`return (${match[0]})`)() : null
 }
