@@ -19,12 +19,14 @@ test('regional archive mobile layout uses list and map view tabs instead of a dr
   assert.match(source, /@click="activeMobileView = 'map'"/)
 })
 
-test('regional archive mobile list view fills the remaining viewport height', () => {
-  const source = readProjectFile('src/views/RegionalArchiveView.vue')
+test('regional archive mobile list uses natural page height without nested scrolling', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  const list = readProjectFile('src/components/archive/ArchiveList.vue')
 
-  assert.match(source, /\.mobile-list-view\s+\.archive-list-pane\s*{[\s\S]*min-height:\s*calc\(100dvh -/)
-  assert.match(source, /\.archive-list-content\s*{[\s\S]*flex:\s*1 1 auto/)
-  assert.match(source, /\.archive-list-content\s*{[\s\S]*min-height:\s*0/)
+  assert.match(view, /\.mobile-list-view\s+\.archive-list-pane\s*{[\s\S]*?height:\s*auto;[\s\S]*?min-height:\s*0;/)
+  assert.match(view, /\.mobile-list-view\s+\.archive-list-content\s*{[\s\S]*?flex:\s*none;[\s\S]*?overflow:\s*visible;/)
+  assert.doesNotMatch(view, /\.mobile-list-view\s+\.archive-list-pane\s*{[\s\S]*?calc\(100dvh/)
+  assert.match(list, /@media \(max-width:\s*1024px\)[\s\S]*?\.archive-list\s*{[\s\S]*?max-height:\s*none;[\s\S]*?overflow-y:\s*visible;/)
 })
 
 test('regional archive map defaults to a closer zoom level', () => {

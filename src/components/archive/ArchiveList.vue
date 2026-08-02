@@ -310,7 +310,10 @@ defineEmits(['select'])
 
 @media (max-width: 1024px) {
   .archive-list {
-    max-height: 460px;
+    flex: none;
+    max-height: none;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
   }
 }
 

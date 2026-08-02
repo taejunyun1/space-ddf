@@ -267,8 +267,14 @@ async function loadArchiveItems() {
   }
 
   .mobile-list-view .archive-list-pane {
-    height: calc(100dvh - 58px);
-    min-height: calc(100dvh - 58px);
+    height: auto;
+    min-height: 0;
+  }
+
+  .mobile-list-view .archive-list-content {
+    flex: none;
+    min-height: 0;
+    overflow: visible;
   }
 
   .mobile-view-tabs {
