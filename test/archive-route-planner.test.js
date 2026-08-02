@@ -18,10 +18,27 @@ test('archive route utilities normalize ongoing statuses', async () => {
   assert.deepEqual(ongoingArchiveItems(items).map(item => item.id), ['a'])
 })
 
+test('route IDs parse, serialize, toggle, and move in stable order', async () => {
+  const {
+    moveArchiveRouteId,
+    parseArchiveRouteIds,
+    serializeArchiveRouteIds,
+    toggleArchiveRouteId,
+  } = await import('../src/lib/archive-route.mjs')
+
+  assert.deepEqual(parseArchiveRouteIds('a,b,a,,c'), ['a', 'b', 'c'])
+  assert.deepEqual(parseArchiveRouteIds(['a,b', 'c']), ['a', 'b', 'c'])
+  assert.equal(serializeArchiveRouteIds(['a', 'b', 'a', 'bad,id']), 'a,b')
+  assert.deepEqual(toggleArchiveRouteId(['a'], 'b'), ['a', 'b'])
+  assert.deepEqual(toggleArchiveRouteId(['a', 'b'], 'a'), ['b'])
+  assert.deepEqual(moveArchiveRouteId(['a', 'b', 'c'], 2, -1), ['a', 'c', 'b'])
+  assert.deepEqual(moveArchiveRouteId(['a', 'b'], 0, -1), ['a', 'b'])
+})
+
 test('current-location directions omit origin and encode destination', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({
-    item: { venue: '스페이스 디디에프', address: '광주광역시 동구 충장로46번길 8-8' },
+    items: [{ venue: '스페이스 디디에프', address: '광주광역시 동구 충장로46번길 8-8' }],
     originId: 'current',
     modeId: 'transit',
   }))
@@ -33,13 +50,31 @@ test('current-location directions omit origin and encode destination', async () 
 test('fixed origins and recommended mode use the approved values', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({
-    item: { venue: '목적지', lat: 35.1, lng: 126.9 },
+    items: [{ venue: '목적지', lat: 35.1, lng: 126.9 }],
     originId: 'biennale',
     modeId: 'recommended',
   }))
   assert.equal(url.searchParams.get('origin'), '광주광역시 북구 비엔날레로 111')
   assert.equal(url.searchParams.get('destination'), '목적지, 35.1,126.9')
   assert.equal(url.searchParams.has('travelmode'), false)
+})
+
+test('ordered route sends earlier exhibitions as waypoints and the final one as destination', async () => {
+  const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
+  const url = new URL(buildArchiveRouteUrl({
+    items: [
+      { venue: '첫 전시', address: '광주 북구 첫길 1' },
+      { venue: '두 번째 전시', address: '광주 동구 둘길 2' },
+      { venue: '마지막 전시', address: '광주 남구 셋길 3' },
+    ],
+    originId: 'acc',
+    modeId: 'driving',
+  }))
+
+  assert.equal(url.searchParams.get('origin'), '광주광역시 동구 문화전당로 38')
+  assert.equal(url.searchParams.get('waypoints'), '첫 전시, 광주 북구 첫길 1|두 번째 전시, 광주 동구 둘길 2')
+  assert.equal(url.searchParams.get('destination'), '마지막 전시, 광주 남구 셋길 3')
+  assert.equal(url.searchParams.get('travelmode'), 'driving')
 })
 
 test('router and planner expose the approved route contract', () => {
