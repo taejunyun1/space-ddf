@@ -55,6 +55,19 @@ test('router and planner expose the approved route contract', () => {
   assert.doesNotMatch(view, /loadGoogleMapsLibrary|maps\/api\/js|DirectionsService|Routes API/)
 })
 
+test('planner follows DDF tokens and responsive layout without embedded maps', () => {
+  const view = readProjectFile('src/views/ArchiveRouteView.vue')
+  assert.match(view, /var\(--ddf-paper\)/)
+  assert.match(view, /var\(--ddf-ink\)/)
+  assert.match(view, /var\(--ddf-status-open\)/)
+  assert.match(view, /grid-template-columns:\s*minmax\(/)
+  assert.match(view, /class="route-line"/)
+  assert.match(view, /@media \(max-width:\s*780px\)/)
+  assert.match(view, /env\(safe-area-inset-bottom\)/)
+  assert.match(view, /prefers-reduced-motion/)
+  assert.doesNotMatch(view, /<iframe|google-map-canvas/)
+})
+
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(projectRoot, relativePath), 'utf8')
 }

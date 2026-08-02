@@ -377,6 +377,32 @@ async function loadArchiveItems() {
 
   .route-planner-panel {
     position: static;
+    border: 0;
+    padding: 0;
+  }
+
+  .route-planner-panel h2 {
+    margin-bottom: 12px;
+  }
+
+  .route-controls {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    border: 1px solid var(--ddf-line);
+    padding: 14px;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    background: var(--ddf-paper);
+  }
+
+  .route-fieldset:first-child legend {
+    margin-top: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-planner-page {
+    scroll-behavior: auto;
   }
 }
 </style>
