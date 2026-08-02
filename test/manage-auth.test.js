@@ -183,7 +183,7 @@ test('manage API wrapper requires a same-origin Origin header for state-changing
 test('manage API route files require the signed password session before delegating to rental handlers', () => {
   const routes = JSON.parse(readProjectFile('public/_routes.json'))
 
-  assert.deepEqual(routes.include, ['/api/*', '/admin'])
+  assert.deepEqual(routes.include, ['/api/*', '/admin', '/shows/*', '/projects/*'])
   assert.match(readProjectFile('functions/admin/[[path]].js'), /handleManagePageRoute/)
   assert.match(readProjectFile('functions/api/manage/rentals/requests/index.js'), /handleManageListRentalRequests/)
   assert.match(

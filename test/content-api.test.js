@@ -5,6 +5,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import {
+  handleManageContentRequest,
   validateContentDraft,
   validateContentForPublish,
   normalizeContentInput,
@@ -129,4 +130,76 @@ test('published payload matches the existing detail view body and credit contrac
   assert.match(source, /credits:\s*publicCredits\(content\.credits\)/)
   assert.match(source, /split\(\/\\n\\s\*\\n\/\)/)
   assert.match(source, /credit\.label,\s*credit\.value,\s*credit\.url/)
+})
+
+test('publishing always adds content to its home list and makes it the latest featured item', async () => {
+  const calls = []
+  const contentRow = {
+    id: 'content-doom-unboxing',
+    type: 'show',
+    slug: 'doom-unboxing',
+    title: '멸망 언박싱',
+    start_date: '2026-08-01',
+    end_date: '2026-08-12',
+    date_display: '2026.08.01. - 2026.08.12.',
+    location: 'Space DDF',
+    body: '반품불가.',
+    description: '',
+    status: 'draft',
+    show_on_home: 0,
+    is_featured: 0,
+    sort_order: 0,
+    published_at: null,
+    updated_at: '2026-08-01T00:00:00.000Z',
+  }
+  const db = {
+    prepare(sql) {
+      const statement = {
+        sql,
+        values: [],
+        bind(...values) { this.values = values; return this },
+        async first() { return contentRow },
+        async all() {
+          if (sql.includes('content_credits')) {
+            return { results: [{ label: 'Artist', value: '김현석', url: '', sort_order: 0 }] }
+          }
+          if (sql.includes('content_assets')) {
+            return { results: [{
+              id: 'poster-1', role: 'poster', mime_type: 'image/jpeg', byte_size: 100,
+              alt_text: '', caption: '', sort_order: 0, upload_status: 'ready',
+            }] }
+          }
+          return { results: [] }
+        },
+      }
+      return statement
+    },
+    async batch(statements) {
+      calls.push(...statements)
+      return statements.map(() => ({ success: true }))
+    },
+  }
+
+  const response = await handleManageContentRequest({
+    request: new Request('https://space-ddf.test/api/manage/contents/content-doom-unboxing/publish', {
+      method: 'POST',
+    }),
+    env: { DB: db },
+  })
+  const payload = await response.json()
+
+  assert.equal(response.status, 200)
+  assert.equal(payload.data.showOnHome, true)
+  assert.equal(payload.data.isFeatured, true)
+  assert.ok(payload.data.publishedAt)
+
+  const clearPrevious = calls.find(call => call.sql.includes('UPDATE contents SET is_featured = 0'))
+  assert.ok(clearPrevious)
+  const publication = calls.find(call => call.sql.includes('INSERT INTO content_publications'))
+  const publishedSnapshot = JSON.parse(publication.values[3])
+  assert.equal(publishedSnapshot.showOnHome, true)
+  assert.equal(publishedSnapshot.isFeatured, true)
+  const current = calls.find(call => call.sql.includes("status='published'"))
+  assert.match(current.sql, /show_on_home\s*=\s*1/)
+  assert.match(current.sql, /is_featured\s*=\s*1/)
 })

@@ -13,8 +13,6 @@
         v-if="recent"
         :image-src="recentThumb"
         :title="recent.title"
-        :date-range="recent.dateRange"
-        :desc="recentMeta"
         :link="recentLink"
         class="recent-card"
       />
@@ -23,8 +21,6 @@
         v-else
         :image-src="recentThumb"
         title="준비 중"
-        date-range=""
-        desc="전시/프로젝트 업데이트를 기다려주세요."
         link="/shows"
         class="recent-card"
       />
@@ -120,7 +116,6 @@ const projects = computed(() => store.projectsSortedDesc)
 const shows = computed(() => store.showsSortedDesc)
 
 const recent = computed(() => store.recent)
-const recentMeta = computed(() => store.recentMeta)
 const recentThumb = computed(() => store.recentThumb)
 const recentLink = computed(() => store.recentLink)
 
@@ -292,7 +287,7 @@ onBeforeUnmount(() => {
 }
 
 .recent-card {
-  height: var(--top-card-height);
+  height: auto;
 }
 
 .calendar-card {
@@ -316,7 +311,7 @@ onBeforeUnmount(() => {
   max-width: 100%;
   min-width: 0;
 
-  height: var(--top-card-height);
+  height: auto;
   min-height: 0 !important;
 
   border: 1px solid var(--line) !important;
@@ -325,14 +320,7 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-.col-center :deep(.recent-empty) {
-  flex: 1 1 auto;
-  min-height: 0;
-  border: 0 !important;
-}
-
-.col-center :deep(.recent-figure),
-.col-center :deep(.recent-meta) {
+.col-center :deep(.recent-figure) {
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -652,9 +640,9 @@ onBeforeUnmount(() => {
 
     grid-template-columns: 1fr;
     grid-template-areas:
-      "left"
       "center"
-      "right";
+      "right"
+      "left";
 
     gap: 22px;
     padding: 56px 14px 44px;
@@ -676,7 +664,7 @@ onBeforeUnmount(() => {
 
   .col-center :deep(.recent-content) {
     height: auto;
-    min-height: 420px !important;
+    min-height: 0 !important;
   }
 
   .col-right {
@@ -743,10 +731,6 @@ onBeforeUnmount(() => {
     padding: 56px 14px 40px;
   }
 
-  .col-center :deep(.recent-content) {
-    min-height: 380px !important;
-  }
-
   .item-list {
     max-height: 280px;
   }
@@ -770,10 +754,6 @@ onBeforeUnmount(() => {
 
   .code-block {
     font-size: 13px;
-  }
-
-  .col-center :deep(.recent-content) {
-    min-height: 340px !important;
   }
 
   .item-list {

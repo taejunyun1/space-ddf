@@ -85,14 +85,14 @@ export const contentGetters = {
 
   // 최신 1건
   recent() {
-    return this.allSortedByDateDesc[0] || null
+    return this.featuredContent || this.allSortedByDateDesc[0] || null
   },
 
   // 편의 게터
   metaOf: () => getItemMeta,
 
   thumbOf: (state) => (item) => {
-    return item?.thumb || state.defaultThumb
+    return item?.preview || item?.thumb || state.defaultThumb
   },
 
   heroOf: (state) => (item) => {

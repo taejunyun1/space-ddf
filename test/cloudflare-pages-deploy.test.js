@@ -46,7 +46,8 @@ test('Cloudflare Pages rental backend documents D1 binding and migration setup',
   assert.match(docs, /MANAGE_AUTH_SECRET/)
   assert.match(docs, /wrangler d1 create space-ddf-rentals/)
   assert.match(docs, /wrangler d1 migrations apply space-ddf-rentals --remote/)
-  assert.match(docs, /\/manage\/rentals/)
+  assert.match(docs, /\/admin/)
+  assert.doesNotMatch(docs.replaceAll('/api/manage', ''), /\/manage(?:\/|\b)/)
   assert.match(docs, /\/api\/manage\/\*/)
 })
 
@@ -97,8 +98,35 @@ test('Pages Functions are scoped to API routes so SPA fallback works', () => {
   const routes = JSON.parse(readProjectFile('public/_routes.json'))
 
   assert.equal(routes.version, 1)
-  assert.deepEqual(routes.include, ['/api/*', '/admin'])
+  assert.deepEqual(routes.include, ['/api/*', '/admin', '/shows/*', '/projects/*'])
   assert.deepEqual(routes.exclude, [])
+})
+
+test('managed detail routes fall back to the SPA shell when no prerendered asset exists', async () => {
+  const { serveManagedDetailRoute } = await import('../src/server/detail-route.mjs')
+  const requests = []
+  const context = {
+    request: new Request('https://spaceddf.xyz/shows/new-managed-show'),
+    env: {
+      ASSETS: {
+        async fetch(request) {
+          const url = new URL(request.url)
+          requests.push(url.pathname)
+          return url.pathname === '/'
+            ? new Response('<div id="app"></div>', { status: 200 })
+            : new Response('Not Found', { status: 404 })
+        },
+      },
+    },
+  }
+
+  const response = await serveManagedDetailRoute(context)
+
+  assert.equal(response.status, 200)
+  assert.equal(await response.text(), '<div id="app"></div>')
+  assert.deepEqual(requests, ['/shows/new-managed-show', '/'])
+  assert.match(readProjectFile('functions/shows/[[path]].js'), /serveManagedDetailRoute/)
+  assert.match(readProjectFile('functions/projects/[[path]].js'), /serveManagedDetailRoute/)
 })
 
 test('SEO prerender writes static shells for top-level SPA routes used by Pages', () => {

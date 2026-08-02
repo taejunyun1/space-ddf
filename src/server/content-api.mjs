@@ -254,18 +254,20 @@ async function publishContent(db, id) {
   const validation = validateContentForPublish(content)
   if (!validation.ok) return validationError(validation.fields)
   const now = new Date().toISOString()
-  const payload = publicPayload(validation.content)
-  const statements = []
-  if (payload.isFeatured) {
-    statements.push(
-      db.prepare(`UPDATE contents SET is_featured = 0 WHERE id <> ?`).bind(id),
-      db.prepare(`
-        UPDATE content_publications
-        SET payload_json = json_set(payload_json, '$.isFeatured', json('false'))
-        WHERE content_id <> ?
-      `).bind(id),
-    )
+  const publishedContent = {
+    ...validation.content,
+    showOnHome: true,
+    isFeatured: true,
   }
+  const payload = publicPayload(publishedContent)
+  const statements = [
+    db.prepare(`UPDATE contents SET is_featured = 0 WHERE id <> ?`).bind(id),
+    db.prepare(`
+      UPDATE content_publications
+      SET payload_json = json_set(payload_json, '$.isFeatured', json('false'))
+      WHERE content_id <> ?
+    `).bind(id),
+  ]
   statements.push(
     db.prepare(`
       INSERT INTO content_publications (content_id, type, slug, payload_json, published_at)
@@ -274,11 +276,14 @@ async function publishContent(db, id) {
         type=excluded.type, slug=excluded.slug, payload_json=excluded.payload_json,
         published_at=excluded.published_at
     `).bind(id, payload.type, payload.slug, JSON.stringify(payload), now),
-    db.prepare(`UPDATE contents SET status='published', published_at=?, updated_at=? WHERE id=?`)
+    db.prepare(`
+      UPDATE contents SET status='published', show_on_home=1, is_featured=1,
+        published_at=?, updated_at=? WHERE id=?
+    `)
       .bind(now, now, id),
   )
   await db.batch(statements)
-  return json({ data: { ...content, status: 'published', publishedAt: now } })
+  return json({ data: { ...content, ...publishedContent, status: 'published', publishedAt: now } })
 }
 
 async function unpublishContent(db, id) {

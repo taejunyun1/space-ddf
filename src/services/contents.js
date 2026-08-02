@@ -10,6 +10,10 @@ export async function fetchPublishedContent(type, slug) {
   return (await requestJson(`/api/contents/${encodeURIComponent(type)}/${encodeURIComponent(slug)}`)).data
 }
 
+export async function fetchFeaturedContent() {
+  return (await requestJson('/api/contents/featured')).data || null
+}
+
 export async function fetchAdminContents(filters = {}) {
   const url = new URL('/api/manage/contents', window.location.origin)
   for (const [key, value] of Object.entries(filters)) {

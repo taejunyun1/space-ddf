@@ -36,6 +36,8 @@ test('home calendar exposes a compact rental summary and links to the rental pag
 test('rental page owns the full public application flow', () => {
   const source = readProjectFile('src/views/RentalView.vue')
 
+  assert.match(source, /data-build-revision="2026-08-01"/)
+
   assert.match(source, /rental-page/)
   assert.match(source, /대관 신청/)
   assert.match(source, /CalendarComponent/)
@@ -178,7 +180,27 @@ test('home layout lets the summary calendar push project lists instead of overla
   assert.match(calendarCardRule, /height:\s*auto/)
   assert.match(calendarCardRule, /min-height:\s*var\(--calendar-card-height\)/)
   assert.doesNotMatch(calendarCardRule, /(^|\n)\s*height:\s*var\(--calendar-card-height\)/)
-  assert.match(source, /\.recent-card\s*{[\s\S]*height:\s*var\(--top-card-height\)/)
+  assert.match(source, /\.recent-card\s*{[\s\S]*height:\s*auto/)
+  assert.match(source, /\.col-center :deep\(\.recent-content\)\s*{[\s\S]*height:\s*auto[\s\S]*min-height:\s*0/)
+})
+
+test('Recent Updated stays visible after the exhibition date ends', () => {
+  const source = readProjectFile('src/components/RecentComponent.vue')
+  const home = readProjectFile('src/views/HomeView.vue')
+
+  assert.doesNotMatch(source, /isExpired|parseDateRange|getEndOfDay|setInterval/)
+  assert.match(source, /<figure class="recent-figure">/)
+  assert.match(source, /:href="link \|\| undefined"/)
+  assert.doesNotMatch(source, /recent-meta|recent-name|recent-date|recent-desc|recent-link|자세히 보기/)
+  assert.doesNotMatch(source, /dateRange|desc:/)
+  assert.doesNotMatch(home, /:date-range="recent\.dateRange"|:desc="recentMeta"/)
+})
+
+test('mobile home places Recent and content lists before the rental calendar', () => {
+  const source = readProjectFile('src/views/HomeView.vue')
+  const mobile = source.match(/@media \(max-width: 768px\)\s*{[\s\S]*?(?=@media|<\/style>)/)?.[0] || ''
+
+  assert.match(mobile, /grid-template-areas:\s*"center"\s*"right"\s*"left"/)
 })
 
 function readProjectFile(relativePath) {
