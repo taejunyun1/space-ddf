@@ -1,11 +1,13 @@
 import {
-  linkExhibitionSource,
+  buildLinkExhibitionSourceStatement,
+  buildReplaceExhibitionMetadataStatements,
+  buildUpsertSourceRecordStatement,
+  buildUpsertVenueStatement,
   normalizeArchiveType,
   normalizeForKey,
-  replaceExhibitionMetadata,
+  seoulCalendarDate,
   statusFromDates,
-  upsertSourceRecord,
-  upsertVenue,
+  venueIdForRecord,
 } from './artmap-crawler.js'
 
 const GWANGJU_BOUNDS = {
@@ -44,7 +46,7 @@ export function shouldRunBiennaleCrawl(edition, today) {
 export async function runBiennaleEditionIfDue(env, options = {}) {
   const now = options.now || new Date()
   const attemptAt = isoTimestamp(now)
-  const today = seoulDate(now)
+  const today = seoulCalendarDate(now)
   const storedEdition = await readCurrentBiennaleEdition(env)
   const edition = normalizeEdition(storedEdition)
   const skippedStatus = biennaleSkipStatus(edition, today)
@@ -70,8 +72,13 @@ export async function runBiennaleEditionIfDue(env, options = {}) {
 
     validatePavilionRecords(records)
     const persistence = await persistPavilions(env, records, edition, { scrapedAt: attemptAt })
-    await recordSuccessfulBiennaleAttempt(env, edition.edition, attemptAt)
-    await finishBiennaleCrawlRun(env, runId, 'success', records.length, persistence?.saved ?? records.length)
+    await finalizeSuccessfulBiennaleRun(env, {
+      runId,
+      edition: edition.edition,
+      attemptAt,
+      recordsFound: records.length,
+      recordsSaved: persistence?.saved ?? records.length,
+    })
 
     return {
       status: 'completed',
@@ -133,20 +140,6 @@ function biennaleSkipStatus(edition, today) {
   return shouldRunBiennaleCrawl(edition, today) ? '' : 'skipped_not_due'
 }
 
-function seoulDate(now) {
-  const date = now instanceof Date ? now : new Date(now)
-  if (Number.isNaN(date.getTime())) throw new Error('Invalid crawl timestamp')
-
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(date)
-  const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
-  return `${values.year}-${values.month}-${values.day}`
-}
-
 function isoTimestamp(now) {
   const date = now instanceof Date ? now : new Date(now)
   if (Number.isNaN(date.getTime())) throw new Error('Invalid crawl timestamp')
@@ -174,9 +167,23 @@ function validatePavilionRecords(records) {
 class EditionMismatchError extends Error {}
 
 function assertMatchingEdition(discoveredEdition, storedEdition) {
-  if (!discoveredEdition) return
-  if (Number(discoveredEdition.edition) !== Number(storedEdition.edition)) {
-    throw new EditionMismatchError(`Official pavilion edition mismatch: stored ${storedEdition.edition}, found ${discoveredEdition.edition}`)
+  if (!discoveredEdition) {
+    throw new EditionMismatchError('Official pavilion edition metadata is missing')
+  }
+
+  const comparisons = [
+    ['edition', 'edition'],
+    ['editionYear', 'edition year'],
+    ['startDate', 'start date'],
+    ['endDate', 'end date'],
+  ]
+
+  for (const [field, label] of comparisons) {
+    const expected = storedEdition[field]
+    const discovered = discoveredEdition[field]
+    if (String(discovered) !== String(expected)) {
+      throw new EditionMismatchError(`Official pavilion ${label} mismatch: stored ${expected}, found ${discovered}`)
+    }
   }
 }
 
@@ -188,7 +195,18 @@ async function createBiennaleCrawlRun(env, runId, startedAt) {
 }
 
 async function finishBiennaleCrawlRun(env, runId, status, recordsFound, recordsSaved, message = null) {
-  await env.DB.prepare(`
+  await buildFinishBiennaleCrawlRunStatement(
+    env,
+    runId,
+    status,
+    recordsFound,
+    recordsSaved,
+    message,
+  ).run()
+}
+
+function buildFinishBiennaleCrawlRunStatement(env, runId, status, recordsFound, recordsSaved, message = null) {
+  return env.DB.prepare(`
     UPDATE crawl_runs
     SET status = ?,
         finished_at = ?,
@@ -196,35 +214,39 @@ async function finishBiennaleCrawlRun(env, runId, status, recordsFound, recordsS
         records_saved = ?,
         error_message = ?
     WHERE id = ?
-  `).bind(status, new Date().toISOString(), recordsFound, recordsSaved, message, runId).run()
+  `).bind(status, new Date().toISOString(), recordsFound, recordsSaved, message, runId)
 }
 
 export async function persistBiennalePavilions(env, records, edition, options = {}) {
   const scrapedAt = options.scrapedAt || new Date().toISOString()
-  let saved = 0
-
-  for (const pavilion of records) {
+  const statements = records.flatMap(pavilion => {
     const record = archiveRecordForPavilion(pavilion, edition, scrapedAt)
-    await upsertSourceRecord(env, record)
-    record.venueId = await upsertVenue(env, record)
-    const exhibitionId = await upsertBiennaleExhibition(env, record)
-    await linkExhibitionSource(env, exhibitionId, record.sourceRecordId)
-    await replaceExhibitionMetadata(env, exhibitionId, record)
-    saved += 1
-  }
+    record.venueId = venueIdForRecord(record)
+    const exhibitionId = biennaleExhibitionId(record)
 
-  // Deactivate stale records only after every current pavilion persisted.
-  // A partial failure must preserve the preceding public archive for retry.
-  await env.DB.prepare(`
+    return [
+      buildUpsertSourceRecordStatement(env, record),
+      buildUpsertVenueStatement(env, record),
+      buildUpsertBiennaleExhibitionStatement(env, record),
+      buildLinkExhibitionSourceStatement(env, exhibitionId, record.sourceRecordId),
+      ...buildReplaceExhibitionMetadataStatements(env, exhibitionId, record),
+    ]
+  })
+
+  // D1 batch executes this ordered sequence as one transaction. Stale records
+  // are deactivated last, only if all replacement records have been written.
+  statements.push(env.DB.prepare(`
     UPDATE exhibitions
     SET active = 0, updated_at = ?
     WHERE source_name = ?
       AND edition = ?
       AND scraped_at < ?
       AND active = 1
-  `).bind(new Date().toISOString(), BIENNALE_SOURCE_NAME, edition.edition, scrapedAt).run()
+  `).bind(scrapedAt, BIENNALE_SOURCE_NAME, edition.edition, scrapedAt))
 
-  return { saved }
+  await env.DB.batch(statements)
+
+  return { saved: records.length }
 }
 
 function archiveRecordForPavilion(pavilion, edition, scrapedAt) {
@@ -252,7 +274,7 @@ function archiveRecordForPavilion(pavilion, edition, scrapedAt) {
     periodText: `${pavilion.startDate} - ${pavilion.endDate}`,
     startDate: pavilion.startDate,
     endDate: pavilion.endDate,
-    status: statusFromDates(pavilion.startDate, pavilion.endDate, 'upcoming'),
+    status: statusFromDates(pavilion.startDate, pavilion.endDate, 'upcoming', scrapedAt),
     address: pavilion.address,
     lat: pavilion.lat,
     lng: pavilion.lng,
@@ -290,9 +312,21 @@ function archiveRecordForPavilion(pavilion, edition, scrapedAt) {
 }
 
 export async function upsertBiennaleExhibition(env, record) {
-  const exhibitionId = `biennale-exhibition-${encodeURIComponent(record.dedupeKey)}`
+  const exhibitionId = biennaleExhibitionId(record)
 
-  await env.DB.prepare(`
+  await buildUpsertBiennaleExhibitionStatement(env, record).run()
+
+  return exhibitionId
+}
+
+function biennaleExhibitionId(record) {
+  return `biennale-exhibition-${encodeURIComponent(record.dedupeKey)}`
+}
+
+export function buildUpsertBiennaleExhibitionStatement(env, record) {
+  const exhibitionId = biennaleExhibitionId(record)
+
+  return env.DB.prepare(`
     INSERT INTO exhibitions (
       id, dedupe_key, title, normalized_title, venue_id, venue_name, city, city_label,
       address, lat, lng, start_date, end_date, status, summary, description, thumbnail_url,
@@ -366,20 +400,25 @@ export async function upsertBiennaleExhibition(env, record) {
     record.venueGroupKey,
     record.geocodeStatus,
     record.crawlWarning,
-  ).run()
-
-  return exhibitionId
+  )
 }
 
-async function recordSuccessfulBiennaleAttempt(env, edition, attemptAt) {
-  await env.DB.prepare(`
+async function finalizeSuccessfulBiennaleRun(env, { runId, edition, attemptAt, recordsFound, recordsSaved }) {
+  await env.DB.batch([
+    buildFinishBiennaleCrawlRunStatement(env, runId, 'success', recordsFound, recordsSaved),
+    buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt),
+  ])
+}
+
+function buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt) {
+  return env.DB.prepare(`
     UPDATE biennale_editions
     SET crawl_completed_at = ?,
         last_attempt_at = ?,
         last_attempt_status = 'success',
         last_error = NULL
     WHERE edition = ?
-  `).bind(attemptAt, attemptAt, edition).run()
+  `).bind(attemptAt, attemptAt, edition)
 }
 
 async function recordFailedBiennaleAttempt(env, edition, attemptAt, message) {

@@ -666,7 +666,11 @@ export function enrichRecord(record, detail, region, visibility, extra = {}) {
 }
 
 export async function upsertSourceRecord(env, record) {
-  await env.DB.prepare(`
+  await buildUpsertSourceRecordStatement(env, record).run()
+}
+
+export function buildUpsertSourceRecordStatement(env, record) {
+  return env.DB.prepare(`
     INSERT INTO source_records (
       id,
       source_id,
@@ -713,13 +717,25 @@ export async function upsertSourceRecord(env, record) {
     contentHashForSourceRecord(record),
     record.scrapedAt,
     record.scrapedAt,
-  ).run()
+  )
 }
 
 export async function upsertVenue(env, record) {
-  const venueId = `venue-${record.city}-${hashText(record.normalizedVenueName).slice(0, 12)}`
+  const venueId = venueIdForRecord(record)
 
-  await env.DB.prepare(`
+  await buildUpsertVenueStatement(env, record).run()
+
+  return venueId
+}
+
+export function venueIdForRecord(record) {
+  return `venue-${record.city}-${hashText(record.normalizedVenueName).slice(0, 12)}`
+}
+
+export function buildUpsertVenueStatement(env, record) {
+  const venueId = venueIdForRecord(record)
+
+  return env.DB.prepare(`
     INSERT INTO venues (
       id,
       name,
@@ -755,9 +771,7 @@ export async function upsertVenue(env, record) {
     record.lng,
     record.canonicalSourceUrl,
     record.scrapedAt,
-  ).run()
-
-  return venueId
+  )
 }
 
 export async function upsertExhibition(env, record) {
@@ -854,14 +868,22 @@ export async function upsertExhibition(env, record) {
 }
 
 export async function linkExhibitionSource(env, exhibitionId, sourceRecordId) {
-  await env.DB.prepare(`
+  await buildLinkExhibitionSourceStatement(env, exhibitionId, sourceRecordId).run()
+}
+
+export function buildLinkExhibitionSourceStatement(env, exhibitionId, sourceRecordId) {
+  return env.DB.prepare(`
     INSERT OR IGNORE INTO exhibition_sources (exhibition_id, source_record_id, is_primary)
     VALUES (?, ?, 1)
-  `).bind(exhibitionId, sourceRecordId).run()
+  `).bind(exhibitionId, sourceRecordId)
 }
 
 export async function replaceExhibitionMetadata(env, exhibitionId, record) {
-  const statements = [
+  await env.DB.batch(buildReplaceExhibitionMetadataStatements(env, exhibitionId, record))
+}
+
+export function buildReplaceExhibitionMetadataStatements(env, exhibitionId, record) {
+  return [
     env.DB.prepare('DELETE FROM exhibition_artists WHERE exhibition_id = ?').bind(exhibitionId),
     env.DB.prepare('DELETE FROM exhibition_categories WHERE exhibition_id = ?').bind(exhibitionId),
     ...record.artists.map(artist => env.DB.prepare(`
@@ -873,7 +895,6 @@ export async function replaceExhibitionMetadata(env, exhibitionId, record) {
       VALUES (?, ?)
     `).bind(exhibitionId, category)),
   ]
-  await env.DB.batch(statements)
 }
 
 function parseJsArgs(value) {
@@ -1059,14 +1080,28 @@ function inferCategories(title, description) {
   return categories
 }
 
-export function statusFromDates(startDate, endDate, fallback) {
-  const today = new Date().toISOString().slice(0, 10)
+export function statusFromDates(startDate, endDate, fallback, now = new Date()) {
+  const today = seoulCalendarDate(now)
 
   if (startDate && startDate > today) return 'upcoming'
   if (endDate && endDate < today) return 'closed'
   if (startDate && endDate && startDate <= today && today <= endDate) return 'ongoing'
 
   return fallback || 'unknown'
+}
+
+export function seoulCalendarDate(now = new Date()) {
+  const date = now instanceof Date ? now : new Date(now)
+  if (Number.isNaN(date.getTime())) throw new Error('Invalid status timestamp')
+
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
 }
 
 function makeSummary(description) {
