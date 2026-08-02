@@ -474,6 +474,7 @@ async function loadArchiveItems() {
   }
 
   .route-controls.is-open {
+    display: block;
     position: fixed;
     right: 16px;
     left: 16px;
