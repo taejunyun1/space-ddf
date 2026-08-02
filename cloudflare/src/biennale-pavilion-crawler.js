@@ -69,8 +69,7 @@ function parsePavilionBlock(block, edition) {
   const verified = coordinates && isWithinGwangju(coordinates)
   const lat = verified ? coordinates.lat : null
   const lng = verified ? coordinates.lng : null
-  const normalizedAddress = normalizeForKey(address)
-  const coordinateKey = verified ? `${lat.toFixed(6)},${lng.toFixed(6)}` : 'unverified'
+  const publicRecord = verified && Boolean(address) && Boolean(venueName)
 
   return {
     edition: edition.edition,
@@ -84,16 +83,11 @@ function parsePavilionBlock(block, edition) {
     mapUrl,
     lat,
     lng,
-    venueGroupKey: `biennale-venue|${normalizedAddress}|${coordinateKey}`,
+    venueGroupKey: venueGroupKey({ address, lat, lng, verified }),
     geocodeStatus: verified ? 'verified' : 'needs_review',
-    visibility: verified ? 'public' : 'review',
-    crawlWarning: verified ? '' : 'missing_coordinates',
-    dedupeKey: [
-      edition.edition,
-      normalizeForKey(pavilionName),
-      normalizeForKey(venueName),
-      edition.startDate,
-    ].join('|'),
+    visibility: publicRecord ? 'public' : 'review',
+    crawlWarning: !verified ? 'missing_coordinates' : !address ? 'missing_address' : '',
+    dedupeKey: dedupeKey(edition, pavilionName, venueName),
   }
 }
 
@@ -144,8 +138,9 @@ function parseDateRange(content) {
 }
 
 function labeledValue(content, label) {
-  const pattern = new RegExp(`<[^>]+>\\s*${escapeRegExp(label)}\\s*:\\s*([\\s\\S]*?)<\\/[^>]+>`, 'i')
-  return cleanText(String(content || '').match(pattern)?.[1] || '')
+  const labelPattern = new RegExp(`^${escapeRegExp(label)}\\s*:\\s*`, 'i')
+  const paragraph = paragraphTexts(content).find(text => labelPattern.test(text))
+  return paragraph ? paragraph.replace(labelPattern, '').trim() : ''
 }
 
 function mapUrlFromBlock(content) {
@@ -189,29 +184,87 @@ function formatDate(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
-function normalizeForKey(value) {
-  return cleanText(value)
-    .toLowerCase()
-    .replace(/\s+/g, '')
-    .replace(/[^\p{Letter}\p{Number}]/gu, '')
+function venueGroupKey({ address, lat, lng, verified }) {
+  if (verified) {
+    return `biennale-venue-coordinate-v1|${keyComponent('lat', Number(lat).toFixed(5))}|${keyComponent('lng', Number(lng).toFixed(5))}`
+  }
+
+  if (!address) return ''
+  return `biennale-venue-address-v1|${keyComponent('address', address)}`
+}
+
+function dedupeKey(edition, pavilionName, venueName) {
+  return [
+    'biennale-dedupe-v1',
+    keyComponent('n', edition.edition),
+    keyComponent('s', pavilionName),
+    keyComponent('s', venueName),
+    keyComponent('d', edition.startDate),
+  ].join('|')
+}
+
+function keyComponent(type, value) {
+  const normalized = normalizeKeyComponent(value)
+  return `${type}:${normalized.length}:${normalized}`
+}
+
+function normalizeKeyComponent(value) {
+  return cleanText(value).normalize('NFC').toLowerCase()
+}
+
+function paragraphTexts(content) {
+  const paragraphs = []
+  const pattern = /<p\b[^>]*>([\s\S]*?)<\/p\s*>/gi
+  let match
+
+  while ((match = pattern.exec(String(content || ''))) !== null) {
+    paragraphs.push(cleanText(match[1]))
+  }
+
+  return paragraphs
 }
 
 function cleanText(value) {
-  return decodeEntities(String(value || ''))
+  return decodeEntities(String(value || '')
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/<[^>]*>/g, ' ')
+  )
     .replace(/\s+/g, ' ')
     .trim()
 }
 
 function decodeEntities(value) {
-  return String(value)
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&amp;/gi, '&')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#0*39;/gi, "'")
+  const named = {
+    amp: '&',
+    apos: "'",
+    gt: '>',
+    lt: '<',
+    mdash: '—',
+    nbsp: ' ',
+    ndash: '–',
+    quot: '"',
+  }
+  let decoded = String(value || '')
+
+  for (let pass = 0; pass < 2; pass += 1) {
+    const next = decoded.replace(/&(#x[\da-f]+|#\d+|[a-z]+);/gi, (entity, reference) => {
+      const namedValue = named[reference.toLowerCase()]
+      if (namedValue !== undefined) return namedValue
+
+      const numeric = reference.startsWith('#x') || reference.startsWith('#X')
+        ? Number.parseInt(reference.slice(2), 16)
+        : Number.parseInt(reference.slice(1), 10)
+      if (!Number.isInteger(numeric) || numeric <= 0 || numeric > 0x10ffff || (numeric >= 0xd800 && numeric <= 0xdfff)) {
+        return entity
+      }
+
+      return String.fromCodePoint(numeric)
+    })
+    if (next === decoded) break
+    decoded = next
+  }
+
+  return decoded
 }
 
 function escapeRegExp(value) {
