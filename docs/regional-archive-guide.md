@@ -447,6 +447,7 @@ exhibition_sources
 exhibition_artists
 exhibition_categories
 priority_venues
+transport_points
 ```
 
 보안:
@@ -462,7 +463,7 @@ Google Maps API key는 HTTP referrer 제한 필수
 
 `POST /api/archive/transport/sync`는 인증된 운영 요청만 받을 수 있으며, 외부 공공데이터를 Worker에서 정규화해 D1 `transport_points` 캐시에 저장한다. 브라우저나 클라이언트 번들에는 공공데이터 키를 넣지 않는다.
 
-버스는 광주 BIS의 `stationInfo`, `lineInfo`, `lineStationInfo`를 사용한다. 주차장은 광주 공영·민영 주차장 데이터 중 `주차장구분=공영`만 저장하고, 지하철은 광주교통공사 문화노선도 데이터의 역 좌표를 사용한다. Worker는 HTTPS 데이터 URL만 요청하며, URL에 `serviceKey`를 추가해도 키를 응답·로그·저장하지 않는다.
+버스는 광주 BIS의 `stationInfo`, `lineInfo`, `lineStationInfo`를 사용한다. 주차장은 광주교통공사 [역 인근 주차장 현황(15109337)](https://www.data.go.kr/data/15109337/fileData.do)의 `prkplceMgtNo`, `prkplceNm`, `prkplceSe`, `rdnWhlAddr`, `latitude`, `longitude`(또는 한국어 원문 열)에서 `주차장구분=공영`만 저장한다. 지하철은 광주교통공사 문화노선도 데이터의 역 좌표를 사용한다. Worker는 HTTPS 데이터 URL만 요청하며, URL에 `serviceKey`를 추가해도 키를 응답·로그·저장하지 않는다.
 
 Worker secret은 값 없이 이름만 등록한다. `cloudflare` 디렉터리에서 아래 명령을 실행한 뒤 Wrangler의 프롬프트에만 값을 붙여 넣는다.
 
@@ -471,7 +472,7 @@ npx wrangler secret put GWANGJU_BUS_API_KEY
 npx wrangler secret put PUBLIC_DATA_API_KEY
 ```
 
-공개 설정인 `GWANGJU_PARKING_DATA_URL`과 `GWANGJU_SUBWAY_DATA_URL`은 `cloudflare/wrangler.jsonc`에 검증된 HTTPS 공공데이터 URL로 둔다. 키가 없으면 각각 `bus_key_missing`, `public_data_key_missing` 경고를 반환하고 해당 소스만 건너뛴다. 동기화는 예약 작업이 아니므로 운영자가 필요할 때만 인증된 POST로 실행한다.
+`15107987`의 이전 주차장 기본 URL은 안정적인 관리번호·위도·경도 스키마를 제공하지 않아 제거했다. `15109337`은 좌표를 포함한 적합한 공식 스키마이지만, 배포 시점에 검증 가능한 안정적 odcloud API URL을 확인하지 못했으므로 `GWANGJU_PARKING_DATA_URL` 기본값도 두지 않는다. 운영자는 공공데이터포털에서 현재 API URL을 확인한 뒤에만 HTTPS URL을 Worker 변수로 추가한다. 누락되거나 HTTPS가 아닌 URL은 `parking_url_invalid` 또는 `subway_url_invalid` 경고로 명시되며, 응답에 레코드가 없으면 `{source}_source_empty`, 레코드가 모두 정규화에 실패하면 `{source}_no_valid_records` 경고를 반환한다. 키가 없으면 각각 `bus_key_missing`, `public_data_key_missing` 경고를 반환하고 해당 소스만 건너뛴다. 동기화는 예약 작업이 아니므로 운영자가 필요할 때만 인증된 `POST /api/archive/transport/sync`로 실행한다.
 
 ## 업데이트 (v1.3) — 무료 자동 스크레이퍼 (GitHub Actions)
 

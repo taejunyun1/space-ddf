@@ -15,7 +15,6 @@
     }
   ],
   "vars": {
-    "GWANGJU_PARKING_DATA_URL": "https://api.odcloud.kr/api/15107987/v1/uddi:8e2d273e-b453-43ce-88ef-f9eb6177205c?page=1&perPage=1000&returnType=json",
     "GWANGJU_SUBWAY_DATA_URL": "https://api.odcloud.kr/api/15109340/v1/uddi:5a909036-a60e-4a51-b9f6-e0e8aab660a1?page=1&perPage=1000&returnType=json"
   }
 }

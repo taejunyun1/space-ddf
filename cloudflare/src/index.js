@@ -321,11 +321,24 @@ async function parseJsonBody(request) {
   }
 }
 
-function hasCrawlAccess(request, env) {
+export async function hasCrawlAccess(request, env) {
   const secret = env.CRAWL_SECRET
-  if (!secret) return false
+  const supplied = request.headers.get('x-crawl-secret')
+  if (!secret || !supplied) return false
 
-  return request.headers.get('x-crawl-secret') === secret
+  const encoder = new TextEncoder()
+  const [suppliedDigest, secretDigest] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(supplied)),
+    crypto.subtle.digest('SHA-256', encoder.encode(secret)),
+  ])
+  const suppliedBytes = new Uint8Array(suppliedDigest)
+  const secretBytes = new Uint8Array(secretDigest)
+  let difference = 0
+  for (let index = 0; index < suppliedBytes.length; index += 1) {
+    difference |= suppliedBytes[index] ^ secretBytes[index]
+  }
+
+  return difference === 0
 }
 
 function crawlOptionsFromRequest(request, body) {
@@ -359,7 +372,7 @@ function crawlOptionsFromRequest(request, body) {
 }
 
 async function runArtmapCrawl(request, env) {
-  if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+  if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
 
   const body = await parseJsonBody(request)
   const result = await crawlArtmap(env, crawlOptionsFromRequest(request, body))
@@ -368,7 +381,7 @@ async function runArtmapCrawl(request, env) {
 }
 
 async function runGwangjuMuseumCrawl(request, env) {
-  if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+  if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
 
   const body = await parseJsonBody(request)
   const result = await crawlGwangjuMuseum(env, crawlOptionsFromRequest(request, body))
@@ -379,7 +392,7 @@ async function runGwangjuMuseumCrawl(request, env) {
 // Manual / submission entry for alternative spaces. Accepts a single record or
 // { items: [...] }. Upserts into the same exhibitions table as sourceType=manual.
 async function runManualUpsert(request, env) {
-  if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+  if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
 
   const body = await parseJsonBody(request)
   const items = Array.isArray(body) ? body : Array.isArray(body.items) ? body.items : [body]
@@ -393,7 +406,7 @@ async function runManualUpsert(request, env) {
 }
 
 async function runTransportSync(request, env) {
-  if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+  if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
 
   return json(await syncTransportPoints(env))
 }
@@ -431,11 +444,11 @@ export default {
       if (url.pathname === '/api/archive/venues') return listVenues(request, env)
       if (url.pathname === '/api/archive/nearby') return nearbyTransport(request, env)
       if (url.pathname === '/api/archive/sources') {
-        if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+        if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
         return listSources(request, env)
       }
       if (url.pathname === '/api/archive/crawl/runs') {
-        if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
+        if (!await hasCrawlAccess(request, env)) return error('Unauthorized', 401)
         return listCrawlRuns(request, env)
       }
       if (url.pathname === '/api/archive/health') return health(env)

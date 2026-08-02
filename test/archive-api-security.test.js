@@ -1,6 +1,18 @@
 const assert = require('node:assert/strict')
 const test = require('node:test')
 
+test('shared crawl-secret helper verifies equal and unequal values asynchronously', async () => {
+  const { hasCrawlAccess } = await import('../cloudflare/src/index.js')
+  const env = { CRAWL_SECRET: 'configured-test-value' }
+
+  assert.equal(await hasCrawlAccess(new Request('https://archive.test', {
+    headers: { 'x-crawl-secret': 'configured-test-value' },
+  }), env), true)
+  assert.equal(await hasCrawlAccess(new Request('https://archive.test', {
+    headers: { 'x-crawl-secret': 'configured-test-value-extra' },
+  }), env), false)
+})
+
 test('Archive exhibition API always filters public active records and clamps limit to 100', async () => {
   const worker = (await import('../cloudflare/src/index.js')).default
   const db = createDb()

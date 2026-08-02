@@ -79,11 +79,11 @@ export function normalizeBusRoutes(lineStations, lines) {
 }
 
 export function normalizePublicParking(record) {
-  const type = text(record, ['PARKING_TYPE', 'PARKING_CATEGORY', 'parkingType', '주차장구분', '구분'])
+  const type = text(record, ['PARKING_TYPE', 'PARKING_CATEGORY', 'parkingType', 'prkplceSe', '주차장구분', '구분'])
   if (!['공영', 'public'].includes(type.toLowerCase())) return null
 
-  const id = text(record, ['PARKING_ID', 'PKLT_ID', 'parkingManagementNumber', 'ID', '주차장관리번호'])
-  const name = text(record, ['PARKING_NAME', 'PKLT_NM', 'parkingName', 'NAME', '주차장명'])
+  const id = text(record, ['PARKING_ID', 'PKLT_ID', 'parkingManagementNumber', 'prkplceMgtNo', 'ID', '주차장관리번호'])
+  const name = text(record, ['PARKING_NAME', 'PKLT_NM', 'parkingName', 'prkplceNm', 'NAME', '주차장명'])
   const point = coordinates(record)
   if (!id || !name || !point) return null
 
@@ -91,7 +91,7 @@ export function normalizePublicParking(record) {
     id: `parking-${id}`,
     kind: 'public_parking',
     name,
-    address: text(record, ['ADDRESS', 'ADDR', 'roadNameAddress', '주소', '도로명주소']) || null,
+    address: text(record, ['ADDRESS', 'ADDR', 'roadNameAddress', 'rdnWhlAddr', '주소', '도로명주소', '소재지도로명주소']) || null,
     ...point,
   }
 }
@@ -162,10 +162,17 @@ function toStoredPoint(point, sourceName, now, routes = []) {
 }
 
 function addPublicSource(points, payload, normalizer, sourceName, now) {
-  for (const record of records(payload, ['items', 'item', 'data', 'results', 'records'])) {
+  const sourceRecords = records(payload, ['items', 'item', 'data', 'results', 'records'])
+  let saved = 0
+  for (const record of sourceRecords) {
     const point = normalizer(record)
-    if (point) points.push(toStoredPoint(point, sourceName, now))
+    if (point) {
+      points.push(toStoredPoint(point, sourceName, now))
+      saved += 1
+    }
   }
+
+  return { records: sourceRecords.length, saved }
 }
 
 async function syncBus(env, key, now) {
@@ -179,10 +186,14 @@ async function syncBus(env, key, now) {
     records(linesPayload, ['LINE_LIST', 'lineInfo', 'items']),
   )
 
-  return records(stopsPayload, ['STATION_LIST', 'stationInfo', 'items'])
+  const stopRecords = records(stopsPayload, ['STATION_LIST', 'stationInfo', 'items'])
+  return {
+    records: stopRecords.length,
+    points: stopRecords
     .map(normalizeBusStop)
     .filter(Boolean)
-    .map(point => toStoredPoint(point, 'Gwangju BIS', now, routesByStop.get(point.id.slice(4)) || []))
+    .map(point => toStoredPoint(point, 'Gwangju BIS', now, routesByStop.get(point.id.slice(4)) || [])),
+  }
 }
 
 function appendSourceWarning(warnings, source, reason) {
@@ -198,7 +209,10 @@ export async function syncTransportPoints(env) {
     warnings.push('bus_key_missing')
   } else {
     try {
-      points.push(...await syncBus(env, env.GWANGJU_BUS_API_KEY, now))
+      const bus = await syncBus(env, env.GWANGJU_BUS_API_KEY, now)
+      points.push(...bus.points)
+      if (!bus.records) appendSourceWarning(warnings, 'bus', 'source_empty')
+      else if (!bus.points.length) appendSourceWarning(warnings, 'bus', 'no_valid_records')
     } catch {
       appendSourceWarning(warnings, 'bus', 'sync_failed')
     }
@@ -218,7 +232,9 @@ export async function syncTransportPoints(env) {
       }
 
       try {
-        addPublicSource(points, await fetchJson(env, url), normalizer, sourceName, now)
+        const result = addPublicSource(points, await fetchJson(env, url), normalizer, sourceName, now)
+        if (!result.records) appendSourceWarning(warnings, source, 'source_empty')
+        else if (!result.saved) appendSourceWarning(warnings, source, 'no_valid_records')
       } catch {
         appendSourceWarning(warnings, source, 'sync_failed')
       }

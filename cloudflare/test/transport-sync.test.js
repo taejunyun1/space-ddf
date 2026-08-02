@@ -55,6 +55,40 @@ test('normalizes public-data portal field names for parking and subway sources',
   })
 })
 
+test('normalizes the official 15109337 English and Korean parking columns', () => {
+  assert.deepEqual(normalizePublicParking({
+    prkplceMgtNo: '100-1-000008',
+    prkplceNm: '국립아시아문화전당 A주차장',
+    prkplceSe: '공영',
+    rdnWhlAddr: '광주광역시 동구 문화전당로 26번길 7',
+    latitude: '35.1464409',
+    longitude: '126.9198892',
+  }), {
+    id: 'parking-100-1-000008',
+    kind: 'public_parking',
+    name: '국립아시아문화전당 A주차장',
+    address: '광주광역시 동구 문화전당로 26번길 7',
+    lat: 35.1464409,
+    lng: 126.9198892,
+  })
+
+  assert.deepEqual(normalizePublicParking({
+    주차장관리번호: '100-1-000014',
+    주차장명: '충장로상점가 공영주차장',
+    주차장구분: '공영',
+    소재지도로명주소: '광주광역시 동구 구성로 172-2',
+    위도: '35.1514448',
+    경도: '126.9124016',
+  }), {
+    id: 'parking-100-1-000014',
+    kind: 'public_parking',
+    name: '충장로상점가 공영주차장',
+    address: '광주광역시 동구 구성로 172-2',
+    lat: 35.1514448,
+    lng: 126.9124016,
+  })
+})
+
 test('deduplicates bus route names while preserving their source order', () => {
   assert.deepEqual(normalizeBusRoutes([
     { BUSSTOP_ID: '2513', LINE_ID: '1' },
@@ -103,13 +137,29 @@ test('uses encoded service keys, refuses non-HTTPS public datasets, and batches 
   assert.equal(calls.length, 4)
   assert.ok(calls.slice(0, 3).every(url => url.startsWith('https://apis.data.go.kr/6290000/gj_bis/')))
   assert.ok(calls.slice(0, 3).every(url => new URL(url).searchParams.get('serviceKey') === 'a key&value'))
-  assert.match(calls[3], /^https:\/\/data\.example\/subway\?/) 
+  assert.match(calls[3], /^https:\/\/data\.example\/subway\?/)
   assert.equal(new URL(calls[3]).searchParams.get('serviceKey'), 'public key')
   assert.deepEqual(result, { saved: 2, warnings: ['parking_url_invalid'] })
   assert.equal(db.batches.length, 1)
   assert.equal(db.batches[0].length, 2)
   assert.match(db.batches[0][0].sql, /INSERT INTO transport_points/)
   assert.match(db.batches[0][0].sql, /ON CONFLICT\(id\) DO UPDATE SET/)
+})
+
+test('warns when a configured public source has records but none normalize to points', async () => {
+  const result = await syncTransportPoints({
+    PUBLIC_DATA_API_KEY: 'test-key',
+    GWANGJU_PARKING_DATA_URL: 'https://data.example/parking',
+    DB: createDb(),
+    async fetch() {
+      return response({ data: [{ prkplceNm: '좌표 없는 주차장', prkplceSe: '공영' }] })
+    },
+  })
+
+  assert.deepEqual(result, {
+    saved: 0,
+    warnings: ['bus_key_missing', 'parking_no_valid_records', 'subway_url_invalid'],
+  })
 })
 
 function response(payload) {
