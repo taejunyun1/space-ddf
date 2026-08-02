@@ -33,6 +33,32 @@ test('Archive operational source and crawl-run APIs require the crawl secret', a
   assert.equal(allowed.status, 200)
 })
 
+test('nearby API validates finite, physically valid coordinates before querying D1', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+
+  for (const query of ['lat=x&lng=126.9', 'lat=91&lng=126.9', 'lat=35.15&lng=181']) {
+    const db = createDb()
+    const response = await worker.fetch(new Request(`https://archive.test/api/archive/nearby?${query}`), { DB: db })
+
+    assert.equal(response.status, 400)
+    assert.deepEqual(await response.json(), { error: 'Valid lat and lng are required' })
+    assert.equal(db.calls.length, 0)
+  }
+})
+
+test('nearby API returns public transport sections with shared-cache headers', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+  const response = await worker.fetch(
+    new Request('https://archive.test/api/archive/nearby?lat=35.15&lng=126.91'),
+    { DB: createDb() },
+  )
+  const payload = await response.json()
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(Object.keys(payload).sort(), ['busStops', 'publicParking', 'subwayStations', 'warnings'])
+  assert.equal(response.headers.get('cache-control'), 'public, max-age=300, s-maxage=86400')
+})
+
 function createDb() {
   const calls = []
   return {

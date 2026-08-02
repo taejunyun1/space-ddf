@@ -1,6 +1,7 @@
 import { crawlArtmap } from './artmap-crawler.js'
 import { crawlGwangjuMuseum } from './gwangju-museum-crawler.js'
 import { importManualExhibitions } from './manual-source.js'
+import { listNearbyTransport } from './nearby-transport.js'
 
 const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
@@ -220,6 +221,29 @@ async function listVenues(_request, env) {
   })
 }
 
+async function nearbyTransport(request, env) {
+  const url = new URL(request.url)
+  const latValue = url.searchParams.get('lat')
+  const lngValue = url.searchParams.get('lng')
+  const lat = Number(latValue)
+  const lng = Number(lngValue)
+
+  if (
+    !latValue
+    || !lngValue
+    || !Number.isFinite(lat)
+    || !Number.isFinite(lng)
+    || lat < -90
+    || lat > 90
+    || lng < -180
+    || lng > 180
+  ) return error('Valid lat and lng are required', 400)
+
+  return json(await listNearbyTransport(env, { lat, lng }), {
+    headers: { 'cache-control': 'public, max-age=300, s-maxage=86400' },
+  })
+}
+
 async function listSources(_request, env) {
   const result = await env.DB.prepare(`
     SELECT
@@ -387,6 +411,7 @@ export default {
 
       if (url.pathname === '/api/archive/exhibitions') return listExhibitions(request, env)
       if (url.pathname === '/api/archive/venues') return listVenues(request, env)
+      if (url.pathname === '/api/archive/nearby') return nearbyTransport(request, env)
       if (url.pathname === '/api/archive/sources') {
         if (!hasCrawlAccess(request, env)) return error('Unauthorized', 401)
         return listSources(request, env)
