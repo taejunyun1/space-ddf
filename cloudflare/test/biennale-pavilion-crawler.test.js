@@ -55,6 +55,9 @@ function createBiennaleEnv(overrides = {}) {
           },
         }
       },
+      async batch() {
+        return []
+      },
     },
   }
 }
@@ -228,6 +231,64 @@ test('does not complete when the injected pavilion persistence fails', async () 
   assert.equal(result.status, 'failed')
   assert.equal(env.edition.crawl_completed_at, null)
   assert.equal(env.edition.last_attempt_status, 'failed')
+})
+
+test('rejects a discovered edition mismatch without changing archived pavilions', async () => {
+  const env = createBiennaleEnv()
+  const edition15Html = pavilionFixture.replace('The 16th Gwangju Biennale Pavilion', 'The 15th Gwangju Biennale Pavilion')
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async () => successfulResponse(edition15Html),
+  })
+
+  assert.deepEqual(result, { status: 'edition_mismatch', saved: 0 })
+  assert.equal(env.edition.crawl_completed_at, null)
+  assert.equal(env.edition.last_attempt_status, 'failed')
+  assert.equal(env.statements.some(statement => /INSERT INTO exhibitions/i.test(statement.sql)), false)
+  assert.equal(env.statements.some(statement => /UPDATE exhibitions\s+SET active = 0/i.test(statement.sql)), false)
+  assert.equal(env.statements.some(statement => /INSERT INTO crawl_runs/i.test(statement.sql)), true)
+  assert.equal(env.statements.some(statement => /UPDATE crawl_runs/i.test(statement.sql) && statement.values[0] === 'failed'), true)
+  assert.match(env.edition.last_error, /edition mismatch/i)
+})
+
+test('persists each verified pavilion while retaining one shared venue group', async () => {
+  const env = createBiennaleEnv()
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async () => successfulResponse(),
+  })
+
+  assert.equal(result.status, 'completed')
+  assert.equal(result.saved, 2)
+
+  const pavilionUpserts = env.statements.filter(statement => /INSERT INTO exhibitions/i.test(statement.sql))
+  assert.equal(pavilionUpserts.length, 2)
+  assert.deepEqual(pavilionUpserts.map(statement => statement.values[26]), [16, 16])
+  assert.equal(pavilionUpserts[0].values[29], pavilionUpserts[1].values[29])
+  assert.match(pavilionUpserts[0].values[29], /^biennale-venue-coordinate-v1\|/)
+  assert.equal(env.statements.filter(statement => /UPDATE exhibitions\s+SET active = 0/i.test(statement.sql)).length, 1)
+})
+
+test('keeps the prior archive active when persistence fails after one pavilion', async () => {
+  const env = createBiennaleEnv()
+  let metadataBatches = 0
+  env.DB.batch = async () => {
+    metadataBatches += 1
+    if (metadataBatches === 2) throw new Error('second pavilion metadata failed')
+    return []
+  }
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async () => successfulResponse(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.equal(env.edition.crawl_completed_at, null)
+  assert.equal(env.edition.last_attempt_status, 'failed')
+  assert.equal(env.statements.some(statement => /UPDATE exhibitions\s+SET active = 0/i.test(statement.sql)), false)
 })
 
 test('biennale migration stores edition gate and pavilion metadata', () => {

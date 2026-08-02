@@ -1,3 +1,13 @@
+import {
+  linkExhibitionSource,
+  normalizeArchiveType,
+  normalizeForKey,
+  replaceExhibitionMetadata,
+  statusFromDates,
+  upsertSourceRecord,
+  upsertVenue,
+} from './artmap-crawler.js'
+
 const GWANGJU_BOUNDS = {
   minLat: 34.9,
   maxLat: 35.4,
@@ -22,6 +32,9 @@ const MONTHS = {
 
 const KOREAN_PAVILION_URL = 'https://www.gwangjubiennale.org/'
 const ENGLISH_PAVILION_URL = 'https://www.gwangjubiennale.org/eng/'
+const BIENNALE_SOURCE_ID = 'gwangju-biennale-pavilion'
+const BIENNALE_SOURCE_NAME = '광주비엔날레 파빌리온'
+const BIENNALE_CRAWL_TYPE = 'biennale-pavilions'
 
 export function shouldRunBiennaleCrawl(edition, today) {
   if (!edition || edition.crawlCompletedAt) return false
@@ -39,26 +52,43 @@ export async function runBiennaleEditionIfDue(env, options = {}) {
   if (skippedStatus) return { status: skippedStatus }
 
   const fetchImpl = options.fetchImpl || globalThis.fetch
-  const persistPavilions = options.persistPavilions || env.persistBiennalePavilions || noOpPersistPavilions
+  const persistPavilions = options.persistPavilions || env.persistBiennalePavilions || persistBiennalePavilions
+  const runId = `biennale-pavilion-${Date.now()}`
+
+  await createBiennaleCrawlRun(env, runId, attemptAt)
 
   try {
     const koreanHtml = await fetchOfficialPavilionPage(fetchImpl, KOREAN_PAVILION_URL)
+    assertMatchingEdition(parseBiennaleEdition(koreanHtml), edition)
     let records = parseBiennalePavilions(koreanHtml, edition)
 
     if (records.length === 0 || records.some(record => !record.address)) {
       const englishHtml = await fetchOfficialPavilionPage(fetchImpl, ENGLISH_PAVILION_URL)
+      assertMatchingEdition(parseBiennaleEdition(englishHtml), edition)
       records = parseBiennalePavilions(englishHtml, edition)
     }
 
     validatePavilionRecords(records)
-    await persistPavilions(env, records, edition)
+    const persistence = await persistPavilions(env, records, edition, { scrapedAt: attemptAt })
     await recordSuccessfulBiennaleAttempt(env, edition.edition, attemptAt)
+    await finishBiennaleCrawlRun(env, runId, 'success', records.length, persistence?.saved ?? records.length)
 
-    return { status: 'completed', edition: edition.edition, records: records.length }
+    return {
+      status: 'completed',
+      edition: edition.edition,
+      records: records.length,
+      saved: persistence?.saved ?? records.length,
+    }
   } catch (error) {
     const message = errorMessage(error)
     await recordFailedBiennaleAttempt(env, edition.edition, attemptAt, message)
-    return { status: 'failed', edition: edition.edition, error: message }
+    await finishBiennaleCrawlRun(env, runId, 'failed', 0, 0, message)
+
+    if (error instanceof EditionMismatchError) {
+      return { status: 'edition_mismatch', saved: 0 }
+    }
+
+    return { status: 'failed', edition: edition.edition, error: message, saved: 0 }
   }
 }
 
@@ -141,7 +171,205 @@ function validatePavilionRecords(records) {
   if (records.some(record => !record.address)) throw new Error('Official pavilion records are missing addresses')
 }
 
-async function noOpPersistPavilions() {}
+class EditionMismatchError extends Error {}
+
+function assertMatchingEdition(discoveredEdition, storedEdition) {
+  if (!discoveredEdition) return
+  if (Number(discoveredEdition.edition) !== Number(storedEdition.edition)) {
+    throw new EditionMismatchError(`Official pavilion edition mismatch: stored ${storedEdition.edition}, found ${discoveredEdition.edition}`)
+  }
+}
+
+async function createBiennaleCrawlRun(env, runId, startedAt) {
+  await env.DB.prepare(`
+    INSERT INTO crawl_runs (id, source_id, status, crawl_type, request_url, started_at)
+    VALUES (?, ?, 'running', ?, ?, ?)
+  `).bind(runId, BIENNALE_SOURCE_ID, BIENNALE_CRAWL_TYPE, KOREAN_PAVILION_URL, startedAt).run()
+}
+
+async function finishBiennaleCrawlRun(env, runId, status, recordsFound, recordsSaved, message = null) {
+  await env.DB.prepare(`
+    UPDATE crawl_runs
+    SET status = ?,
+        finished_at = ?,
+        records_found = ?,
+        records_saved = ?,
+        error_message = ?
+    WHERE id = ?
+  `).bind(status, new Date().toISOString(), recordsFound, recordsSaved, message, runId).run()
+}
+
+export async function persistBiennalePavilions(env, records, edition, options = {}) {
+  const scrapedAt = options.scrapedAt || new Date().toISOString()
+  let saved = 0
+
+  for (const pavilion of records) {
+    const record = archiveRecordForPavilion(pavilion, edition, scrapedAt)
+    await upsertSourceRecord(env, record)
+    record.venueId = await upsertVenue(env, record)
+    const exhibitionId = await upsertBiennaleExhibition(env, record)
+    await linkExhibitionSource(env, exhibitionId, record.sourceRecordId)
+    await replaceExhibitionMetadata(env, exhibitionId, record)
+    saved += 1
+  }
+
+  // Deactivate stale records only after every current pavilion persisted.
+  // A partial failure must preserve the preceding public archive for retry.
+  await env.DB.prepare(`
+    UPDATE exhibitions
+    SET active = 0, updated_at = ?
+    WHERE source_name = ?
+      AND edition = ?
+      AND scraped_at < ?
+      AND active = 1
+  `).bind(new Date().toISOString(), BIENNALE_SOURCE_NAME, edition.edition, scrapedAt).run()
+
+  return { saved }
+}
+
+function archiveRecordForPavilion(pavilion, edition, scrapedAt) {
+  const title = `${pavilion.pavilionName} Pavilion`
+  const externalId = pavilion.dedupeKey
+  const publicRecord = Number(pavilion.edition) === Number(edition.edition)
+    && Boolean(pavilion.address)
+    && pavilion.geocodeStatus === 'verified'
+    && Number.isFinite(pavilion.lat)
+    && Number.isFinite(pavilion.lng)
+
+  return {
+    sourceRecordId: `biennale-pavilion-${encodeURIComponent(externalId)}`,
+    sourceId: BIENNALE_SOURCE_ID,
+    externalId,
+    sourceUrl: pavilion.mapUrl || KOREAN_PAVILION_URL,
+    title,
+    normalizedTitle: normalizeForKey(title),
+    venueName: pavilion.venueName,
+    normalizedVenueName: normalizeForKey(pavilion.venueName),
+    city: 'gwangju',
+    cityLabel: '광주',
+    cityHint: '광주',
+    regionLabel: '광주',
+    periodText: `${pavilion.startDate} - ${pavilion.endDate}`,
+    startDate: pavilion.startDate,
+    endDate: pavilion.endDate,
+    status: statusFromDates(pavilion.startDate, pavilion.endDate, 'upcoming'),
+    address: pavilion.address,
+    lat: pavilion.lat,
+    lng: pavilion.lng,
+    thumbnailUrl: '',
+    payload: {
+      edition: pavilion.edition,
+      editionYear: pavilion.editionYear,
+      pavilionName: pavilion.pavilionName,
+      venueGroupKey: pavilion.venueGroupKey,
+      geocodeStatus: pavilion.geocodeStatus,
+      crawlWarning: pavilion.crawlWarning,
+      hours: pavilion.hours,
+      mapUrl: pavilion.mapUrl,
+    },
+    summary: `${pavilion.pavilionName} pavilion at ${pavilion.venueName}.`,
+    description: pavilion.hours ? `Hours: ${pavilion.hours}` : '',
+    artists: [],
+    categories: [],
+    canonicalSourceUrl: KOREAN_PAVILION_URL,
+    sourceName: BIENNALE_SOURCE_NAME,
+    sourceType: 'crawl',
+    scrapedAt,
+    visibility: publicRecord ? 'public' : 'review',
+    archiveType: 'exhibition',
+    regionConfidence: 'high',
+    reviewReason: publicRecord ? null : pavilion.crawlWarning || 'unverified_pavilion',
+    edition: pavilion.edition,
+    editionYear: pavilion.editionYear,
+    pavilionName: pavilion.pavilionName,
+    venueGroupKey: pavilion.venueGroupKey,
+    geocodeStatus: pavilion.geocodeStatus,
+    crawlWarning: pavilion.crawlWarning || null,
+    dedupeKey: pavilion.dedupeKey,
+  }
+}
+
+export async function upsertBiennaleExhibition(env, record) {
+  const exhibitionId = `biennale-exhibition-${encodeURIComponent(record.dedupeKey)}`
+
+  await env.DB.prepare(`
+    INSERT INTO exhibitions (
+      id, dedupe_key, title, normalized_title, venue_id, venue_name, city, city_label,
+      address, lat, lng, start_date, end_date, status, summary, description, thumbnail_url,
+      canonical_source_url, source_name, source_type, scraped_at, visibility, archive_type,
+      region_confidence, review_reason, updated_at, edition, edition_year, pavilion_name,
+      venue_group_key, geocode_status, crawl_warning, active
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+    ON CONFLICT(dedupe_key) DO UPDATE SET
+      title = excluded.title,
+      normalized_title = excluded.normalized_title,
+      venue_id = excluded.venue_id,
+      venue_name = excluded.venue_name,
+      city = excluded.city,
+      city_label = excluded.city_label,
+      address = excluded.address,
+      lat = excluded.lat,
+      lng = excluded.lng,
+      start_date = excluded.start_date,
+      end_date = excluded.end_date,
+      status = excluded.status,
+      summary = excluded.summary,
+      description = excluded.description,
+      thumbnail_url = excluded.thumbnail_url,
+      canonical_source_url = excluded.canonical_source_url,
+      source_name = excluded.source_name,
+      source_type = excluded.source_type,
+      scraped_at = excluded.scraped_at,
+      visibility = excluded.visibility,
+      archive_type = excluded.archive_type,
+      region_confidence = excluded.region_confidence,
+      review_reason = excluded.review_reason,
+      edition = excluded.edition,
+      edition_year = excluded.edition_year,
+      pavilion_name = excluded.pavilion_name,
+      venue_group_key = excluded.venue_group_key,
+      geocode_status = excluded.geocode_status,
+      crawl_warning = excluded.crawl_warning,
+      active = 1,
+      updated_at = excluded.updated_at
+  `).bind(
+    exhibitionId,
+    record.dedupeKey,
+    record.title,
+    record.normalizedTitle,
+    record.venueId,
+    record.venueName,
+    record.city,
+    record.cityLabel,
+    record.address,
+    record.lat,
+    record.lng,
+    record.startDate || null,
+    record.endDate || null,
+    record.status,
+    record.summary,
+    record.description,
+    record.thumbnailUrl,
+    record.canonicalSourceUrl,
+    record.sourceName,
+    record.sourceType,
+    record.scrapedAt,
+    record.visibility,
+    normalizeArchiveType(record.archiveType),
+    record.regionConfidence,
+    record.reviewReason,
+    record.scrapedAt,
+    record.edition,
+    record.editionYear,
+    record.pavilionName,
+    record.venueGroupKey,
+    record.geocodeStatus,
+    record.crawlWarning,
+  ).run()
+
+  return exhibitionId
+}
 
 async function recordSuccessfulBiennaleAttempt(env, edition, attemptAt) {
   await env.DB.prepare(`

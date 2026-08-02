@@ -756,6 +756,8 @@ export async function upsertVenue(env, record) {
     record.canonicalSourceUrl,
     record.scrapedAt,
   ).run()
+
+  return venueId
 }
 
 export async function upsertExhibition(env, record) {
