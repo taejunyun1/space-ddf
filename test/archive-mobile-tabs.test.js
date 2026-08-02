@@ -106,10 +106,20 @@ test('regional archive map keeps the active pavilion selectable within a shared 
 test('regional archive map refreshes existing marker selection content when selection changes groups', () => {
   const source = readProjectFile('src/components/archive/ArchiveMap.vue')
 
-  assert.match(source, /watch\(\(\) => props\.selectedId, \(\) => \{\s*syncMarkers\(\)\s*}\)/)
+  assert.match(source, /watch\(\(\) => props\.selectedId, \(\) => \{\s*syncMarkers\(\{ fitBounds: false \}\)\s*}\)/)
   assert.match(source, /const marker = markerMap\.get\(group\.id\) \|\| createMarker\(group\)/)
   assert.match(source, /marker\.content = markerContent\(group, selected\)/)
   assert.match(source, /marker\.zIndex = selected \? 20 : 10 \+ group\.count/)
+})
+
+test('regional archive map preserves the current viewport for selection-only marker refreshes', () => {
+  const source = readProjectFile('src/components/archive/ArchiveMap.vue')
+
+  assert.match(source, /watch\(markerGroups, \(\) => \{\s*syncMarkers\(\{ fitBounds: true \}\)\s*}\)/)
+  assert.match(source, /watch\(\(\) => props\.selectedId, \(\) => \{\s*syncMarkers\(\{ fitBounds: false \}\)\s*}\)/)
+  assert.match(source, /function syncMarkers\(\{ fitBounds = true \} = \{\}\)/)
+  assert.match(source, /if \(fitBounds\) fitVisibleMarkers\(\)\s*focusSelectedMarker\(\)/)
+  assert.match(source, /const marker = markerMap\.get\(group\.id\) \|\| createMarker\(group\)/)
 })
 
 test('regional archive map contains only ongoing records and links to the planner', () => {

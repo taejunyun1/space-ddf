@@ -225,11 +225,11 @@ onBeforeUnmount(() => {
 })
 
 watch(markerGroups, () => {
-  syncMarkers()
+  syncMarkers({ fitBounds: true })
 })
 
 watch(() => props.selectedId, () => {
-  syncMarkers()
+  syncMarkers({ fitBounds: false })
 })
 
 async function initMap() {
@@ -270,7 +270,7 @@ async function initMap() {
   }
 }
 
-function syncMarkers() {
+function syncMarkers({ fitBounds = true } = {}) {
   if (!googleMap || !AdvancedMarkerElement || mapError.value) return
 
   try {
@@ -292,7 +292,7 @@ function syncMarkers() {
       marker.zIndex = selected ? 20 : 10 + group.count
     })
 
-    fitVisibleMarkers()
+    if (fitBounds) fitVisibleMarkers()
     focusSelectedMarker()
   } catch (err) {
     mapError.value = 'Google 지도 마커를 표시하지 못했습니다'
