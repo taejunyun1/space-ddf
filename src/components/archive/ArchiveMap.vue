@@ -28,6 +28,14 @@
         <p>{{ mapError }}</p>
       </div>
 
+      <div v-if="items.length === 0 && !loading" class="map-fallback" role="status">
+        <p>현재 진행 중인 전시가 없습니다.</p>
+      </div>
+
+      <div v-if="selectionUnavailable && !loading" class="map-notice" role="status">
+        <p>이 기록은 현재 지도 표시 대상이 아닙니다.</p>
+      </div>
+
       <aside v-if="selectedItem" class="map-detail" aria-live="polite">
         <div class="detail-kicker">
           <span class="ddf-pill city" :class="selectedItem.city">{{ selectedItem.cityLabel }}</span>
@@ -59,6 +67,11 @@
         >
           원문 보기
         </a>
+        <router-link
+          v-if="selectedItem?.id"
+          class="ddf-source-link detail-link route-link"
+          :to="{ name: 'archive-route', query: { to: selectedItem.id } }"
+        >길찾기</router-link>
       </aside>
     </div>
   </section>
@@ -115,6 +128,10 @@ const props = defineProps({
     required: true,
   },
   loading: {
+    type: Boolean,
+    default: false,
+  },
+  selectionUnavailable: {
     type: Boolean,
     default: false,
   },
@@ -476,6 +493,24 @@ function markerStatus(current, next) {
   margin: 0;
   border: 1px solid var(--ddf-line);
   background: rgba(255, 255, 255, 0.9);
+  padding: 10px 12px;
+  font-family: var(--ddf-font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.map-notice {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 6;
+  max-width: min(360px, calc(100% - 36px));
+}
+
+.map-notice p {
+  margin: 0;
+  border: 1px solid var(--ddf-line);
+  background: rgba(255, 255, 255, 0.94);
   padding: 10px 12px;
   font-family: var(--ddf-font-mono);
   font-size: 12px;

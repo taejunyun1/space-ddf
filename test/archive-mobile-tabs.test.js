@@ -38,15 +38,16 @@ test('regional archive map defaults to a closer zoom level', () => {
   assert.match(source, /googleMap\.setZoom\(SELECTED_MARKER_ZOOM\)/)
 })
 
-test('regional archive map excludes closed records without hiding them from the list', () => {
-  const source = readProjectFile('src/views/RegionalArchiveView.vue')
+test('regional archive map contains only ongoing records and links to the planner', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  const map = readProjectFile('src/components/archive/ArchiveMap.vue')
 
-  assert.match(source, /import\s*{\s*computed,\s*onMounted,\s*ref\s*}\s*from\s*'vue'/)
-  assert.match(source, /const\s+mapItems\s*=\s*computed\(\(\)\s*=>\s*\(\s*filteredItems\.value\.filter\(item\s*=>\s*item\.status\s*!==\s*'closed'\)\s*\)\)/)
-  assert.match(source, /const\s+mapSelectedItem\s*=\s*computed/)
-  assert.match(source, /<ArchiveList[\s\S]*:items="filteredItems"/)
-  assert.match(source, /<ArchiveMap[\s\S]*:items="mapItems"/)
-  assert.match(source, /<ArchiveMap[\s\S]*:selected-item="mapSelectedItem"/)
+  assert.match(view, /ongoingArchiveItems\(filteredItems\.value\)/)
+  assert.doesNotMatch(view, /item\.status\s*!==\s*'closed'/)
+  assert.match(view, /:selection-unavailable="mapSelectionUnavailable"/)
+  assert.match(map, /name:\s*'archive-route'/)
+  assert.match(map, /query:\s*{\s*to:\s*selectedItem\.id\s*}/)
+  assert.match(map, />길찾기</)
 })
 
 test('regional archive uses distinct city colors for Gwangju, Jeonbuk, and Jeonnam', () => {

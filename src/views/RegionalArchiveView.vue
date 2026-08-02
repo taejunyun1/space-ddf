@@ -77,6 +77,7 @@
         :items="mapItems"
         :selected-id="mapSelectedId"
         :selected-item="mapSelectedItem"
+        :selection-unavailable="mapSelectionUnavailable"
         :loading="isArchiveLoading"
         @select="selectArchiveItem"
       />
@@ -93,6 +94,7 @@ import {
   regionalArchiveItems,
 } from '@/data/regionalArchive'
 import { useRegionalArchive } from '@/composables/useRegionalArchive'
+import { ongoingArchiveItems } from '@/lib/archive-route.mjs'
 import { fetchArchiveItems } from '@/services/archive-api'
 import ArchiveFilters from '@/components/archive/ArchiveFilters.vue'
 import ArchiveList from '@/components/archive/ArchiveList.vue'
@@ -115,15 +117,12 @@ const {
   selectItem,
 } = useRegionalArchive(archiveItems, archiveCities)
 
-const mapItems = computed(() => (
-  filteredItems.value.filter(item => item.status !== 'closed')
-))
+const mapItems = computed(() => ongoingArchiveItems(filteredItems.value))
 const mapSelectedItem = computed(() => (
-  mapItems.value.find(item => item.id === selectedId.value) ||
-  mapItems.value[0] ||
-  null
+  mapItems.value.find(item => item.id === selectedId.value) || null
 ))
 const mapSelectedId = computed(() => mapSelectedItem.value?.id || '')
+const mapSelectionUnavailable = computed(() => Boolean(selectedId.value && !mapSelectedItem.value))
 
 onMounted(loadArchiveItems)
 
