@@ -4,8 +4,231 @@ import test from 'node:test'
 import {
   parseBiennaleEdition,
   parseBiennalePavilions,
+  runBiennaleEditionIfDue,
+  shouldRunBiennaleCrawl,
   webMercatorToWgs84,
 } from '../src/biennale-pavilion-crawler.js'
+
+const pavilionFixture = fs.readFileSync(new URL('./fixtures/biennale-pavilion-venues.html', import.meta.url), 'utf8')
+
+function createBiennaleEnv(overrides = {}) {
+  const edition = {
+    edition: 16,
+    edition_year: 2026,
+    start_date: '2026-09-05',
+    end_date: '2026-11-15',
+    crawl_completed_at: null,
+    last_attempt_at: null,
+    last_attempt_status: null,
+    last_error: null,
+    ...overrides,
+  }
+  const statements = []
+
+  return {
+    edition,
+    statements,
+    DB: {
+      prepare(sql) {
+        return {
+          bind(...values) {
+            statements.push({ sql, values })
+            return {
+              async first() {
+                if (/WHERE crawl_completed_at IS NULL/i.test(sql) && edition.crawl_completed_at) return null
+                return { ...edition }
+              },
+              async run() {
+                if (/crawl_completed_at\s*=\s*\?/i.test(sql)) {
+                  edition.crawl_completed_at = values[0]
+                  edition.last_attempt_at = values[1]
+                  edition.last_attempt_status = 'success'
+                  edition.last_error = null
+                } else if (/last_attempt_status\s*=\s*'failed'/i.test(sql)) {
+                  edition.last_attempt_at = values[0]
+                  edition.last_attempt_status = 'failed'
+                  edition.last_error = values[1]
+                }
+                return { success: true, meta: { changes: 1 } }
+              },
+            }
+          },
+        }
+      },
+    },
+  }
+}
+
+function successfulResponse(html = pavilionFixture) {
+  return {
+    ok: true,
+    async text() {
+      return html
+    },
+  }
+}
+
+test('runs only for an incomplete edition within its inclusive local dates', () => {
+  const edition = {
+    startDate: '2026-09-05',
+    endDate: '2026-11-15',
+    crawlCompletedAt: null,
+  }
+
+  assert.equal(shouldRunBiennaleCrawl(edition, '2026-09-04'), false)
+  assert.equal(shouldRunBiennaleCrawl(edition, '2026-09-05'), true)
+  assert.equal(shouldRunBiennaleCrawl(edition, '2026-11-15'), true)
+  assert.equal(shouldRunBiennaleCrawl(edition, '2026-11-16'), false)
+  assert.equal(shouldRunBiennaleCrawl({ ...edition, crawlCompletedAt: '2026-09-06T00:00:00.000Z' }, '2026-09-06'), false)
+})
+
+test('skips before the Seoul start date without fetching', async () => {
+  const env = createBiennaleEnv()
+  let fetchCount = 0
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-04T14:59:59.000Z'),
+    fetchImpl: async () => {
+      fetchCount += 1
+      return successfulResponse()
+    },
+  })
+
+  assert.equal(result.status, 'skipped_before_period')
+  assert.equal(fetchCount, 0)
+})
+
+test('fetches once on the Seoul start date for an incomplete edition', async () => {
+  const env = createBiennaleEnv()
+  let fetchCount = 0
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-04T15:00:00.000Z'),
+    fetchImpl: async () => {
+      fetchCount += 1
+      return successfulResponse()
+    },
+  })
+
+  assert.equal(result.status, 'completed')
+  assert.equal(fetchCount, 1)
+  assert.notEqual(env.edition.crawl_completed_at, null)
+  assert.equal(env.edition.last_attempt_status, 'success')
+})
+
+test('skips after the Seoul end date without fetching', async () => {
+  const env = createBiennaleEnv()
+  let fetchCount = 0
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-11-16T03:00:00.000Z'),
+    fetchImpl: async () => {
+      fetchCount += 1
+      return successfulResponse()
+    },
+  })
+
+  assert.equal(result.status, 'skipped_after_period')
+  assert.equal(fetchCount, 0)
+})
+
+test('skips a completed edition without fetching', async () => {
+  const env = createBiennaleEnv({ crawl_completed_at: '2026-09-05T01:00:00.000Z' })
+  let fetchCount = 0
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-06T03:00:00.000Z'),
+    fetchImpl: async () => {
+      fetchCount += 1
+      return successfulResponse()
+    },
+  })
+
+  assert.equal(result.status, 'skipped_completed')
+  assert.equal(fetchCount, 0)
+})
+
+test('records a failed fetch without completing and retries on the next invocation', async () => {
+  const env = createBiennaleEnv()
+  let fetchCount = 0
+  const options = {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async () => {
+      fetchCount += 1
+      if (fetchCount === 1) throw new Error('official site unavailable')
+      return successfulResponse()
+    },
+  }
+
+  const failed = await runBiennaleEditionIfDue(env, options)
+
+  assert.equal(failed.status, 'failed')
+  assert.equal(env.edition.crawl_completed_at, null)
+  assert.equal(env.edition.last_attempt_status, 'failed')
+
+  const retried = await runBiennaleEditionIfDue(env, options)
+
+  assert.equal(retried.status, 'completed')
+  assert.equal(fetchCount, 2)
+  assert.notEqual(env.edition.crawl_completed_at, null)
+})
+
+test('records a failed parse without completing and retries on the next invocation', async () => {
+  const env = createBiennaleEnv()
+  let fetchCount = 0
+  const options = {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async () => {
+      fetchCount += 1
+      return successfulResponse(fetchCount <= 2 ? '<p>Temporarily unavailable</p>' : pavilionFixture)
+    },
+  }
+
+  const failed = await runBiennaleEditionIfDue(env, options)
+
+  assert.equal(failed.status, 'failed')
+  assert.equal(env.edition.crawl_completed_at, null)
+  assert.equal(env.edition.last_attempt_status, 'failed')
+
+  const retried = await runBiennaleEditionIfDue(env, options)
+
+  assert.equal(retried.status, 'completed')
+  assert.equal(fetchCount, 3)
+})
+
+test('uses English only as an in-attempt fallback when Korean pavilion blocks lack addresses', async () => {
+  const env = createBiennaleEnv()
+  const urls = []
+  const missingAddress = '<h4>1 Pavilion | Venue</h4><p>Hours: 10:00-18:00</p>'
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async url => {
+      urls.push(url)
+      return successfulResponse(urls.length === 1 ? missingAddress : pavilionFixture)
+    },
+  })
+
+  assert.equal(result.status, 'completed')
+  assert.equal(urls.length, 2)
+  assert.notEqual(urls[0], urls[1])
+})
+
+test('does not complete when the injected pavilion persistence fails', async () => {
+  const env = createBiennaleEnv()
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async () => successfulResponse(),
+    persistPavilions: async () => {
+      throw new Error('D1 persistence failed')
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.equal(env.edition.crawl_completed_at, null)
+  assert.equal(env.edition.last_attempt_status, 'failed')
+})
 
 test('biennale migration stores edition gate and pavilion metadata', () => {
   const sql = fs.readFileSync(new URL('../migrations/0011_biennale_pavilions.sql', import.meta.url), 'utf8')
