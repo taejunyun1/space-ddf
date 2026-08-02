@@ -125,3 +125,64 @@ the expected D1/environment bindings, and exited explicitly in dry-run mode.
   official-site calls.
 - No deployment, remote migration, or live endpoint invocation is part of this
   change.
+
+## Final re-review follow-up: lease loss inside successful persistence
+
+### RED
+
+The first lifecycle implementation checked the owner-conditional completion
+update only after `DB.batch()` returned. SQLite treats an update that changes
+zero rows as successful, so the preceding pavilion upserts and omission update
+had already committed if a reset or a new owner removed the original token.
+
+The test D1 harness now returns each statement's actual change count and restores
+its edition/pavilion snapshots when any batch statement throws. Three focused
+regressions initially failed:
+
+- a lease reclaimed immediately before persistence committed two pavilion rows
+  and incremented the prior pavilion's omission counter;
+- an authenticated reset during the venue fetch produced the same partial
+  lifecycle commit;
+- an unclaimed crawl running beyond the 15-minute lease completed instead of
+  failing safely.
+
+Focused RED result: 0 passed, 3 failed with the expected committed-write and
+miss-counter diffs.
+
+### GREEN
+
+The successful persistence batch now begins with a `SELECT CASE` ownership
+assertion requiring the same edition, incomplete crawl, owner token, and an
+expiry later than the finalization timestamp. Its false branch evaluates
+SQLite's deterministic `abs(-9223372036854775808)` integer-overflow error. D1
+therefore aborts and rolls back the batch before any pavilion or omission
+mutation. The existing owner-conditional completion update remains the final
+defence.
+
+Focused GREEN result: all 3 race tests passed; the complete focused crawler/API
+suite passed 57 tests.
+
+### Follow-up verification
+
+```sh
+npm run test:crawler
+npm test
+npm run lint
+npm run build:pages
+```
+
+Result: 85 crawler tests, 241 main/Worker tests, and 10 scraper tests passed;
+lint and the production Pages build completed successfully.
+
+A fresh in-memory `DatabaseSync` probe applied migrations `0001` through `0012`,
+ran the production crawler through the reclaim-before-persistence race, and
+executed its real prepared statements inside a SQLite transaction. The guard
+raised `integer overflow`; the result was `failed`, the only pre-existing
+pavilion remained active with `biennale_miss_count=0`, no new pavilion existed,
+`crawl_completed_at` stayed null, and the reclaimed owner's token/expiry were
+preserved.
+
+Wrangler 4.118.0 local D1 independently returned `claim_owned=1` for the true
+guard branch and `integer overflow: SQLITE_ERROR` for the false branch. The
+final Worker `deploy --dry-run` produced a 119.95 KiB bundle (28.80 KiB gzip)
+with the expected bindings and exited without deployment.

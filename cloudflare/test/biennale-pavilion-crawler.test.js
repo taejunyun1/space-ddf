@@ -66,7 +66,15 @@ function createBiennaleEnv(overrides = {}, controls = {}) {
     executedStatements.push(statement)
     const { sql, values } = statement
 
-    if (/SET\s+claim_token\s*=\s*\?/i.test(sql)) {
+    if (/AS\s+claim_owned/i.test(sql)) {
+      const [editionNumber, claimToken, checkedAt] = values
+      const owned = edition.edition === editionNumber
+        && edition.claim_token === claimToken
+        && edition.claim_expires_at
+        && edition.claim_expires_at > checkedAt
+      if (!owned) throw new Error('integer overflow')
+      return 0
+    } else if (/SET\s+claim_token\s*=\s*\?/i.test(sql)) {
       const [token, expiresAt, editionNumber, claimedAt] = values
       const available = edition.edition === editionNumber
         && !edition.crawl_completed_at
@@ -85,6 +93,8 @@ function createBiennaleEnv(overrides = {}, controls = {}) {
       edition.claim_token = null
       edition.claim_expires_at = null
     } else if (/last_attempt_status\s*=\s*'failed'/i.test(sql)) {
+      const claimToken = values.at(-1)
+      if (/AND\s+claim_token\s*=\s*\?/i.test(sql) && edition.claim_token !== claimToken) return 0
       edition.last_attempt_at = values[0]
       edition.last_attempt_status = 'failed'
       edition.last_error = values[1]
@@ -92,6 +102,11 @@ function createBiennaleEnv(overrides = {}, controls = {}) {
         edition.claim_token = null
         edition.claim_expires_at = null
       }
+    } else if (/SET\s+claim_token\s*=\s*NULL/i.test(sql)) {
+      const [editionNumber, claimToken] = values
+      if (edition.edition !== editionNumber || edition.claim_token !== claimToken) return 0
+      edition.claim_token = null
+      edition.claim_expires_at = null
     } else if (/INSERT INTO exhibitions/i.test(sql)) {
       publicRecords.set(values[0], {
         id: values[0],
@@ -135,10 +150,24 @@ function createBiennaleEnv(overrides = {}, controls = {}) {
       },
       async batch(batch) {
         batchCalls.push(batch)
-        const failure = controls.batchFailure?.(batch, batchCalls.length)
-        if (failure) throw failure
-        batch.forEach(apply)
-        return batch.map(() => ({ success: true, meta: { changes: 1 } }))
+        controls.beforeBatch?.(batch, batchCalls.length, { edition, publicRecords })
+
+        const editionSnapshot = { ...edition }
+        const recordsSnapshot = new Map([...publicRecords].map(([id, record]) => [id, { ...record }]))
+        const executedLength = executedStatements.length
+
+        try {
+          const failure = controls.batchFailure?.(batch, batchCalls.length)
+          if (failure) throw failure
+          const changes = batch.map(apply)
+          return changes.map(value => ({ success: true, meta: { changes: value ?? 1 } }))
+        } catch (error) {
+          Object.assign(edition, editionSnapshot)
+          publicRecords.clear()
+          for (const [id, record] of recordsSnapshot) publicRecords.set(id, record)
+          executedStatements.splice(executedLength)
+          throw error
+        }
       },
     },
   }
@@ -633,6 +662,106 @@ test('validated persistence, omission reconciliation, audit, and completion shar
   assert.equal(persistenceBatch.some(statement => /UPDATE exhibitions[\s\S]*biennale_miss_count/i.test(statement.sql)), true)
   assert.equal(persistenceBatch.some(statement => /UPDATE crawl_runs/i.test(statement.sql) && statement.values[0] === 'success'), true)
   assert.equal(persistenceBatch.some(statement => /UPDATE biennale_editions/i.test(statement.sql) && /crawl_completed_at/i.test(statement.sql)), true)
+})
+
+test('a lease reclaimed before persistence rolls back pavilion writes and omission reconciliation', async () => {
+  const previousRecord = {
+    id: 'prior-pavilion-after-reclaim',
+    title: 'Prior Pavilion After Reclaim',
+    visibility: 'public',
+    sourceName: '광주비엔날레 파빌리온',
+    edition: 16,
+    scrapedAt: '2026-09-01T00:00:00.000Z',
+    lastSeenAt: '2026-09-01T00:00:00.000Z',
+    missCount: 0,
+    active: 1,
+  }
+  let reclaimed = false
+  const env = createBiennaleEnv({}, {
+    publicRecords: [previousRecord],
+    beforeBatch(batch, _batchNumber, state) {
+      if (!reclaimed && batch.some(statement => /INSERT INTO source_records/i.test(statement.sql))) {
+        reclaimed = true
+        state.edition.claim_token = 'new-owner-after-expiry'
+        state.edition.claim_expires_at = '2026-09-05T03:30:00.000Z'
+      }
+    },
+  })
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    finalizationNow: new Date('2026-09-05T03:16:00.000Z'),
+    fetchImpl: officialFetch(),
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.deepEqual([...env.publicRecords.values()], [previousRecord])
+  assert.equal(env.edition.claim_token, 'new-owner-after-expiry')
+  const persistenceBatch = env.batchCalls.find(batch => batch.some(statement => /INSERT INTO source_records/i.test(statement.sql)))
+  assert.ok(persistenceBatch)
+  assert.match(persistenceBatch[0].sql, /AS\s+claim_owned/i)
+  assert.equal(env.executedStatements.some(statement => /\b(?:source_records|venues|exhibitions|exhibition_sources|exhibition_artists|exhibition_categories)\b/i.test(statement.sql)), false)
+})
+
+test('an authenticated reset during fetch rolls back pavilion writes and omission reconciliation', async () => {
+  const previousRecord = {
+    id: 'prior-pavilion-after-reset',
+    title: 'Prior Pavilion After Reset',
+    visibility: 'public',
+    sourceName: '광주비엔날레 파빌리온',
+    edition: 16,
+    scrapedAt: '2026-09-01T00:00:00.000Z',
+    lastSeenAt: '2026-09-01T00:00:00.000Z',
+    missCount: 0,
+    active: 1,
+  }
+  const env = createBiennaleEnv({}, { publicRecords: [previousRecord] })
+  const fetchImpl = officialFetch()
+
+  const result = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    fetchImpl: async url => {
+      const response = await fetchImpl(url)
+      if (url === BIENNALE_OFFICIAL_URLS.koreanVenues) {
+        env.edition.claim_token = null
+        env.edition.claim_expires_at = null
+      }
+      return response
+    },
+  })
+
+  assert.equal(result.status, 'failed')
+  assert.deepEqual([...env.publicRecords.values()], [previousRecord])
+  assert.equal(env.edition.claim_token, null)
+  const persistenceBatch = env.batchCalls.find(batch => batch.some(statement => /INSERT INTO source_records/i.test(statement.sql)))
+  assert.ok(persistenceBatch)
+  assert.match(persistenceBatch[0].sql, /AS\s+claim_owned/i)
+  assert.equal(env.executedStatements.some(statement => /\b(?:source_records|venues|exhibitions|exhibition_sources|exhibition_artists|exhibition_categories)\b/i.test(statement.sql)), false)
+})
+
+test('an unclaimed long-running crawl expires safely and the next invocation retries', async () => {
+  const env = createBiennaleEnv()
+
+  const expired = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:00:00.000Z'),
+    finalizationNow: new Date('2026-09-05T03:16:00.000Z'),
+    fetchImpl: officialFetch(),
+  })
+
+  assert.equal(expired.status, 'failed')
+  assert.equal(env.publicRecords.size, 0)
+  assert.equal(env.edition.crawl_completed_at, null)
+  assert.equal(env.edition.claim_token, null)
+
+  const retried = await runBiennaleEditionIfDue(env, {
+    now: new Date('2026-09-05T03:16:00.000Z'),
+    finalizationNow: new Date('2026-09-05T03:16:01.000Z'),
+    fetchImpl: officialFetch(),
+  })
+
+  assert.equal(retried.status, 'completed')
+  assert.equal(env.publicRecords.size, 2)
+  assert.notEqual(env.edition.crawl_completed_at, null)
 })
 
 test('an omission reconciliation failure rolls back writes and leaves the prior miss state unchanged', async () => {

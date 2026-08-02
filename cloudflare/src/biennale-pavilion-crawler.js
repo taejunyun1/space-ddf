@@ -98,6 +98,7 @@ export async function runBiennaleEditionIfDue(env, options = {}) {
     assertMatchingEdition(venueEdition, edition, 'venue')
 
     validatePavilionRecords(records)
+    const claimCheckedAt = isoTimestamp(options.finalizationNow || new Date())
     const finalization = {
       runId,
       edition: edition.edition,
@@ -106,6 +107,7 @@ export async function runBiennaleEditionIfDue(env, options = {}) {
       recordsSaved: records.length,
       requestUrl,
       claimToken,
+      claimCheckedAt,
     }
     const usesAtomicDefaultPersistence = persistPavilions === persistBiennalePavilions
     const persistence = await persistPavilions(env, records, edition, {
@@ -313,6 +315,12 @@ export async function persistBiennalePavilions(env, records, edition, options = 
   `).bind(scrapedAt, BIENNALE_SOURCE_NAME, edition.edition, scrapedAt))
 
   if (options.finalization) {
+    statements.unshift(buildAssertActiveBiennaleClaimStatement(
+      env,
+      options.finalization.edition,
+      options.finalization.claimToken,
+      options.finalization.claimCheckedAt,
+    ))
     statements.push(
       buildFinishBiennaleCrawlRunStatement(
         env,
@@ -506,14 +514,32 @@ async function finalizeSuccessfulBiennaleRun(env, {
   recordsSaved,
   requestUrl,
   claimToken,
+  claimCheckedAt,
 }) {
   const results = await env.DB.batch([
+    buildAssertActiveBiennaleClaimStatement(env, edition, claimToken, claimCheckedAt),
     buildFinishBiennaleCrawlRunStatement(env, runId, 'success', recordsFound, recordsSaved, null, requestUrl),
     buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt, claimToken),
   ])
-  if (Number(results?.[1]?.meta?.changes || 0) !== 1) {
+  if (Number(results?.[2]?.meta?.changes || 0) !== 1) {
     throw new Error('Biennale crawl claim was lost before success finalization')
   }
+}
+
+function buildAssertActiveBiennaleClaimStatement(env, edition, claimToken, checkedAt) {
+  return env.DB.prepare(`
+    SELECT CASE
+      WHEN EXISTS (
+        SELECT 1
+        FROM biennale_editions
+        WHERE edition = ?
+          AND crawl_completed_at IS NULL
+          AND claim_token = ?
+          AND claim_expires_at > max(?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      ) THEN 1
+      ELSE abs(-9223372036854775808)
+    END AS claim_owned
+  `).bind(edition, claimToken, checkedAt)
 }
 
 function buildSuccessfulBiennaleAttemptStatement(env, edition, attemptAt, claimToken) {
