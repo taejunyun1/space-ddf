@@ -163,6 +163,12 @@
           </label>
         </fieldset>
 
+        <p
+          v-if="selectedItems.length > 1 && modeId === 'transit'"
+          class="route-mode-notice"
+          role="status"
+        >대중교통은 여러 경유지를 지원하지 않아 자동차 경로로 엽니다.</p>
+
         <a
           v-if="directionsUrl"
           class="route-directions-link ddf-focusable"
@@ -379,6 +385,14 @@ async function loadArchiveItems() {
   color: var(--ddf-muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.route-mode-notice {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--ddf-ink);
+  font-size: 12px;
+  line-height: 1.45;
 }
 
 .route-search-label,

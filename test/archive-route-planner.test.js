@@ -55,7 +55,7 @@ test('fixed origins and recommended mode use the approved values', async () => {
     modeId: 'recommended',
   }))
   assert.equal(url.searchParams.get('origin'), '광주광역시 북구 비엔날레로 111')
-  assert.equal(url.searchParams.get('destination'), '목적지, 35.1,126.9')
+  assert.equal(url.searchParams.get('destination'), '35.1,126.9')
   assert.equal(url.searchParams.has('travelmode'), false)
 })
 
@@ -75,6 +75,33 @@ test('ordered route sends earlier exhibitions as waypoints and the final one as 
   assert.equal(url.searchParams.get('waypoints'), '첫 전시, 광주 북구 첫길 1|두 번째 전시, 광주 동구 둘길 2')
   assert.equal(url.searchParams.get('destination'), '마지막 전시, 광주 남구 셋길 3')
   assert.equal(url.searchParams.get('travelmode'), 'driving')
+})
+
+test('route destinations prefer verified coordinates over ambiguous venue names and addresses', async () => {
+  const { archiveDestination } = await import('../src/lib/archive-route.mjs')
+
+  assert.equal(archiveDestination({
+    venue: 'G Gallery 지갤러리',
+    address: '광주광역시 남구',
+    lat: 35.145,
+    lng: 126.915,
+  }), '35.145,126.915')
+})
+
+test('multi-stop transit requests fall back to a supported driving route', async () => {
+  const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
+  const url = new URL(buildArchiveRouteUrl({
+    items: [
+      { venue: '첫 전시', lat: 35.15, lng: 126.91 },
+      { venue: '두 번째 전시', lat: 35.16, lng: 126.92 },
+    ],
+    originId: 'acc',
+    modeId: 'transit',
+  }))
+
+  assert.equal(url.searchParams.get('travelmode'), 'driving')
+  assert.equal(url.searchParams.get('waypoints'), '35.15,126.91')
+  assert.equal(url.searchParams.get('destination'), '35.16,126.92')
 })
 
 test('router and planner expose the approved route contract', () => {
@@ -105,6 +132,7 @@ test('planner exposes ordered multi-selection controls and a readable route acti
   assert.match(view, /clearSelectedItems/)
   assert.match(view, /1곳 길찾기 열기/)
   assert.match(view, /곳 경로 열기/)
+  assert.match(view, /대중교통은 여러 경유지를 지원하지 않아 자동차 경로로 엽니다/)
   assert.match(view, /<svg[^>]*aria-hidden="true"/)
   assert.match(view, /min-height:\s*48px/)
   assert.match(view, /\.route-directions-link:hover\s*{[\s\S]*?color:\s*var\(--ddf-paper\);[\s\S]*?background:\s*var\(--ddf-ink\);/)

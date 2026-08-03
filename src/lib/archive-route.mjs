@@ -64,12 +64,10 @@ function routeId(value) {
 
 export function archiveDestination(item) {
   if (!item) return ''
-  if (item.address) return [item.venue, item.address].filter(Boolean).join(', ')
   const lat = Number(item.lat)
   const lng = Number(item.lng)
-  return Number.isFinite(lat) && Number.isFinite(lng)
-    ? [item.venue, `${lat},${lng}`].filter(Boolean).join(', ')
-    : ''
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return `${lat},${lng}`
+  return item.address ? [item.venue, item.address].filter(Boolean).join(', ') : ''
 }
 
 export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 'recommended' }) {
@@ -79,11 +77,12 @@ export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 're
   const waypoints = destinations.slice(0, -1)
   const origin = ARCHIVE_ROUTE_ORIGINS.find(option => option.id === originId) || ARCHIVE_ROUTE_ORIGINS[0]
   const mode = ARCHIVE_ROUTE_MODES.find(option => option.id === modeId) || ARCHIVE_ROUTE_MODES[0]
+  const travelMode = waypoints.length && mode.id === 'transit' ? 'driving' : mode.value
   const url = new URL('https://www.google.com/maps/dir/')
   url.searchParams.set('api', '1')
   url.searchParams.set('destination', destination)
   if (waypoints.length) url.searchParams.set('waypoints', waypoints.join('|'))
   if (origin.value) url.searchParams.set('origin', origin.value)
-  if (mode.value) url.searchParams.set('travelmode', mode.value)
+  if (travelMode) url.searchParams.set('travelmode', travelMode)
   return url.toString()
 }
