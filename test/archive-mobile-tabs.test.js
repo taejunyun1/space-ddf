@@ -154,6 +154,18 @@ test('regional archive feeds only ongoing records into list and map', () => {
   assert.match(view, /useRegionalArchive\(ongoingItems/)
 })
 
+test('archive list and map expose ordered route selection', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  const list = readProjectFile('src/components/archive/ArchiveList.vue')
+  const map = readProjectFile('src/components/archive/ArchiveMap.vue')
+  assert.match(list, /selectedRouteIds/)
+  assert.match(list, /경로에 추가/)
+  assert.match(list, /선택됨/)
+  assert.match(map, /toggle-route/)
+  assert.match(view, /toggleLimitedArchiveRouteId/)
+  assert.match(view, /ArchiveRouteSelectionBar/)
+})
+
 test('regional archive uses distinct city colors for Gwangju, Jeonbuk, and Jeonnam', () => {
   const mapSource = readProjectFile('src/components/archive/ArchiveMap.vue')
   const listSource = readProjectFile('src/components/archive/ArchiveList.vue')

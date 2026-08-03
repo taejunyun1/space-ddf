@@ -55,6 +55,14 @@
         >
           원문
         </a>
+        <button
+          type="button"
+          class="route-select-button ddf-focusable"
+          :class="{ 'is-selected': selectedRouteIds.includes(item.id) }"
+          :aria-pressed="selectedRouteIds.includes(item.id)"
+          :disabled="routeLimitReached && !selectedRouteIds.includes(item.id)"
+          @click="$emit('toggle-route', item.id)"
+        >{{ selectedRouteIds.includes(item.id) ? '선택됨' : '경로에 추가' }}</button>
       </article>
     </li>
   </ol>
@@ -80,9 +88,11 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  selectedRouteIds: { type: Array, default: () => [] },
+  routeLimitReached: { type: Boolean, default: false },
 })
 
-defineEmits(['select'])
+defineEmits(['select', 'toggle-route'])
 </script>
 
 <style scoped>
@@ -128,6 +138,10 @@ defineEmits(['select'])
   background: transparent;
   color: inherit;
 }
+
+.route-select-button { min-height: 30px; border: 1px solid var(--ddf-line); background: var(--ddf-paper); color: var(--ddf-ink); font: inherit; font-size: 10px; cursor: pointer; }
+.route-select-button.is-selected { background: var(--ddf-ink); color: var(--ddf-paper); }
+.route-select-button:disabled { opacity: .35; cursor: not-allowed; }
 
 .archive-list li:last-child .archive-card {
   border-bottom: 1px solid var(--ddf-subtle-line);

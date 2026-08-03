@@ -70,9 +70,13 @@
           :items="filteredItems"
           :selected-id="selectedId"
           :loading="isArchiveLoading"
+          :selected-route-ids="selectedIds"
+          :route-limit-reached="routeLimitReached"
           @select="selectArchiveItem"
+          @toggle-route="toggleRouteItem"
         />
       </div>
+      <ArchiveRouteSelectionBar :selected-items="selectedRouteItems" />
     </section>
 
     <div class="archive-map-panel">
@@ -84,7 +88,10 @@
         :selected-item="mapSelectedItem"
         :selection-unavailable="mapSelectionUnavailable"
         :loading="isArchiveLoading"
+        :selected-route-ids="selectedIds"
+        :route-limit-reached="routeLimitReached"
         @select="selectArchiveItem"
+        @toggle-route="toggleRouteItem"
       />
     </div>
   </div>
@@ -92,7 +99,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   archiveCities,
   archiveStatuses,
@@ -100,20 +107,38 @@ import {
   regionalArchiveItems,
 } from '@/data/regionalArchive'
 import { useRegionalArchive } from '@/composables/useRegionalArchive'
-import { ongoingArchiveItems, parseArchiveRouteIds } from '@/lib/archive-route.mjs'
+import {
+  NAVER_MAX_ROUTE_LOCATIONS,
+  ongoingArchiveItems,
+  parseArchiveRouteIds,
+  serializeArchiveRouteIds,
+  toggleLimitedArchiveRouteId,
+} from '@/lib/archive-route.mjs'
 import { fetchArchiveItems } from '@/services/archive-api'
 import ArchiveFilters from '@/components/archive/ArchiveFilters.vue'
 import ArchiveList from '@/components/archive/ArchiveList.vue'
 import ArchiveMap from '@/components/archive/ArchiveMap.vue'
 import ArchiveModeTabs from '@/components/archive/ArchiveModeTabs.vue'
+import ArchiveRouteSelectionBar from '@/components/archive/ArchiveRouteSelectionBar.vue'
 
 const archiveItems = ref([])
 const isArchiveLoading = ref(true)
 const activeMobileView = ref('list')
 const route = useRoute()
-const selectedIds = computed(() => parseArchiveRouteIds(route.query.to))
+const router = useRouter()
 
 const ongoingItems = computed(() => ongoingArchiveItems(archiveItems.value))
+const selectedIds = computed(() => {
+  const ongoingIds = new Set(ongoingItems.value.map(item => item.id))
+  return parseArchiveRouteIds(route.query.to)
+    .filter(id => ongoingIds.has(id))
+    .slice(0, NAVER_MAX_ROUTE_LOCATIONS)
+})
+const selectedRouteItems = computed(() => {
+  const itemsById = new Map(ongoingItems.value.map(item => [item.id, item]))
+  return selectedIds.value.map(id => itemsById.get(id)).filter(Boolean)
+})
+const routeLimitReached = computed(() => selectedIds.value.length >= NAVER_MAX_ROUTE_LOCATIONS)
 
 const {
   activeType,
@@ -143,6 +168,12 @@ onMounted(loadArchiveItems)
 
 function selectArchiveItem(id) {
   selectItem(id)
+}
+
+function toggleRouteItem(id) {
+  const ids = toggleLimitedArchiveRouteId(selectedIds.value, id)
+  const to = serializeArchiveRouteIds(ids)
+  router.replace({ query: { ...route.query, to: to || undefined } })
 }
 
 async function loadArchiveItems() {

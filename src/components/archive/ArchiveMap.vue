@@ -89,6 +89,13 @@
           class="ddf-source-link detail-link route-link"
           :to="{ name: 'archive-route', query: { to: selectedItem.id } }"
         >길찾기</router-link>
+        <button
+          type="button"
+          class="ddf-source-link detail-link route-toggle"
+          :aria-pressed="selectedRouteIds.includes(selectedItem.id)"
+          :disabled="routeLimitReached && !selectedRouteIds.includes(selectedItem.id)"
+          @click="$emit('toggle-route', selectedItem.id)"
+        >{{ selectedRouteIds.includes(selectedItem.id) ? '선택됨' : '경로에 추가' }}</button>
       </aside>
     </div>
   </section>
@@ -152,9 +159,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  selectedRouteIds: { type: Array, default: () => [] },
+  routeLimitReached: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['select'])
+const emit = defineEmits(['select', 'toggle-route'])
 const mapElement = ref(null)
 const mapError = ref('')
 let googleMap = null

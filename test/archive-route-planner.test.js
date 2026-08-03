@@ -240,6 +240,13 @@ test('archive map and route share query-preserving mode tabs', () => {
   assert.match(routeView, /<ArchiveModeTabs/)
 })
 
+test('selection bar links to the existing route planner with ordered IDs', () => {
+  const bar = readProjectFile('src/components/archive/ArchiveRouteSelectionBar.vue')
+  assert.match(bar, /serializeArchiveRouteIds/)
+  assert.match(bar, /길찾기에서 순서 정하기/)
+  assert.match(bar, /최대 6곳/)
+})
+
 test('planner exposes ordered multi-selection controls and a readable route action', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
 
