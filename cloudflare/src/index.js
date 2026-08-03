@@ -36,6 +36,7 @@ function numberParam(value, fallback) {
 }
 
 function toArchiveItem(row) {
+  const status = row.effective_status || row.status
   return {
     id: row.id,
     title: row.title,
@@ -48,8 +49,8 @@ function toArchiveItem(row) {
     startDate: row.start_date || '',
     endDate: row.end_date || '',
     period: row.period || '',
-    status: row.status,
-    statusLabel: statusLabel(row.status),
+    status,
+    statusLabel: statusLabel(status),
     archiveType: row.archive_type || 'exhibition',
     typeLabel: typeLabel(row.archive_type),
     regionConfidence: row.region_confidence || '',
@@ -113,28 +114,48 @@ async function listExhibitions(request, env) {
   const type = normalizeParam(url.searchParams.get('type'))
   const limit = Math.min(Math.max(numberParam(url.searchParams.get('limit'), 100), 1), 100)
   const offset = decodeOffsetCursor(url.searchParams.get('cursor'))
-  const values = ['public']
-  const where = ['e.visibility = ?', 'COALESCE(e.active, 1) = 1']
+  const sourceValues = ['public']
+  const resultValues = []
+  const sourceWhere = ['e.visibility = ?', 'COALESCE(e.active, 1) = 1']
+  const resultWhere = []
 
   if (city && city !== 'all') {
-    where.push('e.city = ?')
-    values.push(city)
+    sourceWhere.push('e.city = ?')
+    sourceValues.push(city)
   }
 
   if (status && status !== 'all') {
-    where.push('e.status = ?')
-    values.push(status)
+    resultWhere.push('e.effective_status = ?')
+    resultValues.push(status)
   }
 
   if (type && type !== 'all') {
-    where.push('e.archive_type = ?')
-    values.push(type)
+    sourceWhere.push('e.archive_type = ?')
+    sourceValues.push(type)
   }
 
-  values.push(limit + 1, offset)
+  const values = [...sourceValues, ...resultValues, limit + 1, offset]
 
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
+  const sourceWhereSql = `WHERE ${sourceWhere.join(' AND ')}`
+  const resultWhereSql = resultWhere.length ? `WHERE ${resultWhere.join(' AND ')}` : ''
   const statement = env.DB.prepare(`
+    WITH dated_exhibitions AS (
+      SELECT
+        e.*,
+        CASE
+          WHEN e.start_date IS NOT NULL AND e.start_date > date('now', '+9 hours')
+            THEN 'upcoming'
+          WHEN e.end_date IS NOT NULL AND e.end_date < date('now', '+9 hours')
+            THEN 'closed'
+          WHEN e.start_date IS NOT NULL AND e.end_date IS NOT NULL
+            AND e.start_date <= date('now', '+9 hours')
+            AND date('now', '+9 hours') <= e.end_date
+            THEN 'ongoing'
+          ELSE e.status
+        END AS effective_status
+      FROM exhibitions e
+      ${sourceWhereSql}
+    )
     SELECT
       e.*,
       CASE
@@ -154,10 +175,10 @@ async function listExhibitions(request, env) {
         FROM exhibition_categories
         WHERE exhibition_id = e.id
       ), '[]') AS categories_json
-    FROM exhibitions e
-    ${whereSql}
+    FROM dated_exhibitions e
+    ${resultWhereSql}
     ORDER BY
-      CASE e.status
+      CASE e.effective_status
         WHEN 'ongoing' THEN 0
         WHEN 'upcoming' THEN 1
         WHEN 'closed' THEN 2

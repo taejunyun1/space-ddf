@@ -32,6 +32,43 @@ test('Archive exhibition API always filters public active records and clamps lim
   assert.equal(payload.meta.limit, 100)
 })
 
+test('Archive exhibition API derives current status from dates instead of stale stored status', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+  const db = createDbWithResults([{
+    id: 'expired-show',
+    title: '지난 전시',
+    start_date: '2026-07-01',
+    end_date: '2026-07-15',
+    status: 'ongoing',
+    effective_status: 'closed',
+  }])
+  const response = await worker.fetch(
+    new Request('https://archive.test/api/archive/exhibitions?status=closed'),
+    { DB: db },
+  )
+  const payload = await response.json()
+  const query = db.calls.find(call => call.sql.includes('FROM exhibitions e'))
+
+  assert.equal(response.status, 200)
+  assert.equal(payload.data[0].status, 'closed')
+  assert.equal(payload.data[0].statusLabel, '종료')
+  assert.match(query.sql, /AS effective_status/)
+  assert.match(query.sql, /effective_status = \?/)
+  assert.doesNotMatch(query.sql, /e\.status = \?/)
+})
+
+test('Archive exhibition API binds source filters before derived status filter', async () => {
+  const worker = (await import('../cloudflare/src/index.js')).default
+  const db = createDb()
+  await worker.fetch(
+    new Request('https://archive.test/api/archive/exhibitions?city=gwangju&type=exhibition&status=ongoing'),
+    { DB: db },
+  )
+  const query = db.calls.find(call => call.sql.includes('FROM exhibitions e'))
+
+  assert.deepEqual(query.values, ['public', 'gwangju', 'exhibition', 'ongoing', 101, 0])
+})
+
 test('Archive operational source and crawl-run APIs require the crawl secret', async () => {
   const worker = (await import('../cloudflare/src/index.js')).default
   const db = createDb()
@@ -252,6 +289,21 @@ function createDb() {
         bind(...values) { this.values = values; return this },
         async all() { calls.push({ sql, values: this.values }); return { results: [] } },
         async first() { calls.push({ sql, values: this.values }); return { count: 0 } },
+      }
+    },
+  }
+}
+
+function createDbWithResults(results) {
+  const calls = []
+  return {
+    calls,
+    prepare(sql) {
+      return {
+        sql, values: [],
+        bind(...values) { this.values = values; return this },
+        async all() { calls.push({ sql, values: this.values }); return { results } },
+        async first() { calls.push({ sql, values: this.values }); return { count: results.length } },
       }
     },
   }
