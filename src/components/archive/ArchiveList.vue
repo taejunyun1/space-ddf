@@ -15,7 +15,8 @@
   </ol>
 
   <div v-else-if="!items.length" class="archive-empty" role="status">
-    <p>조건에 맞는 기록이 없습니다.</p>
+    <p>{{ emptyMessage }}</p>
+    <button type="button" class="ddf-filter-button" @click="$emit('reset-filters')">필터 초기화</button>
   </div>
 
   <ol v-else class="archive-list ddf-scrollbar">
@@ -38,6 +39,7 @@
           </span>
           <span class="card-title">{{ item.title }}</span>
           <span class="card-meta">{{ item.venue }} · {{ archiveSchedule(item) }}</span>
+          <span v-if="transportSummary(item)" class="card-transport">{{ transportSummary(item) }}</span>
           <span class="card-summary">{{ item.summary }}</span>
           <span class="card-tags">
             <span v-for="tag in item.category" :key="`${item.id}-${tag}`" class="ddf-pill">
@@ -75,7 +77,7 @@ import {
   archiveTypeValue,
 } from '@/lib/archive-utils'
 
-defineProps({
+const props = defineProps({
   items: {
     type: Array,
     required: true,
@@ -90,9 +92,23 @@ defineProps({
   },
   selectedRouteIds: { type: Array, default: () => [] },
   routeLimitReached: { type: Boolean, default: false },
+  selectedTransport: { type: Object, default: null },
+  transportItemId: { type: String, default: '' },
+  emptyMessage: { type: String, default: '조건에 맞는 전시가 없습니다.' },
 })
 
-defineEmits(['select', 'toggle-route'])
+defineEmits(['select', 'toggle-route', 'reset-filters'])
+
+function transportSummary(item) {
+  if (item.id !== props.transportItemId || !props.selectedTransport) return ''
+  const parts = [
+    ['버스', props.selectedTransport.busStops],
+    ['지하철', props.selectedTransport.subwayStations],
+    ['공영주차장', props.selectedTransport.publicParking],
+  ].filter(([, values]) => Array.isArray(values) && values.length)
+    .map(([label, values]) => `${label} ${values.length}`)
+  return parts.join(' · ')
+}
 </script>
 
 <style scoped>

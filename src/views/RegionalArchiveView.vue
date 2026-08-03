@@ -72,8 +72,12 @@
           :loading="isArchiveLoading"
           :selected-route-ids="selectedIds"
           :route-limit-reached="routeLimitReached"
+          :selected-transport="selectedTransport"
+          :transport-item-id="mapSelectedId"
+          :empty-message="emptyMessage"
           @select="selectArchiveItem"
           @toggle-route="toggleRouteItem"
+          @reset-filters="resetFilters"
         />
       </div>
       <ArchiveRouteSelectionBar :selected-items="selectedRouteItems" />
@@ -98,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   archiveCities,
@@ -114,7 +118,7 @@ import {
   serializeArchiveRouteIds,
   toggleLimitedArchiveRouteId,
 } from '@/lib/archive-route.mjs'
-import { fetchArchiveItems } from '@/services/archive-api'
+import { fetchArchiveItems, fetchNearbyTransport } from '@/services/archive-api'
 import ArchiveFilters from '@/components/archive/ArchiveFilters.vue'
 import ArchiveList from '@/components/archive/ArchiveList.vue'
 import ArchiveMap from '@/components/archive/ArchiveMap.vue'
@@ -124,6 +128,9 @@ import ArchiveRouteSelectionBar from '@/components/archive/ArchiveRouteSelection
 const archiveItems = ref([])
 const isArchiveLoading = ref(true)
 const activeMobileView = ref('list')
+const selectedTransport = ref(null)
+const transportError = ref(false)
+let transportController = null
 const route = useRoute()
 const router = useRouter()
 
@@ -155,6 +162,7 @@ const {
   mapTitle,
   selectItem,
   requestLocation,
+  resetFilters,
 } = useRegionalArchive(ongoingItems, archiveCities)
 
 const mapItems = computed(() => filteredItems.value)
@@ -163,8 +171,13 @@ const mapSelectedItem = computed(() => (
 ))
 const mapSelectedId = computed(() => mapSelectedItem.value?.id || '')
 const mapSelectionUnavailable = computed(() => Boolean(selectedId.value && !mapSelectedItem.value))
+const emptyMessage = computed(() => ongoingItems.value.length
+  ? '조건에 맞는 전시가 없습니다.'
+  : '현재 진행 중인 전시가 없습니다.')
 
 onMounted(loadArchiveItems)
+onBeforeUnmount(() => transportController?.abort())
+watch(mapSelectedItem, loadSelectedTransport, { immediate: true })
 
 function selectArchiveItem(id) {
   selectItem(id)
@@ -186,6 +199,28 @@ async function loadArchiveItems() {
     archiveItems.value = regionalArchiveItems
   } finally {
     isArchiveLoading.value = false
+  }
+}
+
+async function loadSelectedTransport(item) {
+  transportController?.abort()
+  transportController = null
+  selectedTransport.value = null
+  transportError.value = false
+  if (!item || !Number.isFinite(Number(item.lat)) || !Number.isFinite(Number(item.lng))) return
+
+  const controller = new AbortController()
+  transportController = controller
+  try {
+    selectedTransport.value = await fetchNearbyTransport({
+      lat: item.lat,
+      lng: item.lng,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error.name !== 'AbortError') transportError.value = true
+  } finally {
+    if (transportController === controller) transportController = null
   }
 }
 </script>

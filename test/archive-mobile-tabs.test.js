@@ -166,6 +166,21 @@ test('archive list and map expose ordered route selection', () => {
   assert.match(view, /ArchiveRouteSelectionBar/)
 })
 
+test('archive map loads nearby transport only for the selected exhibition', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  assert.match(view, /watch\(mapSelectedItem/)
+  assert.match(view, /fetchNearbyTransport\(\{[\s\S]*?lat:\s*item\.lat,[\s\S]*?lng:\s*item\.lng/)
+  assert.match(view, /AbortController/)
+  assert.doesNotMatch(view, /Promise\.all\([^)]*fetchNearbyTransport/)
+})
+
+test('archive list hides missing transport metadata and exposes filter reset', () => {
+  const list = readProjectFile('src/components/archive/ArchiveList.vue')
+  assert.match(list, /transportSummary\(item\)/)
+  assert.match(list, /v-if="transportSummary\(item\)"/)
+  assert.match(list, /필터 초기화/)
+})
+
 test('regional archive uses distinct city colors for Gwangju, Jeonbuk, and Jeonnam', () => {
   const mapSource = readProjectFile('src/components/archive/ArchiveMap.vue')
   const listSource = readProjectFile('src/components/archive/ArchiveList.vue')
