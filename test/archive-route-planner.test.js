@@ -167,6 +167,20 @@ test('NAVER web route leaves current origin open but still pre-fills selected ve
   assert.equal(segments[5], 'transit')
 })
 
+test('NAVER web route can pre-fill the browser current position', async () => {
+  const { buildArchiveRouteWebUrl } = await import('../src/lib/archive-route.mjs')
+  const url = buildArchiveRouteWebUrl({
+    items: [{ venue: '도착 전시장', lat: 35.15, lng: 126.91 }],
+    originId: 'current',
+    originLocation: { name: '현재 위치', lat: 35.17, lng: 126.9 },
+    modeId: 'driving',
+  })
+  const segments = new URL(url).pathname.split('/').filter(Boolean)
+
+  assert.match(decodeURIComponent(segments[2]), /현재 위치,,PLACE_POI$/)
+  assert.equal(segments[5], 'car')
+})
+
 test('router and planner expose the approved route contract', () => {
   const router = readProjectFile('src/router/index.js')
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
@@ -208,6 +222,8 @@ test('planner exposes NAVER app and web actions without Google directions copy',
   assert.match(view, /buildArchiveRouteLaunch/)
   assert.match(view, /detectArchiveRoutePlatform/)
   assert.match(view, /openIosNaverRoute/)
+  assert.match(view, /openDesktopNaverRoute/)
+  assert.match(view, /navigator\.geolocation\.getCurrentPosition/)
   assert.match(view, /document\.hidden/)
   assert.doesNotMatch(view, /:href="directionsUrl"[\s\S]{0,120}target="_blank"/)
   assert.match(view, /buildArchiveRouteWebUrl/)

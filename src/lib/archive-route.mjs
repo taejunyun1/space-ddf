@@ -118,13 +118,14 @@ export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 're
   return url.toString()
 }
 
-export function buildArchiveRouteWebUrl({ items, originId = 'current', modeId = 'recommended' } = {}) {
+export function buildArchiveRouteWebUrl({ items, originId = 'current', originLocation = null, modeId = 'recommended' } = {}) {
   const locations = archiveRouteLocations(items).slice(0, NAVER_MAX_ROUTE_LOCATIONS)
   if (!locations.length) return NAVER_MAP_WEB_URL
   const origin = ARCHIVE_ROUTE_ORIGINS.find(option => option.id === originId) || ARCHIVE_ROUTE_ORIGINS[0]
   const destination = locations.at(-1)
-  const originSegment = Number.isFinite(origin.lat) && Number.isFinite(origin.lng)
-    ? naverWebLocationSegment(origin)
+  const resolvedOrigin = originId === 'current' && originLocation ? originLocation : origin
+  const originSegment = Number.isFinite(resolvedOrigin.lat) && Number.isFinite(resolvedOrigin.lng)
+    ? naverWebLocationSegment(resolvedOrigin)
     : '-'
   const destinationSegment = naverWebLocationSegment(destination)
   const waypointSegment = locations.slice(0, -1).map(naverWebLocationSegment).join(':') || '-'

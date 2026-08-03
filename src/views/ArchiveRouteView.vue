@@ -186,12 +186,21 @@
           </svg>
           <span>네이버 지도 앱으로 경로 열기</span>
         </button>
+        <button
+          v-else-if="directionsUrl && routeLaunch.kind === 'desktop'"
+          type="button"
+          class="route-directions-link ddf-focusable"
+          @click="openDesktopNaverRoute"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
+            <path d="M5 12h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+          </svg>
+          <span>네이버 지도 웹 열기</span>
+        </button>
         <a
           v-else-if="directionsUrl"
           class="route-directions-link ddf-focusable"
           :href="routeLaunch.url"
-          :target="routeLaunch.kind === 'desktop' ? '_blank' : undefined"
-          :rel="routeLaunch.kind === 'desktop' ? 'noopener noreferrer' : undefined"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
             <path d="M5 12h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
@@ -356,6 +365,35 @@ function openIosNaverRoute() {
     if (!document.hidden) window.location.href = NAVER_MAP_IOS_STORE_URL
   }, 1500)
   window.location.href = directionsUrl.value
+}
+
+function openDesktopNaverRoute() {
+  const routeWindow = window.open('about:blank', '_blank')
+  if (routeWindow) routeWindow.opener = null
+  const navigate = url => {
+    if (routeWindow) routeWindow.location.replace(url)
+    else window.location.href = url
+  }
+
+  if (originId.value !== 'current' || !navigator.geolocation) {
+    navigate(directionsWebUrl.value)
+    return
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    position => navigate(buildArchiveRouteWebUrl({
+      items: selectedItems.value,
+      originId: originId.value,
+      originLocation: {
+        name: '현재 위치',
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      },
+      modeId: modeId.value,
+    })),
+    () => navigate(directionsWebUrl.value),
+    { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
+  )
 }
 
 function cancelNearbyTransport() {
