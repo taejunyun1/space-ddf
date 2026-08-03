@@ -35,6 +35,11 @@ test('route IDs parse, serialize, toggle, and move in stable order', async () =>
   assert.deepEqual(moveArchiveRouteId(['a', 'b'], 0, -1), ['a', 'b'])
 })
 
+test('NAVER route exposes a six-location limit', async () => {
+  const { NAVER_MAX_ROUTE_LOCATIONS } = await import('../src/lib/archive-route.mjs')
+  assert.equal(NAVER_MAX_ROUTE_LOCATIONS, 6)
+})
+
 test('current-location transit opens NAVER public route without a fixed origin', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({
@@ -207,6 +212,10 @@ test('planner exposes ordered multi-selection controls and a readable route acti
   assert.match(view, /moveSelectedItem\(index, 1\)/)
   assert.match(view, /removeSelectedItem\(item\.id\)/)
   assert.match(view, /clearSelectedItems/)
+  assert.match(view, /const selectionLimitReached = computed\(\(\) => selectedItems\.value\.length >= NAVER_MAX_ROUTE_LOCATIONS\)/)
+  assert.match(view, /:disabled="!selectedIds\.includes\(item\.id\) && selectionLimitReached"/)
+  assert.match(view, /최대 6곳\(경유 5곳 \+ 도착 1곳\)까지 선택할 수 있습니다/)
+  assert.match(view, /if \(!selectedIds\.value\.includes\(id\) && selectionLimitReached\.value\) return/)
   assert.match(view, /네이버 지도 앱으로 경로 열기/)
   assert.match(view, /여러 장소 경유는 네이버 지도 지원 방식에 맞춰 자동차 경로로 엽니다/)
   assert.match(view, /<svg[^>]*aria-hidden="true"/)
@@ -233,7 +242,7 @@ test('planner exposes NAVER app and web actions without Google directions copy',
   assert.match(view, /document\.hidden/)
   assert.doesNotMatch(view, /:href="directionsUrl"[\s\S]{0,120}target="_blank"/)
   assert.match(view, /buildArchiveRouteWebUrl/)
-  assert.match(view, /고유 장소 6곳까지만 경로에 포함됩니다/)
+  assert.match(view, /최대 6곳\(경유 5곳 \+ 도착 1곳\)까지 선택할 수 있습니다/)
   assert.doesNotMatch(view, /Google Maps에서 경유 경로|Google Maps 지원 방식/)
 })
 

@@ -63,7 +63,7 @@ function routeId(value) {
 }
 
 const NAVER_APP_NAME = 'https://spaceddf.xyz'
-const NAVER_MAX_ROUTE_LOCATIONS = 6
+export const NAVER_MAX_ROUTE_LOCATIONS = 6
 export const NAVER_MAP_IOS_STORE_URL = 'https://apps.apple.com/kr/app/id311867728'
 const NAVER_MAP_WEB_URL = 'https://map.naver.com/p/directions/'
 

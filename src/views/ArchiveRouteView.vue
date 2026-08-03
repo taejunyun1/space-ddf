@@ -39,6 +39,10 @@
         <template v-else>{{ visibleItems.length }}개의 진행 중 전시</template>
       </p>
 
+      <p v-if="selectionLimitReached" class="route-selection-limit" role="status">
+        최대 6곳(경유 5곳 + 도착 1곳)까지 선택할 수 있습니다. 선택한 장소를 지우면 다른 장소를 추가할 수 있습니다.
+      </p>
+
       <ul v-if="!loading && visibleItems.length" class="route-destination-list">
         <li v-for="item in visibleItems" :key="item.id">
           <button
@@ -46,6 +50,7 @@
             class="route-destination ddf-focusable"
             :class="{ 'is-selected': selectedIds.includes(item.id) }"
             :aria-pressed="selectedIds.includes(item.id)"
+            :disabled="!selectedIds.includes(item.id) && selectionLimitReached"
             @click="toggleDestination(item.id)"
           >
             <span v-if="selectedOrder(item.id)" class="route-order-badge" aria-hidden="true">
@@ -169,12 +174,6 @@
           role="status"
         >여러 장소 경유는 네이버 지도 지원 방식에 맞춰 자동차 경로로 엽니다.</p>
 
-        <p
-          v-if="routeLimitExceeded"
-          class="route-mode-notice"
-          role="status"
-        >고유 장소 6곳까지만 경로에 포함됩니다.</p>
-
         <button
           v-if="directionsUrl && routeLaunch.kind === 'ios'"
           type="button"
@@ -229,7 +228,7 @@ import {
   ARCHIVE_ROUTE_MODES,
   ARCHIVE_ROUTE_ORIGINS,
   NAVER_MAP_IOS_STORE_URL,
-  archiveRouteLocations,
+  NAVER_MAX_ROUTE_LOCATIONS,
   buildArchiveRouteLaunch,
   buildArchiveRouteUrl,
   buildArchiveRouteWebUrl,
@@ -263,7 +262,7 @@ const ongoingItems = computed(() => ongoingArchiveItems(allItems.value))
 const visibleItems = computed(() => ongoingItems.value.filter(matchesFilters))
 const selectedIds = computed(() => {
   const ongoingIds = new Set(ongoingItems.value.map(item => item.id))
-  return parseArchiveRouteIds(route.query.to).filter(id => ongoingIds.has(id))
+  return parseArchiveRouteIds(route.query.to).filter(id => ongoingIds.has(id)).slice(0, NAVER_MAX_ROUTE_LOCATIONS)
 })
 const selectedItems = computed(() => {
   const itemsById = new Map(ongoingItems.value.map(item => [item.id, item]))
@@ -273,11 +272,10 @@ const destinationItem = computed(() => selectedItems.value.at(-1) || null)
 const selectedOrigin = computed(() => (
   ARCHIVE_ROUTE_ORIGINS.find(origin => origin.id === originId.value) || ARCHIVE_ROUTE_ORIGINS[0]
 ))
-const routeLocations = computed(() => archiveRouteLocations(selectedItems.value))
+const selectionLimitReached = computed(() => selectedItems.value.length >= NAVER_MAX_ROUTE_LOCATIONS)
 const directionsUrl = computed(() => buildArchiveRouteUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
 const directionsWebUrl = computed(() => buildArchiveRouteWebUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
 const routeLaunch = computed(() => buildArchiveRouteLaunch({ appUrl: directionsUrl.value, webUrl: directionsWebUrl.value, platform: routePlatform.value }))
-const routeLimitExceeded = computed(() => routeLocations.value.length > 6)
 
 onMounted(() => {
   routePlatform.value = detectArchiveRoutePlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints)
@@ -313,6 +311,7 @@ function replaceSelectedIds(ids) {
 }
 
 function toggleDestination(id) {
+  if (!selectedIds.value.includes(id) && selectionLimitReached.value) return
   replaceSelectedIds(toggleArchiveRouteId(selectedIds.value, id))
 }
 
@@ -549,6 +548,15 @@ async function loadArchiveItems() {
   font-size: 12px;
 }
 
+.route-selection-limit {
+  margin: 0 0 12px;
+  border: 1px solid var(--ddf-status-open);
+  padding: 10px 12px;
+  color: var(--ddf-ink);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .route-destination-list {
   display: grid;
   gap: 8px;
@@ -571,6 +579,11 @@ async function loadArchiveItems() {
   border-color: var(--ddf-status-open);
   outline: 1px solid var(--ddf-status-open);
   padding-left: 52px;
+}
+
+.route-destination:disabled:not(.is-selected) {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 
 .route-order-badge {
