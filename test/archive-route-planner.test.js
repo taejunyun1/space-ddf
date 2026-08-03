@@ -40,6 +40,20 @@ test('NAVER route exposes a six-location limit', async () => {
   assert.equal(NAVER_MAX_ROUTE_LOCATIONS, 6)
 })
 
+test('ending today uses the Asia/Seoul calendar date', async () => {
+  const { isArchiveEndingToday } = await import('../src/lib/archive-route.mjs')
+  const lateSeoulNight = new Date('2026-08-03T14:59:00Z')
+  assert.equal(isArchiveEndingToday({ endDate: '2026-08-03' }, lateSeoulNight), true)
+  assert.equal(isArchiveEndingToday({ endDate: '2026-08-02' }, lateSeoulNight), false)
+})
+
+test('limited route selection refuses a seventh location but permits removal', async () => {
+  const { toggleLimitedArchiveRouteId } = await import('../src/lib/archive-route.mjs')
+  const six = ['a', 'b', 'c', 'd', 'e', 'f']
+  assert.deepEqual(toggleLimitedArchiveRouteId(six, 'g'), six)
+  assert.deepEqual(toggleLimitedArchiveRouteId(six, 'f'), ['a', 'b', 'c', 'd', 'e'])
+})
+
 test('current-location transit opens NAVER public route without a fixed origin', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({

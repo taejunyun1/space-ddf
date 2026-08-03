@@ -32,6 +32,28 @@ export function toggleArchiveRouteId(ids, id) {
     : [...normalized, target]
 }
 
+export function toggleLimitedArchiveRouteId(ids, id, limit = NAVER_MAX_ROUTE_LOCATIONS) {
+  const normalized = uniqueRouteIds(ids)
+  const target = routeId(id)
+  if (!target) return normalized
+  if (normalized.includes(target)) return normalized.filter(current => current !== target)
+  if (normalized.length >= limit) return normalized
+  return [...normalized, target]
+}
+
+export function isArchiveEndingToday(item, now = new Date()) {
+  const endDate = String(item?.endDate || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) return false
+  const parts = new Intl.DateTimeFormat('en', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now)
+  const value = type => parts.find(part => part.type === type)?.value || ''
+  return endDate === `${value('year')}-${value('month')}-${value('day')}`
+}
+
 export function moveArchiveRouteId(ids, index, offset) {
   const normalized = uniqueRouteIds(ids)
   const from = Number(index)
