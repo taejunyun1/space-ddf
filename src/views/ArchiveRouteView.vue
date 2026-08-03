@@ -726,6 +726,8 @@ async function loadArchiveItems() {
 
 .route-directions-link {
   display: flex;
+  box-sizing: border-box;
+  width: 100%;
   align-items: center;
   justify-content: center;
   gap: 9px;

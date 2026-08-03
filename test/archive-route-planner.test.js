@@ -216,6 +216,7 @@ test('planner exposes ordered multi-selection controls and a readable route acti
 
 test('planner exposes NAVER app and web actions without Google directions copy', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
+  const headers = readProjectFile('public/_headers')
 
   assert.match(view, /네이버 지도 앱으로 경로 열기/)
   assert.match(view, /네이버 지도 웹 열기/)
@@ -224,6 +225,11 @@ test('planner exposes NAVER app and web actions without Google directions copy',
   assert.match(view, /openIosNaverRoute/)
   assert.match(view, /openDesktopNaverRoute/)
   assert.match(view, /navigator\.geolocation\.getCurrentPosition/)
+  assert.match(view, /\.route-directions-link\s*\{[\s\S]*?width:\s*100%;/)
+  assert.match(view, /routeLaunch\.kind === 'ios'/)
+  assert.match(view, /:href="routeLaunch\.url"/)
+  assert.match(headers, /Permissions-Policy:\s*camera=\(\), geolocation=\(self\), microphone=\(\), payment=\(\), usb=\(\)/)
+  assert.doesNotMatch(headers, /geolocation=\(\)/)
   assert.match(view, /document\.hidden/)
   assert.doesNotMatch(view, /:href="directionsUrl"[\s\S]{0,120}target="_blank"/)
   assert.match(view, /buildArchiveRouteWebUrl/)
