@@ -1,7 +1,7 @@
 export const ARCHIVE_ROUTE_ORIGINS = Object.freeze([
-  { id: 'current', label: '현재 위치', value: '' },
-  { id: 'biennale', label: '광주비엔날레전시관', value: '광주광역시 북구 비엔날레로 111' },
-  { id: 'acc', label: 'ACC', value: '광주광역시 동구 문화전당로 38' },
+  { id: 'current', label: '현재 위치', name: '', lat: null, lng: null },
+  { id: 'biennale', label: '광주비엔날레전시관', name: '광주비엔날레전시관', lat: 35.18274895, lng: 126.8893391 },
+  { id: 'acc', label: 'ACC', name: 'ACC', lat: 35.147057304166, lng: 126.92003143495 },
 ])
 
 export const ARCHIVE_ROUTE_MODES = Object.freeze([
@@ -62,29 +62,60 @@ function routeId(value) {
   return id && !id.includes(',') ? id : ''
 }
 
-export function archiveDestination(item) {
-  if (!item) return ''
-  const lat = Number(item.lat)
-  const lng = Number(item.lng)
-  if (Number.isFinite(lat) && Number.isFinite(lng)) return `${lat},${lng}`
-  return item.address ? [item.venue, item.address].filter(Boolean).join(', ') : ''
+const NAVER_APP_NAME = 'https://spaceddf.xyz'
+const NAVER_MAX_ROUTE_LOCATIONS = 6
+
+function validCoordinate(value) {
+  return value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))
+}
+
+export function archiveRouteLocations(items) {
+  const seen = new Set()
+  const locations = []
+  for (const item of Array.isArray(items) ? items : []) {
+    if (!validCoordinate(item?.lat) || !validCoordinate(item?.lng)) continue
+    const lat = Number(item.lat)
+    const lng = Number(item.lng)
+    const key = `${lat},${lng}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    locations.push({
+      name: String(item?.venue || item?.title || '전시장'),
+      lat,
+      lng,
+    })
+  }
+  return locations
 }
 
 export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 'recommended' }) {
-  const destinations = [...new Set(
-    (Array.isArray(items) ? items : []).map(archiveDestination).filter(Boolean),
-  )]
-  if (!destinations.length) return ''
-  const destination = destinations.at(-1)
-  const waypoints = destinations.slice(0, -1)
+  const locations = archiveRouteLocations(items).slice(0, NAVER_MAX_ROUTE_LOCATIONS)
+  if (!locations.length) return ''
   const origin = ARCHIVE_ROUTE_ORIGINS.find(option => option.id === originId) || ARCHIVE_ROUTE_ORIGINS[0]
-  const mode = ARCHIVE_ROUTE_MODES.find(option => option.id === modeId) || ARCHIVE_ROUTE_MODES[0]
-  const travelMode = waypoints.length ? 'driving' : mode.value
-  const url = new URL('https://www.google.com/maps/dir/')
-  url.searchParams.set('api', '1')
-  url.searchParams.set('destination', destination)
-  if (waypoints.length) url.searchParams.set('waypoints', waypoints.join('|'))
-  if (origin.value) url.searchParams.set('origin', origin.value)
-  if (travelMode) url.searchParams.set('travelmode', travelMode)
+  const action = locations.length > 1 || modeId === 'driving' ? 'car' : 'public'
+  const url = new URL(`nmap://route/${action}`)
+  const destination = locations.at(-1)
+
+  if (Number.isFinite(origin.lat) && Number.isFinite(origin.lng)) {
+    url.searchParams.set('slat', String(origin.lat))
+    url.searchParams.set('slng', String(origin.lng))
+    url.searchParams.set('sname', origin.name)
+  }
+
+  locations.slice(0, -1).forEach((location, index) => {
+    const number = index + 1
+    url.searchParams.set(`v${number}lat`, String(location.lat))
+    url.searchParams.set(`v${number}lng`, String(location.lng))
+    url.searchParams.set(`v${number}name`, location.name)
+  })
+
+  url.searchParams.set('dlat', String(destination.lat))
+  url.searchParams.set('dlng', String(destination.lng))
+  url.searchParams.set('dname', destination.name)
+  url.searchParams.set('appname', NAVER_APP_NAME)
   return url.toString()
+}
+
+export function buildArchiveRouteWebUrl() {
+  return 'https://map.naver.com/p/directions/'
 }

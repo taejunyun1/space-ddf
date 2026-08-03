@@ -35,91 +35,73 @@ test('route IDs parse, serialize, toggle, and move in stable order', async () =>
   assert.deepEqual(moveArchiveRouteId(['a', 'b'], 0, -1), ['a', 'b'])
 })
 
-test('current-location directions omit origin and encode destination', async () => {
+test('current-location transit opens NAVER public route without a fixed origin', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({
-    items: [{ venue: '스페이스 디디에프', address: '광주광역시 동구 충장로46번길 8-8' }],
+    items: [{ venue: '스페이스 디디에프', lat: 35.1503, lng: 126.9099 }],
     originId: 'current',
     modeId: 'transit',
   }))
-  assert.equal(url.searchParams.has('origin'), false)
-  assert.equal(url.searchParams.get('destination'), '스페이스 디디에프, 광주광역시 동구 충장로46번길 8-8')
-  assert.equal(url.searchParams.get('travelmode'), 'transit')
+
+  assert.equal(url.protocol, 'nmap:')
+  assert.equal(`${url.host}${url.pathname}`, 'route/public')
+  assert.equal(url.searchParams.has('slat'), false)
+  assert.equal(url.searchParams.get('dlat'), '35.1503')
+  assert.equal(url.searchParams.get('dlng'), '126.9099')
+  assert.equal(url.searchParams.get('dname'), '스페이스 디디에프')
+  assert.equal(url.searchParams.get('appname'), 'https://spaceddf.xyz')
 })
 
-test('fixed origins and recommended mode use the approved values', async () => {
+test('fixed Biennale origin uses its verified coordinates', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({
     items: [{ venue: '목적지', lat: 35.1, lng: 126.9 }],
     originId: 'biennale',
     modeId: 'recommended',
   }))
-  assert.equal(url.searchParams.get('origin'), '광주광역시 북구 비엔날레로 111')
-  assert.equal(url.searchParams.get('destination'), '35.1,126.9')
-  assert.equal(url.searchParams.has('travelmode'), false)
+
+  assert.equal(url.searchParams.get('slat'), '35.18274895')
+  assert.equal(url.searchParams.get('slng'), '126.8893391')
+  assert.equal(url.searchParams.get('sname'), '광주비엔날레전시관')
 })
 
-test('ordered route sends earlier exhibitions as waypoints and the final one as destination', async () => {
+test('NAVER car route maps ACC, five waypoints, and one destination', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
-  const url = new URL(buildArchiveRouteUrl({
-    items: [
-      { venue: '첫 전시', address: '광주 북구 첫길 1' },
-      { venue: '두 번째 전시', address: '광주 동구 둘길 2' },
-      { venue: '마지막 전시', address: '광주 남구 셋길 3' },
-    ],
-    originId: 'acc',
-    modeId: 'driving',
+  const items = Array.from({ length: 8 }, (_, index) => ({
+    venue: `전시장 ${index + 1}`,
+    lat: 35.10 + index / 100,
+    lng: 126.80 + index / 100,
   }))
-
-  assert.equal(url.searchParams.get('origin'), '광주광역시 동구 문화전당로 38')
-  assert.equal(url.searchParams.get('waypoints'), '첫 전시, 광주 북구 첫길 1|두 번째 전시, 광주 동구 둘길 2')
-  assert.equal(url.searchParams.get('destination'), '마지막 전시, 광주 남구 셋길 3')
-  assert.equal(url.searchParams.get('travelmode'), 'driving')
-})
-
-test('route destinations prefer verified coordinates over ambiguous venue names and addresses', async () => {
-  const { archiveDestination } = await import('../src/lib/archive-route.mjs')
-
-  assert.equal(archiveDestination({
-    venue: 'G Gallery 지갤러리',
-    address: '광주광역시 남구',
-    lat: 35.145,
-    lng: 126.915,
-  }), '35.145,126.915')
-})
-
-test('multi-stop transit requests fall back to a supported driving route', async () => {
-  const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
+  items.splice(2, 0, { ...items[0], venue: '같은 장소의 다른 전시' })
   const url = new URL(buildArchiveRouteUrl({
-    items: [
-      { venue: '첫 전시', lat: 35.15, lng: 126.91 },
-      { venue: '두 번째 전시', lat: 35.16, lng: 126.92 },
-    ],
+    items,
     originId: 'acc',
-    modeId: 'transit',
-  }))
-
-  assert.equal(url.searchParams.get('travelmode'), 'driving')
-  assert.equal(url.searchParams.get('waypoints'), '35.15,126.91')
-  assert.equal(url.searchParams.get('destination'), '35.16,126.92')
-})
-
-test('recommended multi-stop routes deduplicate shared venues and force driving', async () => {
-  const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
-  const url = new URL(buildArchiveRouteUrl({
-    items: [
-      { venue: '광주시립미술관 전시 1', lat: 35.1808412, lng: 126.8824016 },
-      { venue: '다른 전시장', lat: 35.1484274, lng: 126.9093966 },
-      { venue: '광주시립미술관 전시 2', lat: 35.1808412, lng: 126.8824016 },
-      { venue: '광주시립미술관 전시 3', lat: 35.1808412, lng: 126.8824016 },
-    ],
-    originId: 'current',
     modeId: 'recommended',
   }))
 
-  assert.equal(url.searchParams.get('travelmode'), 'driving')
-  assert.equal(url.searchParams.get('waypoints'), '35.1808412,126.8824016')
-  assert.equal(url.searchParams.get('destination'), '35.1484274,126.9093966')
+  assert.equal(`${url.host}${url.pathname}`, 'route/car')
+  assert.equal(url.searchParams.get('slat'), '35.147057304166')
+  assert.equal(url.searchParams.get('slng'), '126.92003143495')
+  assert.equal(url.searchParams.get('sname'), 'ACC')
+  assert.equal(url.searchParams.get('v1name'), '전시장 1')
+  assert.equal(url.searchParams.get('v5name'), '전시장 5')
+  assert.equal(url.searchParams.get('dname'), '전시장 6')
+  assert.equal(url.searchParams.has('v6lat'), false)
+})
+
+test('archive route locations remove invalid and duplicate coordinates in stable order', async () => {
+  const { archiveRouteLocations } = await import('../src/lib/archive-route.mjs')
+  const locations = archiveRouteLocations([
+    { venue: '첫 장소', lat: 35.1, lng: 126.9 },
+    { venue: '좌표 없음', lat: null, lng: null },
+    { venue: '같은 장소', lat: 35.1, lng: 126.9 },
+    { venue: '둘째 장소', lat: 35.2, lng: 127.0 },
+  ])
+
+  assert.deepEqual(locations, [
+    { name: '첫 장소', lat: 35.1, lng: 126.9 },
+    { name: '둘째 장소', lat: 35.2, lng: 127 },
+  ])
 })
 
 test('router and planner expose the approved route contract', () => {
