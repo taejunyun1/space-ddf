@@ -164,10 +164,10 @@
         </fieldset>
 
         <p
-          v-if="selectedItems.length > 1 && modeId === 'transit'"
+          v-if="selectedItems.length > 1 && modeId !== 'driving'"
           class="route-mode-notice"
           role="status"
-        >대중교통은 여러 경유지를 지원하지 않아 자동차 경로로 엽니다.</p>
+        >여러 장소 경유는 Google Maps 지원 방식에 맞춰 자동차 경로로 엽니다.</p>
 
         <a
           v-if="directionsUrl"

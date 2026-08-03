@@ -104,6 +104,24 @@ test('multi-stop transit requests fall back to a supported driving route', async
   assert.equal(url.searchParams.get('destination'), '35.16,126.92')
 })
 
+test('recommended multi-stop routes deduplicate shared venues and force driving', async () => {
+  const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
+  const url = new URL(buildArchiveRouteUrl({
+    items: [
+      { venue: '광주시립미술관 전시 1', lat: 35.1808412, lng: 126.8824016 },
+      { venue: '다른 전시장', lat: 35.1484274, lng: 126.9093966 },
+      { venue: '광주시립미술관 전시 2', lat: 35.1808412, lng: 126.8824016 },
+      { venue: '광주시립미술관 전시 3', lat: 35.1808412, lng: 126.8824016 },
+    ],
+    originId: 'current',
+    modeId: 'recommended',
+  }))
+
+  assert.equal(url.searchParams.get('travelmode'), 'driving')
+  assert.equal(url.searchParams.get('waypoints'), '35.1808412,126.8824016')
+  assert.equal(url.searchParams.get('destination'), '35.1484274,126.9093966')
+})
+
 test('router and planner expose the approved route contract', () => {
   const router = readProjectFile('src/router/index.js')
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
@@ -132,7 +150,7 @@ test('planner exposes ordered multi-selection controls and a readable route acti
   assert.match(view, /clearSelectedItems/)
   assert.match(view, /1곳 길찾기 열기/)
   assert.match(view, /곳 경로 열기/)
-  assert.match(view, /대중교통은 여러 경유지를 지원하지 않아 자동차 경로로 엽니다/)
+  assert.match(view, /여러 장소 경유는 Google Maps 지원 방식에 맞춰 자동차 경로로 엽니다/)
   assert.match(view, /<svg[^>]*aria-hidden="true"/)
   assert.match(view, /min-height:\s*48px/)
   assert.match(view, /\.route-directions-link:hover\s*{[\s\S]*?color:\s*var\(--ddf-paper\);[\s\S]*?background:\s*var\(--ddf-ink\);/)

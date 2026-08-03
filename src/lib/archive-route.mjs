@@ -71,13 +71,15 @@ export function archiveDestination(item) {
 }
 
 export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 'recommended' }) {
-  const destinations = (Array.isArray(items) ? items : []).map(archiveDestination).filter(Boolean)
+  const destinations = [...new Set(
+    (Array.isArray(items) ? items : []).map(archiveDestination).filter(Boolean),
+  )]
   if (!destinations.length) return ''
   const destination = destinations.at(-1)
   const waypoints = destinations.slice(0, -1)
   const origin = ARCHIVE_ROUTE_ORIGINS.find(option => option.id === originId) || ARCHIVE_ROUTE_ORIGINS[0]
   const mode = ARCHIVE_ROUTE_MODES.find(option => option.id === modeId) || ARCHIVE_ROUTE_MODES[0]
-  const travelMode = waypoints.length && mode.id === 'transit' ? 'driving' : mode.value
+  const travelMode = waypoints.length ? 'driving' : mode.value
   const url = new URL('https://www.google.com/maps/dir/')
   url.searchParams.set('api', '1')
   url.searchParams.set('destination', destination)
