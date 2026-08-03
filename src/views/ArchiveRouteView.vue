@@ -257,6 +257,7 @@ const nearbyLoading = ref(false)
 const nearbyError = ref(false)
 const nearbyAbortController = ref(null)
 const routePlatform = ref('desktop')
+const currentLocation = ref(null)
 let naverMapFallbackTimer = null
 const ongoingItems = computed(() => ongoingArchiveItems(allItems.value))
 const visibleItems = computed(() => ongoingItems.value.filter(matchesFilters))
@@ -273,13 +274,14 @@ const selectedOrigin = computed(() => (
   ARCHIVE_ROUTE_ORIGINS.find(origin => origin.id === originId.value) || ARCHIVE_ROUTE_ORIGINS[0]
 ))
 const selectionLimitReached = computed(() => selectedItems.value.length >= NAVER_MAX_ROUTE_LOCATIONS)
-const directionsUrl = computed(() => buildArchiveRouteUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
-const directionsWebUrl = computed(() => buildArchiveRouteWebUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
+const directionsUrl = computed(() => buildArchiveRouteUrl({ items: selectedItems.value, originId: originId.value, originLocation: currentLocation.value, modeId: modeId.value }))
+const directionsWebUrl = computed(() => buildArchiveRouteWebUrl({ items: selectedItems.value, originId: originId.value, originLocation: currentLocation.value, modeId: modeId.value }))
 const routeLaunch = computed(() => buildArchiveRouteLaunch({ appUrl: directionsUrl.value, webUrl: directionsWebUrl.value, platform: routePlatform.value }))
 
 onMounted(() => {
   routePlatform.value = detectArchiveRoutePlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints)
   document.addEventListener('visibilitychange', cancelNaverMapFallbackWhenHidden)
+  requestCurrentLocation()
   loadArchiveItems()
 })
 onBeforeUnmount(() => {
@@ -366,6 +368,21 @@ function openIosNaverRoute() {
   window.location.href = directionsUrl.value
 }
 
+function requestCurrentLocation() {
+  if (!navigator.geolocation) return
+  navigator.geolocation.getCurrentPosition(
+    position => {
+      currentLocation.value = {
+        name: '현재 위치',
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      }
+    },
+    () => {},
+    { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
+  )
+}
+
 function openDesktopNaverRoute() {
   const routeWindow = window.open('about:blank', '_blank')
   if (routeWindow) routeWindow.opener = null
@@ -374,7 +391,7 @@ function openDesktopNaverRoute() {
     else window.location.href = url
   }
 
-  if (originId.value !== 'current' || !navigator.geolocation) {
+  if (originId.value !== 'current' || currentLocation.value || !navigator.geolocation) {
     navigate(directionsWebUrl.value)
     return
   }

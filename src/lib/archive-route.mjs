@@ -90,18 +90,19 @@ export function archiveRouteLocations(items) {
   return locations
 }
 
-export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 'recommended' }) {
+export function buildArchiveRouteUrl({ items, originId = 'current', originLocation = null, modeId = 'recommended' }) {
   const locations = archiveRouteLocations(items).slice(0, NAVER_MAX_ROUTE_LOCATIONS)
   if (!locations.length) return ''
   const origin = ARCHIVE_ROUTE_ORIGINS.find(option => option.id === originId) || ARCHIVE_ROUTE_ORIGINS[0]
+  const resolvedOrigin = originId === 'current' && originLocation ? originLocation : origin
   const action = locations.length > 1 || modeId === 'driving' ? 'car' : 'public'
   const url = new URL(`nmap://route/${action}`)
   const destination = locations.at(-1)
 
-  if (Number.isFinite(origin.lat) && Number.isFinite(origin.lng)) {
-    url.searchParams.set('slat', String(origin.lat))
-    url.searchParams.set('slng', String(origin.lng))
-    url.searchParams.set('sname', origin.name)
+  if (Number.isFinite(resolvedOrigin.lat) && Number.isFinite(resolvedOrigin.lng)) {
+    url.searchParams.set('slat', String(resolvedOrigin.lat))
+    url.searchParams.set('slng', String(resolvedOrigin.lng))
+    url.searchParams.set('sname', resolvedOrigin.name)
   }
 
   locations.slice(0, -1).forEach((location, index) => {

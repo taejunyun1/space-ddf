@@ -57,6 +57,20 @@ test('current-location transit opens NAVER public route without a fixed origin',
   assert.equal(url.searchParams.get('appname'), 'https://spaceddf.xyz')
 })
 
+test('resolved browser location is passed to the NAVER app route', async () => {
+  const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
+  const url = new URL(buildArchiveRouteUrl({
+    items: [{ venue: '목적지', lat: 35.15, lng: 126.91 }],
+    originId: 'current',
+    originLocation: { name: '현재 위치', lat: 35.17, lng: 126.9 },
+    modeId: 'driving',
+  }))
+
+  assert.equal(url.searchParams.get('slat'), '35.17')
+  assert.equal(url.searchParams.get('slng'), '126.9')
+  assert.equal(url.searchParams.get('sname'), '현재 위치')
+})
+
 test('fixed Biennale origin uses its verified coordinates', async () => {
   const { buildArchiveRouteUrl } = await import('../src/lib/archive-route.mjs')
   const url = new URL(buildArchiveRouteUrl({
@@ -234,6 +248,11 @@ test('planner exposes NAVER app and web actions without Google directions copy',
   assert.match(view, /openIosNaverRoute/)
   assert.match(view, /openDesktopNaverRoute/)
   assert.match(view, /navigator\.geolocation\.getCurrentPosition/)
+  assert.match(view, /const currentLocation = ref\(null\)/)
+  assert.match(view, /onMounted\(\(\) => \{[\s\S]*?requestCurrentLocation\(\)/)
+  assert.match(view, /function requestCurrentLocation\(\)/)
+  assert.match(view, /currentLocation\.value = \{[\s\S]*?name: '현재 위치'[\s\S]*?position\.coords\.latitude[\s\S]*?position\.coords\.longitude/)
+  assert.match(view, /originLocation: currentLocation\.value/)
   assert.match(view, /\.route-directions-link\s*\{[\s\S]*?width:\s*100%;/)
   assert.match(view, /routeLaunch\.kind === 'ios'/)
   assert.match(view, /:href="routeLaunch\.url"/)
