@@ -253,6 +253,9 @@ test('planner exposes NAVER app and web actions without Google directions copy',
   assert.match(view, /function requestCurrentLocation\(\)/)
   assert.match(view, /currentLocation\.value = \{[\s\S]*?name: '현재 위치'[\s\S]*?position\.coords\.latitude[\s\S]*?position\.coords\.longitude/)
   assert.match(view, /originLocation: currentLocation\.value/)
+  assert.match(view, /function openDesktopNaverRoute\(\)\s*\{[\s\S]*?window\.open\(directionsWebUrl\.value, '_blank', 'noopener,noreferrer'\)[\s\S]*?\}/)
+  const desktopLauncher = view.match(/function openDesktopNaverRoute\(\)\s*\{([\s\S]*?)\n\}/)?.[1] || ''
+  assert.doesNotMatch(desktopLauncher, /getCurrentPosition|about:blank|setTimeout/)
   assert.match(view, /\.route-directions-link\s*\{[\s\S]*?width:\s*100%;/)
   assert.match(view, /routeLaunch\.kind === 'ios'/)
   assert.match(view, /:href="routeLaunch\.url"/)

@@ -384,32 +384,7 @@ function requestCurrentLocation() {
 }
 
 function openDesktopNaverRoute() {
-  const routeWindow = window.open('about:blank', '_blank')
-  if (routeWindow) routeWindow.opener = null
-  const navigate = url => {
-    if (routeWindow) routeWindow.location.replace(url)
-    else window.location.href = url
-  }
-
-  if (originId.value !== 'current' || currentLocation.value || !navigator.geolocation) {
-    navigate(directionsWebUrl.value)
-    return
-  }
-
-  navigator.geolocation.getCurrentPosition(
-    position => navigate(buildArchiveRouteWebUrl({
-      items: selectedItems.value,
-      originId: originId.value,
-      originLocation: {
-        name: '현재 위치',
-        lat: position.coords.latitude,
-        lng: position.coords.longitude,
-      },
-      modeId: modeId.value,
-    })),
-    () => navigate(directionsWebUrl.value),
-    { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 },
-  )
+  window.open(directionsWebUrl.value, '_blank', 'noopener,noreferrer')
 }
 
 function cancelNearbyTransport() {
