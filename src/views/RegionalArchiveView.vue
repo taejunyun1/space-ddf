@@ -11,6 +11,7 @@
         <p class="ddf-kicker">Regional Archive</p>
         <h1 id="archive-title" class="ddf-section-title">지역 전시·상영 아카이브</h1>
         <p class="archive-summary">광주, 전주, 전남 전시·상영 수집 기록</p>
+        <ArchiveModeTabs :selected-ids="selectedIds" />
       </header>
 
       <ArchiveFilters
@@ -87,6 +88,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   archiveCities,
   archiveStatuses,
@@ -94,15 +96,18 @@ import {
   regionalArchiveItems,
 } from '@/data/regionalArchive'
 import { useRegionalArchive } from '@/composables/useRegionalArchive'
-import { ongoingArchiveItems } from '@/lib/archive-route.mjs'
+import { ongoingArchiveItems, parseArchiveRouteIds } from '@/lib/archive-route.mjs'
 import { fetchArchiveItems } from '@/services/archive-api'
 import ArchiveFilters from '@/components/archive/ArchiveFilters.vue'
 import ArchiveList from '@/components/archive/ArchiveList.vue'
 import ArchiveMap from '@/components/archive/ArchiveMap.vue'
+import ArchiveModeTabs from '@/components/archive/ArchiveModeTabs.vue'
 
 const archiveItems = ref([])
 const isArchiveLoading = ref(true)
 const activeMobileView = ref('list')
+const route = useRoute()
+const selectedIds = computed(() => parseArchiveRouteIds(route.query.to))
 
 const {
   activeType,

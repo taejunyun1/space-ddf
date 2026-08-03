@@ -228,6 +228,18 @@ test('router and planner expose the approved route contract', () => {
   assert.doesNotMatch(view, /loadGoogleMapsLibrary|maps\/api\/js|DirectionsService|Routes API/)
 })
 
+test('archive map and route share query-preserving mode tabs', () => {
+  const tabs = readProjectFile('src/components/archive/ArchiveModeTabs.vue')
+  const mapView = readProjectFile('src/views/RegionalArchiveView.vue')
+  const routeView = readProjectFile('src/views/ArchiveRouteView.vue')
+  assert.match(tabs, /전시지도/)
+  assert.match(tabs, /길찾기/)
+  assert.match(tabs, /serializeArchiveRouteIds/)
+  assert.match(tabs, /aria-current/)
+  assert.match(mapView, /<ArchiveModeTabs/)
+  assert.match(routeView, /<ArchiveModeTabs/)
+})
+
 test('planner exposes ordered multi-selection controls and a readable route action', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
 

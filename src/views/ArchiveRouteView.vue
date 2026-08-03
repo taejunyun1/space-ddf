@@ -9,6 +9,7 @@
         <p class="ddf-kicker">Archive Route</p>
         <h1 id="route-planner-title" class="ddf-section-title">진행 중 전시 길찾기</h1>
         <p>방문할 전시를 순서대로 선택하면 네이버 지도에서 경로를 엽니다.</p>
+        <ArchiveModeTabs :selected-ids="selectedIds" />
       </header>
 
       <label class="route-search-label" for="route-search">전시장 검색</label>
@@ -223,6 +224,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArchiveNearbyTransport from '@/components/archive/ArchiveNearbyTransport.vue'
+import ArchiveModeTabs from '@/components/archive/ArchiveModeTabs.vue'
 import { archiveCities, regionalArchiveItems } from '@/data/regionalArchive'
 import {
   ARCHIVE_ROUTE_MODES,
