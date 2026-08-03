@@ -19,9 +19,13 @@
         v-model:activeType="activeType"
         v-model:activeCity="activeCity"
         v-model:activeStatus="activeStatus"
+        v-model:activeQuickFilter="activeQuickFilter"
+        v-model:activeSort="activeSort"
+        :location-available="Boolean(currentLocation)"
         :cities="archiveCities"
         :statuses="archiveStatuses"
         :types="archiveTypes"
+        @request-location="requestLocation"
       />
 
       <div class="mobile-view-tabs" role="tablist" aria-label="아카이브 보기 방식">
@@ -109,10 +113,15 @@ const activeMobileView = ref('list')
 const route = useRoute()
 const selectedIds = computed(() => parseArchiveRouteIds(route.query.to))
 
+const ongoingItems = computed(() => ongoingArchiveItems(archiveItems.value))
+
 const {
   activeType,
   activeCity,
   activeStatus,
+  activeQuickFilter,
+  activeSort,
+  currentLocation,
   query,
   selectedId,
   mapCities,
@@ -120,9 +129,10 @@ const {
   visibleVenueCount,
   mapTitle,
   selectItem,
-} = useRegionalArchive(archiveItems, archiveCities)
+  requestLocation,
+} = useRegionalArchive(ongoingItems, archiveCities)
 
-const mapItems = computed(() => ongoingArchiveItems(filteredItems.value))
+const mapItems = computed(() => filteredItems.value)
 const mapSelectedItem = computed(() => (
   mapItems.value.find(item => item.id === selectedId.value) || null
 ))

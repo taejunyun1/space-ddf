@@ -10,6 +10,30 @@
       />
     </label>
 
+    <button type="button" class="archive-location-button ddf-focusable" @click="$emit('request-location')">
+      현재 위치로 <strong>내 주변</strong> 보기
+    </button>
+
+    <div class="filter-group quick-filters" aria-label="빠른 필터">
+      <button
+        v-for="filter in quickFilters"
+        :key="filter.id"
+        type="button"
+        class="ddf-filter-button"
+        :class="{ 'is-active': quickFilterModel === filter.id }"
+        :aria-pressed="quickFilterModel === filter.id"
+        @click="quickFilterModel = filter.id"
+      >{{ filter.label }}</button>
+    </div>
+
+    <label class="archive-sort-wrap">
+      <span>정렬</span>
+      <select v-model="sortModel" :disabled="!locationAvailable">
+        <option value="default">기본 순서</option>
+        <option value="distance">가까운 순</option>
+      </select>
+    </label>
+
     <div class="filter-group" aria-label="유형 선택">
       <button
         v-for="type in types"
@@ -54,6 +78,13 @@
 <script setup>
 import { computed } from 'vue'
 
+const quickFilters = [
+  { id: 'all', label: '전체' },
+  { id: 'ending-today', label: '오늘 종료' },
+  { id: 'free', label: '무료' },
+  { id: 'parking', label: '주차 가능' },
+]
+
 const props = defineProps({
   cities: {
     type: Array,
@@ -83,6 +114,9 @@ const props = defineProps({
     type: String,
     required: true,
   },
+  activeQuickFilter: { type: String, required: true },
+  activeSort: { type: String, required: true },
+  locationAvailable: { type: Boolean, default: false },
 })
 
 const emit = defineEmits([
@@ -90,6 +124,9 @@ const emit = defineEmits([
   'update:activeType',
   'update:activeCity',
   'update:activeStatus',
+  'update:activeQuickFilter',
+  'update:activeSort',
+  'request-location',
 ])
 
 const queryModel = computed({
@@ -110,6 +147,16 @@ const typeModel = computed({
 const statusModel = computed({
   get: () => props.activeStatus,
   set: value => emit('update:activeStatus', value),
+})
+
+const quickFilterModel = computed({
+  get: () => props.activeQuickFilter,
+  set: value => emit('update:activeQuickFilter', value),
+})
+
+const sortModel = computed({
+  get: () => props.activeSort,
+  set: value => emit('update:activeSort', value),
 })
 </script>
 
@@ -154,6 +201,20 @@ const statusModel = computed({
   flex-wrap: wrap;
   gap: 7px;
 }
+
+.archive-location-button,
+.archive-sort-wrap select {
+  min-height: 38px;
+  border: 1px solid var(--ddf-line);
+  border-radius: 0;
+  background: var(--ddf-paper);
+  color: var(--ddf-ink);
+  font: inherit;
+}
+
+.archive-location-button { cursor: pointer; }
+
+.archive-sort-wrap { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; font-size: 12px; color: var(--ddf-muted); }
 
 .filter-group[aria-label="지역 선택"] .gwangju {
   border-color: var(--ddf-city-gwangju);

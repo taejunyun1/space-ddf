@@ -128,12 +128,30 @@ test('regional archive map contains only ongoing records and links to the planne
   const view = readProjectFile('src/views/RegionalArchiveView.vue')
   const map = readProjectFile('src/components/archive/ArchiveMap.vue')
 
-  assert.match(view, /ongoingArchiveItems\(filteredItems\.value\)/)
+  assert.match(view, /ongoingArchiveItems\(archiveItems\.value\)/)
   assert.doesNotMatch(view, /item\.status\s*!==\s*'closed'/)
   assert.match(view, /:selection-unavailable="mapSelectionUnavailable"/)
   assert.match(map, /name:\s*'archive-route'/)
   assert.match(map, /query:\s*{\s*to:\s*selectedItem\.id\s*}/)
   assert.match(map, />길찾기</)
+})
+
+test('regional archive exposes verified radar filters without crowd copy', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  const filters = readProjectFile('src/components/archive/ArchiveFilters.vue')
+  const composable = readProjectFile('src/composables/useRegionalArchive.js')
+  assert.match(view, /v-model:activeQuickFilter/)
+  assert.match(filters, /오늘 종료/)
+  assert.match(filters, /무료/)
+  assert.match(filters, /주차 가능/)
+  assert.match(filters, /내 주변/)
+  assert.doesNotMatch(`${view}\n${filters}\n${composable}`, /혼잡|crowd/i)
+})
+
+test('regional archive feeds only ongoing records into list and map', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  assert.match(view, /const ongoingItems = computed\(\(\) => ongoingArchiveItems\(archiveItems\.value\)\)/)
+  assert.match(view, /useRegionalArchive\(ongoingItems/)
 })
 
 test('regional archive uses distinct city colors for Gwangju, Jeonbuk, and Jeonnam', () => {
