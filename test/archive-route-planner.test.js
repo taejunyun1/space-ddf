@@ -104,6 +104,31 @@ test('archive route locations remove invalid and duplicate coordinates in stable
   ])
 })
 
+test('NAVER route launcher uses the official target for Android, iOS, and desktop', async () => {
+  const {
+    NAVER_MAP_IOS_STORE_URL,
+    buildArchiveRouteLaunch,
+    detectArchiveRoutePlatform,
+  } = await import('../src/lib/archive-route.mjs')
+  const appUrl = 'nmap://route/car?dlat=35.1&dlng=126.9&dname=%EC%A0%84%EC%8B%9C%EC%9E%A5'
+
+  const android = buildArchiveRouteLaunch({ appUrl, platform: 'android' })
+  assert.equal(android.kind, 'android')
+  assert.match(android.url, /^intent:\/\/route\/car\?dlat=35\.1&dlng=126\.9/)
+  assert.match(android.url, /#Intent;scheme=nmap;action=android\.intent\.action\.VIEW;category=android\.intent\.category\.BROWSABLE;package=com\.nhn\.android\.nmap;end$/)
+
+  const ios = buildArchiveRouteLaunch({ appUrl, platform: 'ios' })
+  assert.deepEqual(ios, { kind: 'ios', url: appUrl, fallbackUrl: NAVER_MAP_IOS_STORE_URL })
+
+  const desktop = buildArchiveRouteLaunch({ appUrl, platform: 'desktop' })
+  assert.deepEqual(desktop, { kind: 'desktop', url: 'https://map.naver.com/p/directions/' })
+
+  assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (Linux; Android 14)', 'Linux armv8l', 5), 'android')
+  assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)', 'iPhone', 5), 'ios')
+  assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'MacIntel', 5), 'ios')
+  assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'MacIntel', 0), 'desktop')
+})
+
 test('router and planner expose the approved route contract', () => {
   const router = readProjectFile('src/router/index.js')
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
@@ -130,7 +155,7 @@ test('planner exposes ordered multi-selection controls and a readable route acti
   assert.match(view, /moveSelectedItem\(index, 1\)/)
   assert.match(view, /removeSelectedItem\(item\.id\)/)
   assert.match(view, /clearSelectedItems/)
-  assert.match(view, /네이버 지도로 경로 열기/)
+  assert.match(view, /네이버 지도 앱으로 경로 열기/)
   assert.match(view, /여러 장소 경유는 네이버 지도 지원 방식에 맞춰 자동차 경로로 엽니다/)
   assert.match(view, /<svg[^>]*aria-hidden="true"/)
   assert.match(view, /min-height:\s*48px/)
@@ -140,8 +165,13 @@ test('planner exposes ordered multi-selection controls and a readable route acti
 test('planner exposes NAVER app and web actions without Google directions copy', () => {
   const view = readProjectFile('src/views/ArchiveRouteView.vue')
 
-  assert.match(view, /네이버 지도로 경로 열기/)
+  assert.match(view, /네이버 지도 앱으로 경로 열기/)
   assert.match(view, /네이버 지도 웹 열기/)
+  assert.match(view, /buildArchiveRouteLaunch/)
+  assert.match(view, /detectArchiveRoutePlatform/)
+  assert.match(view, /openIosNaverRoute/)
+  assert.match(view, /document\.hidden/)
+  assert.doesNotMatch(view, /:href="directionsUrl"[\s\S]{0,120}target="_blank"/)
   assert.match(view, /buildArchiveRouteWebUrl/)
   assert.match(view, /고유 장소 6곳까지만 경로에 포함됩니다/)
   assert.doesNotMatch(view, /Google Maps에서 경유 경로|Google Maps 지원 방식/)
@@ -252,7 +282,7 @@ test('route planner loads nearby transport only for the final destination and ca
   assert.match(view, /nearbyTransport\.value = null[\s\S]*?nearbyError\.value = false[\s\S]*?nearbyLoading\.value = false[\s\S]*?if \(!item/)
   assert.match(view, /if \(!item \|\| !Number\.isFinite\(item\.lat\) \|\| !Number\.isFinite\(item\.lng\)\) return/)
   assert.match(view, /fetchNearbyTransport\(\{ lat: item\.lat, lng: item\.lng, signal: nearbyAbortController\.value\.signal \}\)/)
-  assert.match(view, /onBeforeUnmount\(cancelNearbyTransport\)/)
+  assert.match(view, /onBeforeUnmount\(\(\) => \{[\s\S]*?cancelNearbyTransport\(\)/)
 })
 
 function collectLocalImportGraph(entry) {

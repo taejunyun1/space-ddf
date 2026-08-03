@@ -175,26 +175,37 @@
           role="status"
         >고유 장소 6곳까지만 경로에 포함됩니다.</p>
 
-        <a
-          v-if="directionsUrl"
+        <button
+          v-if="directionsUrl && routeLaunch.kind === 'ios'"
+          type="button"
           class="route-directions-link ddf-focusable"
-          :href="directionsUrl"
-          target="_blank"
-          rel="noopener noreferrer"
+          @click="openIosNaverRoute"
         >
           <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
             <path d="M5 12h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
           </svg>
-          <span>네이버 지도로 경로 열기</span>
+          <span>네이버 지도 앱으로 경로 열기</span>
+        </button>
+        <a
+          v-else-if="directionsUrl"
+          class="route-directions-link ddf-focusable"
+          :href="routeLaunch.url"
+          :target="routeLaunch.kind === 'desktop' ? '_blank' : undefined"
+          :rel="routeLaunch.kind === 'desktop' ? 'noopener noreferrer' : undefined"
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
+            <path d="M5 12h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+          </svg>
+          <span>{{ routeLaunch.kind === 'desktop' ? '네이버 지도 웹 열기' : '네이버 지도 앱으로 경로 열기' }}</span>
         </a>
         <a
-          v-if="directionsUrl"
+          v-if="directionsUrl && routeLaunch.kind !== 'desktop'"
           class="route-web-link ddf-focusable"
           :href="directionsWebUrl"
           target="_blank"
           rel="noopener noreferrer"
         >네이버 지도 웹 열기</a>
-        <p v-else class="route-directions-help">방문할 전시를 선택하면 길찾기 버튼이 활성화됩니다.</p>
+        <p v-if="!directionsUrl" class="route-directions-help">방문할 전시를 선택하면 길찾기 버튼이 활성화됩니다.</p>
       </div>
     </aside>
   </main>
@@ -208,9 +219,12 @@ import { archiveCities, regionalArchiveItems } from '@/data/regionalArchive'
 import {
   ARCHIVE_ROUTE_MODES,
   ARCHIVE_ROUTE_ORIGINS,
+  NAVER_MAP_IOS_STORE_URL,
   archiveRouteLocations,
+  buildArchiveRouteLaunch,
   buildArchiveRouteUrl,
   buildArchiveRouteWebUrl,
+  detectArchiveRoutePlatform,
   moveArchiveRouteId,
   ongoingArchiveItems,
   parseArchiveRouteIds,
@@ -234,6 +248,8 @@ const nearbyTransport = ref(null)
 const nearbyLoading = ref(false)
 const nearbyError = ref(false)
 const nearbyAbortController = ref(null)
+const routePlatform = ref('desktop')
+let naverMapFallbackTimer = null
 const ongoingItems = computed(() => ongoingArchiveItems(allItems.value))
 const visibleItems = computed(() => ongoingItems.value.filter(matchesFilters))
 const selectedIds = computed(() => {
@@ -251,10 +267,19 @@ const selectedOrigin = computed(() => (
 const routeLocations = computed(() => archiveRouteLocations(selectedItems.value))
 const directionsUrl = computed(() => buildArchiveRouteUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
 const directionsWebUrl = buildArchiveRouteWebUrl()
+const routeLaunch = computed(() => buildArchiveRouteLaunch({ appUrl: directionsUrl.value, platform: routePlatform.value }))
 const routeLimitExceeded = computed(() => routeLocations.value.length > 6)
 
-onMounted(loadArchiveItems)
-onBeforeUnmount(cancelNearbyTransport)
+onMounted(() => {
+  routePlatform.value = detectArchiveRoutePlatform(navigator.userAgent, navigator.platform, navigator.maxTouchPoints)
+  document.addEventListener('visibilitychange', cancelNaverMapFallbackWhenHidden)
+  loadArchiveItems()
+})
+onBeforeUnmount(() => {
+  cancelNearbyTransport()
+  clearNaverMapFallback()
+  document.removeEventListener('visibilitychange', cancelNaverMapFallbackWhenHidden)
+})
 watch(destinationItem, loadNearbyTransport, { immediate: true })
 watch([() => route.query.to, ongoingItems, loading], normalizeSelectedQuery)
 
@@ -311,6 +336,26 @@ async function closeRouteControls() {
   routeControlsOpen.value = false
   await nextTick()
   routeControlsToggle.value?.focus()
+}
+
+function clearNaverMapFallback() {
+  if (naverMapFallbackTimer === null) return
+  window.clearTimeout(naverMapFallbackTimer)
+  naverMapFallbackTimer = null
+}
+
+function cancelNaverMapFallbackWhenHidden() {
+  if (document.hidden) clearNaverMapFallback()
+}
+
+function openIosNaverRoute() {
+  if (!directionsUrl.value) return
+  clearNaverMapFallback()
+  naverMapFallbackTimer = window.setTimeout(() => {
+    naverMapFallbackTimer = null
+    if (!document.hidden) window.location.href = NAVER_MAP_IOS_STORE_URL
+  }, 1500)
+  window.location.href = directionsUrl.value
 }
 
 function cancelNearbyTransport() {
@@ -656,6 +701,7 @@ async function loadArchiveItems() {
   font-weight: 700;
   text-align: center;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .route-directions-link:hover {

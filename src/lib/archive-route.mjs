@@ -64,6 +64,8 @@ function routeId(value) {
 
 const NAVER_APP_NAME = 'https://spaceddf.xyz'
 const NAVER_MAX_ROUTE_LOCATIONS = 6
+export const NAVER_MAP_IOS_STORE_URL = 'https://apps.apple.com/kr/app/id311867728'
+const NAVER_MAP_WEB_URL = 'https://map.naver.com/p/directions/'
 
 function validCoordinate(value) {
   return value !== null && value !== undefined && String(value).trim() !== '' && Number.isFinite(Number(value))
@@ -117,5 +119,25 @@ export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 're
 }
 
 export function buildArchiveRouteWebUrl() {
-  return 'https://map.naver.com/p/directions/'
+  return NAVER_MAP_WEB_URL
+}
+
+export function detectArchiveRoutePlatform(userAgent = '', platform = '', maxTouchPoints = 0) {
+  if (/android/i.test(userAgent)) return 'android'
+  if (/iPhone|iPad|iPod/i.test(userAgent)) return 'ios'
+  if (platform === 'MacIntel' && Number(maxTouchPoints) > 1) return 'ios'
+  return 'desktop'
+}
+
+export function buildArchiveRouteLaunch({ appUrl, platform = 'desktop' }) {
+  if (!appUrl) return { kind: platform, url: '' }
+  if (platform === 'android') {
+    const routePath = appUrl.replace(/^nmap:\/\//, '')
+    return {
+      kind: 'android',
+      url: `intent://${routePath}#Intent;scheme=nmap;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;package=com.nhn.android.nmap;end`,
+    }
+  }
+  if (platform === 'ios') return { kind: 'ios', url: appUrl, fallbackUrl: NAVER_MAP_IOS_STORE_URL }
+  return { kind: 'desktop', url: NAVER_MAP_WEB_URL }
 }
