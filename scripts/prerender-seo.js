@@ -18,7 +18,8 @@ const STATIC_SPA_ROUTES = ['/rental', '/archive-map', '/archive-route', '/admin'
 const ARCHIVE_ROUTE_TITLE = '진행 중 전시 길찾기 | Space DDF'
 const ARCHIVE_ROUTE_DESCRIPTION = '현재 위치, 광주비엔날레전시관, ACC에서 진행 중인 지역 전시장까지 이동 경로를 선택합니다.'
 
-function main() {
+async function main() {
+  const rentalSeo = await import('../src/lib/rental-seo.mjs')
   if (!fs.existsSync(indexFile)) {
     throw new Error('dist/index.html not found. Run the production build first.')
   }
@@ -45,7 +46,7 @@ function main() {
     const target = path.join(distDir, routePath, 'index.html')
 
     fs.mkdirSync(path.dirname(target), { recursive: true })
-    fs.writeFileSync(target, renderStaticRouteHtml(template, routePath))
+    fs.writeFileSync(target, renderStaticRouteHtml(template, routePath, rentalSeo))
   }
 
   console.log(`Prerendered ${routes.length} detail routes.`)
@@ -159,7 +160,35 @@ function renderRouteHtml(template, item, routePath) {
   return html
 }
 
-function renderStaticRouteHtml(template, routePath) {
+function renderStaticRouteHtml(template, routePath, rentalSeo) {
+  if (routePath === rentalSeo.RENTAL_CANONICAL_PATH) {
+    const canonical = absoluteUrl(routePath)
+    const image = absoluteUrl(DEFAULT_IMAGE)
+    const structuredData = JSON.stringify(rentalSeo.rentalStructuredData({
+      siteUrl: SITE_URL,
+      venue: artGalleryStructuredData(),
+    }), null, 2)
+    let html = template
+
+    html = html.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeText(rentalSeo.RENTAL_TITLE)}</title>`)
+    html = replaceCanonical(html, canonical)
+    html = replaceMeta(html, 'name', 'description', rentalSeo.RENTAL_DESCRIPTION)
+    html = replaceMeta(html, 'property', 'og:title', rentalSeo.RENTAL_TITLE)
+    html = replaceMeta(html, 'property', 'og:description', rentalSeo.RENTAL_DESCRIPTION)
+    html = replaceMeta(html, 'property', 'og:url', canonical)
+    html = replaceMeta(html, 'property', 'og:image', image)
+    html = replaceMeta(html, 'property', 'og:image:alt', 'Space DDF 광주 전시공간 대관')
+    html = replaceMeta(html, 'name', 'twitter:title', rentalSeo.RENTAL_TITLE)
+    html = replaceMeta(html, 'name', 'twitter:description', rentalSeo.RENTAL_DESCRIPTION)
+    html = replaceMeta(html, 'name', 'twitter:image', image)
+    html = replaceMeta(html, 'name', 'twitter:image:alt', 'Space DDF 광주 전시공간 대관')
+    html = html.replace(
+      /<script id="route-structured-data" type="application\/ld\+json">[\s\S]*?<\/script>/,
+      `<script id="route-structured-data" type="application/ld+json">\n${structuredData}\n  </script>`,
+    )
+    return html
+  }
+
   if (routePath !== '/archive-route') return template
 
   const canonical = absoluteUrl(routePath)
@@ -396,4 +425,7 @@ function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-main()
+main().catch(error => {
+  console.error(error)
+  process.exitCode = 1
+})

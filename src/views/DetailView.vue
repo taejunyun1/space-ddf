@@ -121,6 +121,11 @@
           </figcaption>
         </figure>
       </section>
+
+      <section class="detail-rental-link" aria-label="Space DDF 대관 안내">
+        <p>Space DDF는 예술전시와 예술 워크숍 프로젝트의 공간 대관 신청을 받습니다.</p>
+        <RouterLink to="/rental">광주 전시공간 대관 안내 →</RouterLink>
+      </section>
     </div>
 
     <aside class="side">
@@ -395,6 +400,26 @@ onBeforeUnmount(() => {
 .detail-wrap .main {
   grid-area: main;
   min-width: 0;
+}
+
+.detail-rental-link {
+  margin-top: 48px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.detail-rental-link p {
+  margin: 0 0 10px;
+  color: var(--muted);
+}
+
+.detail-rental-link a {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .detail-wrap .side {

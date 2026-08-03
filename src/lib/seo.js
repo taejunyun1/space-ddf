@@ -1,5 +1,11 @@
 import { useContentStore } from '@/stores/content'
 import { parseDateRange } from '@/stores/lib/date-helpers'
+import {
+  RENTAL_CANONICAL_PATH,
+  RENTAL_DESCRIPTION,
+  RENTAL_TITLE,
+  rentalStructuredData,
+} from '@/lib/rental-seo.mjs'
 
 const SITE_URL = 'https://spaceddf.xyz'
 const SITE_NAME = 'Space DDF'
@@ -223,7 +229,8 @@ export function updateSeo(route, pinia) {
   const isNotFound = route.name === 'not-found'
   const isArchive = route.name === 'regional-archive'
   const isArchiveRoute = route.name === 'archive-route'
-  const canonicalPath = item ? route.path : isArchive ? '/archive-map' : isArchiveRoute ? '/archive-route' : '/'
+  const isRental = route.name === 'rental'
+  const canonicalPath = item ? route.path : isRental ? RENTAL_CANONICAL_PATH : isArchive ? '/archive-map' : isArchiveRoute ? '/archive-route' : '/'
   const canonical = absoluteUrl(canonicalPath)
   const title = item
     ? `${compactText(item.title)} | ${SITE_NAME}`
@@ -233,8 +240,10 @@ export function updateSeo(route, pinia) {
         ? ARCHIVE_TITLE
         : isArchiveRoute
           ? ARCHIVE_ROUTE_TITLE
-          : DEFAULT_TITLE
-  const sourceDescription = item?.summary || item?.description || item?.body?.[0] || (isArchive ? ARCHIVE_DESCRIPTION : isArchiveRoute ? ARCHIVE_ROUTE_DESCRIPTION : DEFAULT_DESCRIPTION)
+          : isRental
+            ? RENTAL_TITLE
+            : DEFAULT_TITLE
+  const sourceDescription = item?.summary || item?.description || item?.body?.[0] || (isRental ? RENTAL_DESCRIPTION : isArchive ? ARCHIVE_DESCRIPTION : isArchiveRoute ? ARCHIVE_ROUTE_DESCRIPTION : DEFAULT_DESCRIPTION)
   const description = truncate(sourceDescription) || DEFAULT_DESCRIPTION
   const image = absoluteUrl(item?.hero || item?.thumb || DEFAULT_IMAGE)
   const robots = isNotFound ? 'noindex, nofollow' : DEFAULT_ROBOTS
@@ -264,6 +273,8 @@ export function updateSeo(route, pinia) {
 
   setStructuredData(item
     ? detailStructuredData(item, canonical, description, image)
+    : isRental
+      ? rentalStructuredData({ siteUrl: SITE_URL, venue: artGalleryStructuredData() })
     : isArchive
       ? archiveStructuredData()
       : homeStructuredData())

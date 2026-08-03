@@ -155,6 +155,16 @@ test('Pages prerender gives the archive route its canonical SEO metadata without
   assert.doesNotMatch(html, /<link rel="canonical" href="[^"]*\?to=/)
 })
 
+test('Pages prerender gives rental dedicated search metadata and structured data', () => {
+  childProcess.execFileSync('npm', ['run', 'build:pages'], { cwd: root, stdio: 'pipe' })
+  const html = readProjectFile('dist/rental/index.html')
+
+  assert.match(html, /<title>광주 전시공간 대관 \| 예술전시·워크숍 Space DDF<\/title>/)
+  assert.match(html, /<link rel="canonical" href="https:\/\/spaceddf\.xyz\/rental" \/>/)
+  assert.match(html, /"@type": "Service"/)
+  assert.match(html, /"@type": "FAQPage"/)
+})
+
 function readProjectFile(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8')
 }

@@ -3,12 +3,12 @@
     <header class="rental-header">
       <div>
         <p class="rental-kicker">Space DDF Rental</p>
-        <h1>대관 신청</h1>
+        <h1>광주 전시공간 대관</h1>
       </div>
 
       <p>
-        사진, 영상, 설치, 사운드, 출판, 리서치 기반 프로젝트 등 동시대 시각예술을
-        중심으로 한 전시와 프로젝트를 기다립니다.
+        사진, 영상, 설치, 사운드, 출판, 리서치 기반 프로젝트와 예술 워크숍을 위한
+        Space DDF 대관 가능 일정을 확인하고 온라인으로 신청하세요.
       </p>
     </header>
 
@@ -73,7 +73,7 @@
           </ul>
         </div>
 
-        <form class="rental-form" @submit.prevent="submitRentalApplication">
+        <form class="rental-form" @input="trackFormStart" @submit.prevent="submitRentalApplication">
           <label class="rental-honeypot" aria-hidden="true">
             <span>웹사이트</span>
             <input v-model="form.website" type="text" tabindex="-1" autocomplete="off">
@@ -140,6 +140,16 @@
         </form>
       </aside>
     </section>
+
+    <section class="rental-faq" aria-labelledby="rental-faq-title">
+      <h2 id="rental-faq-title">대관 안내 FAQ</h2>
+      <dl>
+        <div v-for="item in rentalFaqs" :key="item.question">
+          <dt>{{ item.question }}</dt>
+          <dd>{{ item.answer }}</dd>
+        </div>
+      </dl>
+    </section>
   </main>
 </template>
 
@@ -148,13 +158,17 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import CalendarComponent from '@/components/CalendarComponent.vue'
 import { useCalendarStore } from '@/stores/calendar'
 import { fetchRentalAvailability, submitRentalRequest } from '@/services/rentals'
+import { RENTAL_FAQS } from '@/lib/rental-seo.mjs'
+import { trackRentalEvent } from '@/services/rental-analytics'
 
 const calendarStore = useCalendarStore()
+const rentalFaqs = RENTAL_FAQS
 const bookableWindows = computed(() => calendarStore.bookableWindows)
 const selectedWindow = ref(null)
 const notice = ref('')
 const isSubmitting = ref(false)
 const resetSelectionKey = ref(0)
+const formStarted = ref(false)
 const selectedDateRange = reactive({
   startDate: '',
   endDate: '',
@@ -177,7 +191,10 @@ const selectedRangeLabel = computed(() => (
     : '캘린더에서 시작일과 종료일을 선택해주세요'
 ))
 
-onMounted(loadRentalAvailability)
+onMounted(() => {
+  trackRentalEvent('rental_view', { source: 'rental_page' })
+  loadRentalAvailability()
+})
 
 async function loadRentalAvailability() {
   try {
@@ -199,6 +216,21 @@ function setSelectedDateFromCalendar(selection) {
   selectedDateRange.endDate = selection.endDate
   selectedDateRange.windowId = selection.windowId
   notice.value = ''
+  trackRentalEvent('rental_date_select', {
+    duration_days: rentalDurationDays(selection.startDate, selection.endDate),
+  })
+}
+
+function trackFormStart() {
+  if (formStarted.value) return
+  formStarted.value = true
+  trackRentalEvent('rental_form_start', { source: 'rental_page' })
+}
+
+function rentalDurationDays(startDate, endDate) {
+  const start = Date.parse(`${startDate}T00:00:00+09:00`)
+  const end = Date.parse(`${endDate}T00:00:00+09:00`)
+  return Math.max(1, Math.round((end - start) / 86400000) + 1)
 }
 
 function clearSelectedDateRange() {
@@ -251,6 +283,8 @@ async function submitRentalApplication() {
       website: form.website,
     })
 
+    trackRentalEvent('rental_submit_success', { support_program: form.supportProgram })
+
     notice.value = '신청이 접수되었습니다. Space DDF에서 검토 후 연락드립니다.'
     form.name = ''
     form.contact = ''
@@ -258,10 +292,12 @@ async function submitRentalApplication() {
     form.projectIntro = ''
     form.privacyConsent = false
     form.website = ''
+    formStarted.value = false
     idempotencyKey = crypto.randomUUID()
     clearSelectedDateRange()
     await loadRentalAvailability()
   } catch (error) {
+    trackRentalEvent('rental_submit_error', { error_code: error.code || 'unknown' })
     notice.value = error.message || '신청을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.'
   } finally {
     isSubmitting.value = false
@@ -279,6 +315,53 @@ async function submitRentalApplication() {
   padding: 48px var(--page-x);
   color: #1C1C1C;
   background: #fff;
+}
+
+.rental-faq {
+  max-width: 1180px;
+  margin: 64px auto 0;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+
+.rental-faq h2 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.rental-faq dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.rental-faq dl > div {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rental-faq dl > div:nth-child(odd) {
+  padding-right: 24px;
+}
+
+.rental-faq dl > div:nth-child(even) {
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
+.rental-faq dt {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rental-faq dd {
+  margin: 0;
+  color: #666;
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .rental-header {
@@ -645,6 +728,17 @@ async function submitRentalApplication() {
   .rental-submit,
   .rental-notice {
     grid-column: 1 / 2;
+  }
+
+  .rental-faq dl {
+    grid-template-columns: 1fr;
+  }
+
+  .rental-faq dl > div:nth-child(odd),
+  .rental-faq dl > div:nth-child(even) {
+    padding-right: 0;
+    padding-left: 0;
+    border-left: 0;
   }
 }
 </style>
