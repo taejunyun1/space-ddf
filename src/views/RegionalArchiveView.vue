@@ -4,6 +4,7 @@
     :class="{
       'mobile-list-view': activeMobileView === 'list',
       'mobile-map-view': activeMobileView === 'map',
+      'has-route-selection': selectedIds.length > 0,
     }"
   >
     <section class="archive-list-pane" aria-labelledby="archive-title">
@@ -352,6 +353,10 @@ async function loadSelectedTransport(item) {
     flex: none;
     min-height: 0;
     overflow: visible;
+  }
+
+  .has-route-selection.mobile-list-view .archive-list-content {
+    padding-bottom: 120px;
   }
 
   .mobile-view-tabs {

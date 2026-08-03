@@ -189,6 +189,12 @@ test('archive list hides missing transport metadata and exposes filter reset', (
   assert.match(list, /필터 초기화/)
 })
 
+test('mobile route selection bar reserves list space instead of hiding cards', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  assert.match(view, /'has-route-selection': selectedIds\.length > 0/)
+  assert.match(view, /\.has-route-selection\.mobile-list-view\s+\.archive-list-content\s*{[\s\S]*?padding-bottom:\s*120px;/)
+})
+
 test('regional archive uses distinct city colors for Gwangju, Jeonbuk, and Jeonnam', () => {
   const mapSource = readProjectFile('src/components/archive/ArchiveMap.vue')
   const listSource = readProjectFile('src/components/archive/ArchiveList.vue')
