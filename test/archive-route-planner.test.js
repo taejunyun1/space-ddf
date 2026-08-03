@@ -130,12 +130,21 @@ test('planner exposes ordered multi-selection controls and a readable route acti
   assert.match(view, /moveSelectedItem\(index, 1\)/)
   assert.match(view, /removeSelectedItem\(item\.id\)/)
   assert.match(view, /clearSelectedItems/)
-  assert.match(view, /1곳 길찾기 열기/)
-  assert.match(view, /곳 경로 열기/)
-  assert.match(view, /여러 장소 경유는 Google Maps 지원 방식에 맞춰 자동차 경로로 엽니다/)
+  assert.match(view, /네이버 지도로 경로 열기/)
+  assert.match(view, /여러 장소 경유는 네이버 지도 지원 방식에 맞춰 자동차 경로로 엽니다/)
   assert.match(view, /<svg[^>]*aria-hidden="true"/)
   assert.match(view, /min-height:\s*48px/)
   assert.match(view, /\.route-directions-link:hover\s*{[\s\S]*?color:\s*var\(--ddf-paper\);[\s\S]*?background:\s*var\(--ddf-ink\);/)
+})
+
+test('planner exposes NAVER app and web actions without Google directions copy', () => {
+  const view = readProjectFile('src/views/ArchiveRouteView.vue')
+
+  assert.match(view, /네이버 지도로 경로 열기/)
+  assert.match(view, /네이버 지도 웹 열기/)
+  assert.match(view, /buildArchiveRouteWebUrl/)
+  assert.match(view, /고유 장소 6곳까지만 경로에 포함됩니다/)
+  assert.doesNotMatch(view, /Google Maps에서 경유 경로|Google Maps 지원 방식/)
 })
 
 test('planner follows DDF tokens and responsive layout without embedded maps', () => {

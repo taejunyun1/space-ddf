@@ -8,7 +8,7 @@
       <header class="route-header">
         <p class="ddf-kicker">Archive Route</p>
         <h1 id="route-planner-title" class="ddf-section-title">진행 중 전시 길찾기</h1>
-        <p>방문할 전시를 순서대로 선택하면 Google Maps에서 경유 경로를 엽니다.</p>
+        <p>방문할 전시를 순서대로 선택하면 네이버 지도에서 경로를 엽니다.</p>
       </header>
 
       <label class="route-search-label" for="route-search">전시장 검색</label>
@@ -167,7 +167,13 @@
           v-if="selectedItems.length > 1 && modeId !== 'driving'"
           class="route-mode-notice"
           role="status"
-        >여러 장소 경유는 Google Maps 지원 방식에 맞춰 자동차 경로로 엽니다.</p>
+        >여러 장소 경유는 네이버 지도 지원 방식에 맞춰 자동차 경로로 엽니다.</p>
+
+        <p
+          v-if="routeLimitExceeded"
+          class="route-mode-notice"
+          role="status"
+        >고유 장소 6곳까지만 경로에 포함됩니다.</p>
 
         <a
           v-if="directionsUrl"
@@ -179,8 +185,15 @@
           <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none">
             <path d="M5 12h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
           </svg>
-          <span>{{ routeActionLabel }}</span>
+          <span>네이버 지도로 경로 열기</span>
         </a>
+        <a
+          v-if="directionsUrl"
+          class="route-web-link ddf-focusable"
+          :href="directionsWebUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+        >네이버 지도 웹 열기</a>
         <p v-else class="route-directions-help">방문할 전시를 선택하면 길찾기 버튼이 활성화됩니다.</p>
       </div>
     </aside>
@@ -195,7 +208,9 @@ import { archiveCities, regionalArchiveItems } from '@/data/regionalArchive'
 import {
   ARCHIVE_ROUTE_MODES,
   ARCHIVE_ROUTE_ORIGINS,
+  archiveRouteLocations,
   buildArchiveRouteUrl,
+  buildArchiveRouteWebUrl,
   moveArchiveRouteId,
   ongoingArchiveItems,
   parseArchiveRouteIds,
@@ -233,10 +248,10 @@ const destinationItem = computed(() => selectedItems.value.at(-1) || null)
 const selectedOrigin = computed(() => (
   ARCHIVE_ROUTE_ORIGINS.find(origin => origin.id === originId.value) || ARCHIVE_ROUTE_ORIGINS[0]
 ))
+const routeLocations = computed(() => archiveRouteLocations(selectedItems.value))
 const directionsUrl = computed(() => buildArchiveRouteUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
-const routeActionLabel = computed(() => selectedItems.value.length === 1
-  ? '1곳 길찾기 열기'
-  : `${selectedItems.value.length}곳 경로 열기`)
+const directionsWebUrl = buildArchiveRouteWebUrl()
+const routeLimitExceeded = computed(() => routeLocations.value.length > 6)
 
 onMounted(loadArchiveItems)
 onBeforeUnmount(cancelNearbyTransport)
@@ -647,6 +662,24 @@ async function loadArchiveItems() {
   color: var(--ddf-paper);
   background: var(--ddf-ink);
   box-shadow: inset 0 0 0 2px var(--ddf-paper);
+}
+
+.route-web-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  margin-top: 8px;
+  border: 1px solid var(--ddf-ink);
+  color: var(--ddf-ink);
+  background: var(--ddf-paper);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.route-web-link:hover {
+  color: var(--ddf-paper);
+  background: var(--ddf-ink);
 }
 
 @media (max-width: 780px) {
