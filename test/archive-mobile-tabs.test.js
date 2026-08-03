@@ -154,6 +154,14 @@ test('regional archive feeds only ongoing records into list and map', () => {
   assert.match(view, /useRegionalArchive\(ongoingItems/)
 })
 
+test('radar header and filters do not offer closed or upcoming states', () => {
+  const view = readProjectFile('src/views/RegionalArchiveView.vue')
+  const filters = readProjectFile('src/components/archive/ArchiveFilters.vue')
+  assert.match(view, /지금, 광주 · 전북 · 전남 전시/)
+  assert.doesNotMatch(view, /v-model:activeStatus/)
+  assert.doesNotMatch(filters, /상태 선택/)
+})
+
 test('archive list and map expose ordered route selection', () => {
   const view = readProjectFile('src/views/RegionalArchiveView.vue')
   const list = readProjectFile('src/components/archive/ArchiveList.vue')

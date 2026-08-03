@@ -9,8 +9,8 @@
     <section class="archive-list-pane" aria-labelledby="archive-title">
       <header class="archive-header">
         <p class="ddf-kicker">Regional Archive</p>
-        <h1 id="archive-title" class="ddf-section-title">지역 전시·상영 아카이브</h1>
-        <p class="archive-summary">광주, 전주, 전남 전시·상영 수집 기록</p>
+        <h1 id="archive-title" class="ddf-section-title">지금, 광주 · 전북 · 전남 전시</h1>
+        <p class="archive-summary">현재 진행 중인 전시·상영만 지도와 목록에 표시합니다.</p>
         <ArchiveModeTabs :selected-ids="selectedIds" />
       </header>
 
@@ -18,12 +18,10 @@
         v-model:query="query"
         v-model:activeType="activeType"
         v-model:activeCity="activeCity"
-        v-model:activeStatus="activeStatus"
         v-model:activeQuickFilter="activeQuickFilter"
         v-model:activeSort="activeSort"
         :location-available="Boolean(currentLocation)"
         :cities="archiveCities"
-        :statuses="archiveStatuses"
         :types="archiveTypes"
         @request-location="requestLocation"
       />
@@ -106,7 +104,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   archiveCities,
-  archiveStatuses,
   archiveTypes,
   regionalArchiveItems,
 } from '@/data/regionalArchive'
@@ -150,7 +147,6 @@ const routeLimitReached = computed(() => selectedIds.value.length >= NAVER_MAX_R
 const {
   activeType,
   activeCity,
-  activeStatus,
   activeQuickFilter,
   activeSort,
   currentLocation,

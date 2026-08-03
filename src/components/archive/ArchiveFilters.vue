@@ -60,18 +60,6 @@
       </button>
     </div>
 
-    <div class="filter-group" aria-label="상태 선택">
-      <button
-        v-for="status in statuses"
-        :key="status.id"
-        type="button"
-        class="ddf-filter-button"
-        :class="{ 'is-active': statusModel === status.id }"
-        @click="statusModel = status.id"
-      >
-        {{ status.label }}
-      </button>
-    </div>
   </div>
 </template>
 
@@ -87,10 +75,6 @@ const quickFilters = [
 
 const props = defineProps({
   cities: {
-    type: Array,
-    required: true,
-  },
-  statuses: {
     type: Array,
     required: true,
   },
@@ -110,10 +94,6 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  activeStatus: {
-    type: String,
-    required: true,
-  },
   activeQuickFilter: { type: String, required: true },
   activeSort: { type: String, required: true },
   locationAvailable: { type: Boolean, default: false },
@@ -123,7 +103,6 @@ const emit = defineEmits([
   'update:query',
   'update:activeType',
   'update:activeCity',
-  'update:activeStatus',
   'update:activeQuickFilter',
   'update:activeSort',
   'request-location',
@@ -142,11 +121,6 @@ const cityModel = computed({
 const typeModel = computed({
   get: () => props.activeType,
   set: value => emit('update:activeType', value),
-})
-
-const statusModel = computed({
-  get: () => props.activeStatus,
-  set: value => emit('update:activeStatus', value),
 })
 
 const quickFilterModel = computed({
