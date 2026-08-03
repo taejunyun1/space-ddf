@@ -266,8 +266,8 @@ const selectedOrigin = computed(() => (
 ))
 const routeLocations = computed(() => archiveRouteLocations(selectedItems.value))
 const directionsUrl = computed(() => buildArchiveRouteUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
-const directionsWebUrl = buildArchiveRouteWebUrl()
-const routeLaunch = computed(() => buildArchiveRouteLaunch({ appUrl: directionsUrl.value, platform: routePlatform.value }))
+const directionsWebUrl = computed(() => buildArchiveRouteWebUrl({ items: selectedItems.value, originId: originId.value, modeId: modeId.value }))
+const routeLaunch = computed(() => buildArchiveRouteLaunch({ appUrl: directionsUrl.value, webUrl: directionsWebUrl.value, platform: routePlatform.value }))
 const routeLimitExceeded = computed(() => routeLocations.value.length > 6)
 
 onMounted(() => {

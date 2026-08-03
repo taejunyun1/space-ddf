@@ -120,13 +120,51 @@ test('NAVER route launcher uses the official target for Android, iOS, and deskto
   const ios = buildArchiveRouteLaunch({ appUrl, platform: 'ios' })
   assert.deepEqual(ios, { kind: 'ios', url: appUrl, fallbackUrl: NAVER_MAP_IOS_STORE_URL })
 
-  const desktop = buildArchiveRouteLaunch({ appUrl, platform: 'desktop' })
-  assert.deepEqual(desktop, { kind: 'desktop', url: 'https://map.naver.com/p/directions/' })
+  const webUrl = 'https://map.naver.com/p/directions/start/destination/-/car'
+  const desktop = buildArchiveRouteLaunch({ appUrl, webUrl, platform: 'desktop' })
+  assert.deepEqual(desktop, { kind: 'desktop', url: webUrl })
 
   assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (Linux; Android 14)', 'Linux armv8l', 5), 'android')
   assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)', 'iPhone', 5), 'ios')
   assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'MacIntel', 5), 'ios')
   assert.equal(detectArchiveRoutePlatform('Mozilla/5.0 (Macintosh; Intel Mac OS X)', 'MacIntel', 0), 'desktop')
+})
+
+test('NAVER web route pre-fills fixed origin, waypoints, and destination', async () => {
+  const { buildArchiveRouteWebUrl } = await import('../src/lib/archive-route.mjs')
+  const url = buildArchiveRouteWebUrl({
+    items: [
+      { venue: '첫 전시장', lat: 35.18, lng: 126.88 },
+      { venue: '둘째 전시장', lat: 35.15, lng: 126.91 },
+      { venue: '마지막 전시장', lat: 35.14, lng: 126.92 },
+    ],
+    originId: 'biennale',
+    modeId: 'recommended',
+  })
+  const segments = new URL(url).pathname.split('/').filter(Boolean)
+
+  assert.equal(segments[0], 'p')
+  assert.equal(segments[1], 'directions')
+  assert.match(decodeURIComponent(segments[2]), /광주비엔날레전시관,,PLACE_POI$/)
+  assert.match(decodeURIComponent(segments[3]), /마지막 전시장,,PLACE_POI$/)
+  assert.equal(decodeURIComponent(segments[4]).split(':').length, 2)
+  assert.match(decodeURIComponent(segments[4]), /첫 전시장,,PLACE_POI:.*둘째 전시장,,PLACE_POI$/)
+  assert.equal(segments[5], 'car')
+})
+
+test('NAVER web route leaves current origin open but still pre-fills selected venues', async () => {
+  const { buildArchiveRouteWebUrl } = await import('../src/lib/archive-route.mjs')
+  const url = buildArchiveRouteWebUrl({
+    items: [{ venue: '도착 전시장', lat: 35.15, lng: 126.91 }],
+    originId: 'current',
+    modeId: 'transit',
+  })
+  const segments = new URL(url).pathname.split('/').filter(Boolean)
+
+  assert.equal(segments[2], '-')
+  assert.match(decodeURIComponent(segments[3]), /도착 전시장,,PLACE_POI$/)
+  assert.equal(segments[4], '-')
+  assert.equal(segments[5], 'transit')
 })
 
 test('router and planner expose the approved route contract', () => {

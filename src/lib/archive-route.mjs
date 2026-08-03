@@ -118,8 +118,27 @@ export function buildArchiveRouteUrl({ items, originId = 'current', modeId = 're
   return url.toString()
 }
 
-export function buildArchiveRouteWebUrl() {
-  return NAVER_MAP_WEB_URL
+export function buildArchiveRouteWebUrl({ items, originId = 'current', modeId = 'recommended' } = {}) {
+  const locations = archiveRouteLocations(items).slice(0, NAVER_MAX_ROUTE_LOCATIONS)
+  if (!locations.length) return NAVER_MAP_WEB_URL
+  const origin = ARCHIVE_ROUTE_ORIGINS.find(option => option.id === originId) || ARCHIVE_ROUTE_ORIGINS[0]
+  const destination = locations.at(-1)
+  const originSegment = Number.isFinite(origin.lat) && Number.isFinite(origin.lng)
+    ? naverWebLocationSegment(origin)
+    : '-'
+  const destinationSegment = naverWebLocationSegment(destination)
+  const waypointSegment = locations.slice(0, -1).map(naverWebLocationSegment).join(':') || '-'
+  const action = locations.length > 1 || modeId === 'driving' ? 'car' : 'transit'
+  return `${NAVER_MAP_WEB_URL}${originSegment}/${destinationSegment}/${waypointSegment}/${action}`
+}
+
+function naverWebLocationSegment(location) {
+  const earthRadius = 6378137
+  const longitude = Number(location.lng) * Math.PI / 180
+  const latitude = Math.max(-85.05112878, Math.min(85.05112878, Number(location.lat))) * Math.PI / 180
+  const x = earthRadius * longitude
+  const y = earthRadius * Math.log(Math.tan(Math.PI / 4 + latitude / 2))
+  return `${x},${y},${encodeURIComponent(location.name)},,PLACE_POI`
 }
 
 export function detectArchiveRoutePlatform(userAgent = '', platform = '', maxTouchPoints = 0) {
@@ -129,7 +148,7 @@ export function detectArchiveRoutePlatform(userAgent = '', platform = '', maxTou
   return 'desktop'
 }
 
-export function buildArchiveRouteLaunch({ appUrl, platform = 'desktop' }) {
+export function buildArchiveRouteLaunch({ appUrl, webUrl = NAVER_MAP_WEB_URL, platform = 'desktop' }) {
   if (!appUrl) return { kind: platform, url: '' }
   if (platform === 'android') {
     const routePath = appUrl.replace(/^nmap:\/\//, '')
@@ -139,5 +158,5 @@ export function buildArchiveRouteLaunch({ appUrl, platform = 'desktop' }) {
     }
   }
   if (platform === 'ios') return { kind: 'ios', url: appUrl, fallbackUrl: NAVER_MAP_IOS_STORE_URL }
-  return { kind: 'desktop', url: NAVER_MAP_WEB_URL }
+  return { kind: 'desktop', url: webUrl }
 }
