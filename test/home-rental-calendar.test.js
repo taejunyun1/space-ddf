@@ -194,13 +194,14 @@ test('Recent Updated stays visible after the exhibition date ends', () => {
   assert.doesNotMatch(home, /:date-range="recent\.dateRange"|:desc="recentMeta"/)
 })
 
-test('mobile home places its full-width rental row after exhibition discovery', () => {
+test('mobile home docks its full-width rental row after exhibition discovery', () => {
   const source = readProjectFile('src/views/HomeView.vue')
   const mobile = source.match(/@media \(max-width: 768px\)\s*{[\s\S]*?(?=@media|<\/style>)/)?.[0] || ''
 
   assert.ok(source.indexOf('class="exhibition-field"') < source.indexOf('class="archive-rental-cta"'))
   assert.match(mobile, /\.archive-rental-cta\s*{[\s\S]*background:\s*var\(--ddf-signal\)/)
-  assert.doesNotMatch(mobile, /position:\s*fixed/)
+  assert.match(mobile, /\.exhibition-field\s*{[^}]*position:\s*fixed/)
+  assert.match(mobile, /\.archive-rental-cta\s*{[^}]*position:\s*fixed/)
 })
 
 function readProjectFile(relativePath) {

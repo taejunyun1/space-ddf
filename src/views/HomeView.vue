@@ -131,8 +131,10 @@
     </div>
 
     <RouterLink class="archive-rental-cta" to="/rental">
-      <span><b>Space Rental</b> / 전시·워크숍 대관 문의</span>
-      <span>일정 확인 및 신청 <span aria-hidden="true">↗</span></span>
+      <span class="archive-rental-desktop-label"><b>Space Rental</b> / 전시·워크숍 대관 문의</span>
+      <span class="archive-rental-mobile-label">Space Rental · 전시·워크숍 대관</span>
+      <span class="archive-rental-desktop-action">일정 확인 및 신청 <span aria-hidden="true">↗</span></span>
+      <span class="archive-rental-mobile-action">신청 <span aria-hidden="true">↗</span></span>
     </RouterLink>
   </div>
 </template>
@@ -199,10 +201,11 @@ function formatItemCredits(item) {
 .archive-record-number, .archive-record-list time { color: var(--ddf-muted); font: 9px/1.4 var(--ddf-font-mono); }.archive-record-title { min-width: 0; font-size: 12px; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }.archive-record-list small { grid-column: 2/4; color: var(--ddf-muted); font-size: 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .exhibition-field { min-width: 0; border-right: 1px solid; }.exhibition-field nav a { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; align-items: center; gap: 9px; min-height: 68px; padding: 10px 12px; border-bottom: 1px solid; color: inherit; text-decoration: none; }.exhibition-field nav a:hover { background: var(--ddf-route); }.field-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ddf-route); font-size: 11px; }.exhibition-field b,.exhibition-field small { display: block; }.exhibition-field b { font-size: 12px; }.exhibition-field small { margin-top: 3px; color: var(--ddf-muted); font-size: 9px; line-height: 1.35; }.exhibition-field nav a > span:last-child { font: 9px/1 var(--ddf-font-mono); }
 .archive-rental-cta { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 58px; margin-top: var(--ddf-space-8); padding: 0 var(--ddf-space-4); background: var(--ddf-ink); color: #fff; text-decoration: none; font: 11px/1.3 var(--ddf-font-mono); }.archive-rental-cta:hover { background: var(--ddf-signal); }
+.archive-rental-mobile-label, .archive-rental-mobile-action { display: none; }
 
 @media (max-width: 1100px) { .archive-hero { grid-template-columns: minmax(0,1.35fr) minmax(240px,.65fr); }.archive-lower-grid { grid-template-columns: 1fr; }.exhibition-field { border-left: 1px solid; }.archive-poster-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 768px) {
-  .archive-home { padding: 56px 12px 0; }
+  .archive-home { padding: 56px 12px 0; padding-bottom: calc(286px + env(safe-area-inset-bottom)); }
   .archive-hero { min-height: 0; grid-template-columns: 1fr; }
   .archive-hero-poster { min-height: 62vh; border-right: 0; border-bottom: 1px solid; padding: 9px; }
   .archive-hero-poster-meta { inset: auto 16px 16px; }
@@ -211,10 +214,14 @@ function formatItemCredits(item) {
   .archive-poster-strip { grid-template-columns: minmax(0, 1fr); }
   .archive-content-index { grid-template-columns: 1fr; }.archive-index-column { border-bottom: 1px solid; }
   .archive-record-list a { grid-template-columns: 24px minmax(0,1fr); }.archive-record-list time { grid-column: 2; }.archive-record-list small { grid-column: 2; }
-  .archive-lower-grid { margin-top: 24px; }.exhibition-field { background: var(--ddf-paper-soft); }
-  .archive-rental-cta { min-height: 64px; margin: 24px -12px 0; padding: 10px 16px; background: var(--ddf-signal); }
-  .archive-rental-cta > span:last-child { text-align: right; }
-  .archive-record-title, .exhibition-field b, .archive-rental-cta { font-size: 15px; }
+  .archive-lower-grid { margin-top: 24px; }
+  .exhibition-field { position: fixed; z-index: 20; right: 12px; bottom: calc(40px + env(safe-area-inset-bottom)); left: 12px; border: 1px solid var(--ddf-line); background: var(--ddf-paper-soft); }
+  .archive-rental-cta { position: fixed; z-index: 20; right: 0; bottom: 0; left: 0; height: calc(40px + env(safe-area-inset-bottom)); min-height: 0; margin: 0; padding: 0 12px env(safe-area-inset-bottom); gap: 8px; background: var(--ddf-signal); font-size: 11px; white-space: nowrap; }
+  .archive-rental-desktop-label, .archive-rental-desktop-action { display: none; }
+  .archive-rental-mobile-label, .archive-rental-mobile-action { display: block; }
+  .archive-rental-mobile-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .archive-rental-mobile-action { flex: 0 0 auto; text-align: right; }
+  .archive-record-title, .exhibition-field b { font-size: 15px; }
   .archive-record-list time, .archive-record-list small, .exhibition-field small { font-size: 12px; }
 }
 </style>

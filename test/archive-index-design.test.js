@@ -49,13 +49,18 @@ test('home content indexes use natural height without nested list scrolling', ()
   assert.doesNotMatch(home, /--bottom-list-height/)
 })
 
-test('mobile home preserves poster, recent, field, and rental document order', () => {
+test('mobile home docks Exhibition Field directly above a compact rental CTA', () => {
   const home = read('src/views/HomeView.vue')
   const mobile = home.match(/@media \(max-width: 768px\)[\s\S]*?<\/style>/)?.[0] || ''
 
   assert.match(mobile, /\.archive-hero\s*{[\s\S]*grid-template-columns:\s*1fr/)
   assert.match(mobile, /\.archive-rental-cta\s*{[\s\S]*background:\s*var\(--ddf-signal\)/)
-  assert.doesNotMatch(mobile, /position:\s*fixed/)
+  assert.match(mobile, /\.exhibition-field\s*{[^}]*position:\s*fixed[^}]*bottom:\s*calc\(40px \+ env\(safe-area-inset-bottom\)/)
+  assert.match(mobile, /\.archive-rental-cta\s*{[^}]*position:\s*fixed[^}]*bottom:\s*0[^}]*height:\s*calc\(40px \+ env\(safe-area-inset-bottom\)/)
+  assert.match(mobile, /\.archive-home\s*{[^}]*padding-bottom:\s*calc\(286px \+ env\(safe-area-inset-bottom\)/)
+  assert.match(mobile, /\.archive-rental-cta\s*{[^}]*margin:\s*0/)
+  assert.match(home, /class="archive-rental-mobile-label">Space Rental · 전시·워크숍 대관/)
+  assert.match(home, /class="archive-rental-mobile-action">신청/)
 })
 
 test('app shell exposes the approved top-level Archive Index navigation', () => {
