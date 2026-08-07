@@ -45,7 +45,11 @@ const router = createRouter({
     },
     { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFound.vue') },
   ],
-  scrollBehavior() { return { top: 0 } }
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition
+    if (to.hash) return { el: to.hash, top: 64, behavior: 'smooth' }
+    return { top: 0 }
+  }
 })
 
 export default router

@@ -1,5 +1,6 @@
 <template>
   <div id="app" class="layout">
+    <header class="archive-site-header">
     <router-link to="/home" class="home-btn">
       <img
         src="@/assets/logo.png"
@@ -11,6 +12,7 @@
     </router-link>
 
     <button
+      ref="menuButtonRef"
       class="hamburger"
       type="button"
       aria-label="Open sidebar"
@@ -22,13 +24,24 @@
       <span class="bar"></span>
       <span class="bar"></span>
     </button>
+      <nav class="archive-site-nav" aria-label="콘텐츠 바로가기">
+        <router-link to="/home#show">Show</router-link>
+        <router-link to="/home#project">Project</router-link>
+        <router-link to="/archive-map">Archive</router-link>
+        <button type="button" class="archive-about-trigger" @click="toggleAside">About</button>
+        <router-link to="/rental">Rental</router-link>
+      </nav>
+    </header>
 
     <div v-if="isAsideOpen" class="backdrop" @click="closeAside"></div>
 
     <aside
       id="app-aside"
+      ref="asideRef"
       class="section-left"
       :class="{ open: isAsideOpen }"
+      :inert="isAsideOpen ? undefined : ''"
+      :aria-hidden="isAsideOpen ? 'false' : 'true'"
       @keydown.esc="closeAside"
       tabindex="-1"
     >
@@ -104,23 +117,30 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 const isAsideOpen = ref(false)
+const asideRef = ref(null)
+const menuButtonRef = ref(null)
 const showSidebarMap = computed(() => Boolean(route.name) && route.name !== 'archive-route')
 
 const toggleAside = () => {
   isAsideOpen.value = !isAsideOpen.value
+  if (isAsideOpen.value) nextTick(() => asideRef.value?.focus())
 }
 
 const closeAside = () => {
+  const wasOpen = isAsideOpen.value
   isAsideOpen.value = false
+  if (wasOpen) nextTick(() => menuButtonRef.value?.focus())
 }
 
 const onKeydown = (e) => {
-  if (e.key === 'Escape') closeAside()
+  if (e.key === 'Escape' && isAsideOpen.value) {
+    closeAside()
+  }
 }
 
 onMounted(() => {
@@ -423,5 +443,106 @@ overscroll-behavior: none;
   .home-btn img {
     width: 40px;
   }
+}
+
+/* Archive Index shell */
+.layout {
+  grid-template-columns: 1fr;
+  padding-top: 48px;
+  overflow-x: clip;
+}
+
+.archive-site-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  height: 48px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--ddf-line);
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(8px);
+}
+
+.home-btn {
+  position: static;
+  justify-self: start;
+}
+
+.home-btn img { width: 32px; }
+
+.archive-site-nav {
+  grid-column: 2;
+  display: flex;
+  align-self: stretch;
+  gap: 26px;
+}
+
+.archive-site-nav a {
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  color: var(--ddf-ink);
+  text-decoration: none;
+  font: 11px/1 var(--ddf-font-mono);
+  text-transform: uppercase;
+}
+
+.archive-about-trigger {
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ddf-ink);
+  font: 11px/1 var(--ddf-font-mono);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.archive-about-trigger:hover { border-bottom-color: var(--ddf-line); }
+
+.archive-site-nav a:hover,
+.archive-site-nav a.router-link-active { border-bottom-color: var(--ddf-line); }
+
+.hamburger {
+  position: static;
+  grid-column: 3;
+  grid-row: 1;
+  display: inline-flex;
+  justify-self: end;
+  flex-direction: column;
+  justify-content: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 6px;
+  border-radius: 0;
+}
+
+.section-left {
+  position: fixed;
+  inset: 48px auto 0 0;
+  z-index: 30;
+  width: min(360px, 88vw);
+  min-height: 0;
+  height: calc(100dvh - 48px);
+  transform: translateX(-100%);
+  transition: transform 220ms ease-out;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  box-shadow: 16px 0 32px rgba(0,0,0,.08);
+}
+
+.section-left.open { transform: translateX(0); }
+.backdrop { position: fixed; inset: 48px 0 0; z-index: 25; display: block; background: rgba(0,0,0,.28); }
+.main-content { grid-column: 1; }
+
+@media (max-width: 700px) {
+  .archive-site-header { grid-template-columns: 1fr 1fr; }
+  .archive-site-nav { display: none; }
+  .hamburger { grid-column: 2; }
+  .section-left { top: 48px; width: min(340px, 88vw); height: calc(100dvh - 48px); }
 }
 </style>

@@ -172,16 +172,14 @@ test('calendar day marks are compact inside date cells', () => {
   assert.match(mobileRule, /height:\s*4px/)
 })
 
-test('home layout lets the summary calendar push project lists instead of overlapping them', () => {
+test('home Archive Index uses natural-height content lists without a summary calendar', () => {
   const source = readProjectFile('src/views/HomeView.vue')
-  const calendarCardRule = source.match(/\.calendar-card\s*{([^}]+)}/)?.[1] || ''
 
-  assert.match(source, /--calendar-card-height:\s*640px/)
-  assert.match(calendarCardRule, /height:\s*auto/)
-  assert.match(calendarCardRule, /min-height:\s*var\(--calendar-card-height\)/)
-  assert.doesNotMatch(calendarCardRule, /(^|\n)\s*height:\s*var\(--calendar-card-height\)/)
-  assert.match(source, /\.recent-card\s*{[\s\S]*height:\s*auto/)
-  assert.match(source, /\.col-center :deep\(\.recent-content\)\s*{[\s\S]*height:\s*auto[\s\S]*min-height:\s*0/)
+  assert.match(source, /class="archive-content-index"/)
+  assert.match(source, /class="archive-record-list"/)
+  assert.doesNotMatch(source, /CalendarComponent/)
+  assert.doesNotMatch(source, /overflow-y:\s*auto/)
+  assert.doesNotMatch(source, /\.archive-record-list\s*{[^}]*max-height:/)
 })
 
 test('Recent Updated stays visible after the exhibition date ends', () => {
@@ -196,11 +194,13 @@ test('Recent Updated stays visible after the exhibition date ends', () => {
   assert.doesNotMatch(home, /:date-range="recent\.dateRange"|:desc="recentMeta"/)
 })
 
-test('mobile home places Recent and content lists before the rental calendar', () => {
+test('mobile home places its full-width rental row after exhibition discovery', () => {
   const source = readProjectFile('src/views/HomeView.vue')
   const mobile = source.match(/@media \(max-width: 768px\)\s*{[\s\S]*?(?=@media|<\/style>)/)?.[0] || ''
 
-  assert.match(mobile, /grid-template-areas:\s*"center"\s*"right"\s*"left"/)
+  assert.ok(source.indexOf('class="exhibition-field"') < source.indexOf('class="archive-rental-cta"'))
+  assert.match(mobile, /\.archive-rental-cta\s*{[\s\S]*background:\s*var\(--ddf-signal\)/)
+  assert.doesNotMatch(mobile, /position:\s*fixed/)
 })
 
 function readProjectFile(relativePath) {

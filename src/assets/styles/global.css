@@ -1,11 +1,15 @@
 :root {
-  --ddf-line: #1C1C1C;
-  --ddf-ink: #151515;
-  --ddf-muted: #666;
-  --ddf-soft: #f5f5f2;
+  --ddf-line: #171717;
+  --ddf-ink: #171717;
+  --ddf-muted: #706f69;
+  --ddf-soft: #f5f4ef;
   --ddf-paper: #fff;
-  --ddf-subtle-line: #d8d8d8;
+  --ddf-paper-soft: #f5f4ef;
+  --ddf-subtle-line: #d6d4cd;
+  --ddf-line-soft: #d6d4cd;
   --ddf-tag-bg: #f8f8f6;
+  --ddf-signal: #ef4b2d;
+  --ddf-route: #caff36;
 
   --ddf-city-gwangju: #138a5b;
   --ddf-city-jeonju: #2475bf;
@@ -17,6 +21,14 @@
   --ddf-page-top: 60px;
   --ddf-grid-gap: clamp(20px, 2vw, 32px);
   --ddf-font-mono: "D2Coding", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --ddf-space-1: 4px;
+  --ddf-space-2: 8px;
+  --ddf-space-3: 12px;
+  --ddf-space-4: 16px;
+  --ddf-space-6: 24px;
+  --ddf-space-8: 32px;
+  --ddf-space-12: 48px;
+  --ddf-space-16: 64px;
 }
 
 *,
@@ -116,7 +128,16 @@
 .ddf-focusable:focus-visible,
 .ddf-source-link:focus-visible,
 .ddf-filter-button:focus-visible {
-  outline: 2px solid var(--ddf-line);
+  outline: 3px solid var(--ddf-route);
+  outline-offset: 3px;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--ddf-route);
   outline-offset: 3px;
 }
 
