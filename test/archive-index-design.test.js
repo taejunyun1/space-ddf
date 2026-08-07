@@ -78,7 +78,7 @@ test('app shell exposes the approved top-level Archive Index navigation', () => 
   assert.match(app, /if \(wasOpen\) nextTick\(\(\) => menuButtonRef\.value\?\.focus\(\)\)/)
 })
 
-test('home shows opening hours and exposes every Recent poster to horizontal browsing', () => {
+test('home shows opening hours and exposes every Recent poster in a vertical responsive grid', () => {
   const home = read('src/views/HomeView.vue')
 
   assert.match(home, /recentHours/)
@@ -87,6 +87,11 @@ test('home shows opening hours and exposes every Recent poster to horizontal bro
   assert.doesNotMatch(home, /allSortedByDateDesc\.slice\(0, 8\)/)
   assert.match(home, /class="ddf-visually-hidden"[^>]*>[\s\S]*item\.title[\s\S]*item\.dateRange/)
   assert.doesNotMatch(home, /filter:\s*saturate/)
+  assert.match(home, /\.archive-poster-strip\s*{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(home, /@media \(max-width: 1100px\)[\s\S]*\.archive-poster-strip\s*{\s*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/)
+  assert.match(home, /@media \(max-width: 768px\)[\s\S]*\.archive-poster-strip\s*{\s*grid-template-columns:\s*minmax\(0,\s*1fr\)/)
+  assert.doesNotMatch(home, /overflow-x:\s*auto/)
+  assert.doesNotMatch(home, /scroll-snap-type/)
   assert.match(home, /\.archive-record-list time, \.archive-record-list small, \.exhibition-field small\s*{\s*font-size:\s*12px/)
 })
 

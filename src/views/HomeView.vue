@@ -189,8 +189,8 @@ function formatItemCredits(item) {
 .archive-recent { margin-top: var(--ddf-space-8); }
 .archive-section-heading { min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--ddf-line); }
 .archive-section-heading h2 { margin: 0; font: 700 13px/1.2 var(--ddf-font-mono); text-transform: uppercase; }.archive-section-heading span { color: var(--ddf-muted); font: 10px/1.2 var(--ddf-font-mono); }
-.archive-poster-strip { display: grid; grid-template-columns: repeat(8, minmax(110px, 1fr)); border-left: 1px solid var(--ddf-line); overflow-x: auto; scroll-snap-type: x proximity; }
-.archive-poster-link { min-width: 110px; aspect-ratio: 3/4; padding: 7px; border-right: 1px solid var(--ddf-line); border-bottom: 1px solid var(--ddf-line); background: #fff; scroll-snap-align: start; }
+.archive-poster-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-left: 1px solid var(--ddf-line); }
+.archive-poster-link { min-width: 0; aspect-ratio: 3/4; padding: 7px; border-right: 1px solid var(--ddf-line); border-bottom: 1px solid var(--ddf-line); background: #fff; }
 .archive-poster-link img { width: 100%; height: 100%; display: block; object-fit: cover; }
 .archive-lower-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(300px, .55fr); margin-top: var(--ddf-space-8); border-top: 1px solid; }
 .archive-content-index { display: grid; grid-template-columns: 1fr 1fr; border-left: 1px solid; }.archive-index-column { min-width: 0; border-right: 1px solid; }
@@ -200,7 +200,7 @@ function formatItemCredits(item) {
 .exhibition-field { min-width: 0; border-right: 1px solid; }.exhibition-field nav a { display: grid; grid-template-columns: 26px minmax(0,1fr) auto; align-items: center; gap: 9px; min-height: 68px; padding: 10px 12px; border-bottom: 1px solid; color: inherit; text-decoration: none; }.exhibition-field nav a:hover { background: var(--ddf-route); }.field-mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--ddf-route); font-size: 11px; }.exhibition-field b,.exhibition-field small { display: block; }.exhibition-field b { font-size: 12px; }.exhibition-field small { margin-top: 3px; color: var(--ddf-muted); font-size: 9px; line-height: 1.35; }.exhibition-field nav a > span:last-child { font: 9px/1 var(--ddf-font-mono); }
 .archive-rental-cta { display: flex; justify-content: space-between; align-items: center; gap: 20px; min-height: 58px; margin-top: var(--ddf-space-8); padding: 0 var(--ddf-space-4); background: var(--ddf-ink); color: #fff; text-decoration: none; font: 11px/1.3 var(--ddf-font-mono); }.archive-rental-cta:hover { background: var(--ddf-signal); }
 
-@media (max-width: 1100px) { .archive-hero { grid-template-columns: minmax(0,1.35fr) minmax(240px,.65fr); }.archive-lower-grid { grid-template-columns: 1fr; }.exhibition-field { border-left: 1px solid; }.archive-poster-strip { grid-template-columns: repeat(8, 140px); } }
+@media (max-width: 1100px) { .archive-hero { grid-template-columns: minmax(0,1.35fr) minmax(240px,.65fr); }.archive-lower-grid { grid-template-columns: 1fr; }.exhibition-field { border-left: 1px solid; }.archive-poster-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 768px) {
   .archive-home { padding: 56px 12px 0; }
   .archive-hero { min-height: 0; grid-template-columns: 1fr; }
@@ -208,7 +208,7 @@ function formatItemCredits(item) {
   .archive-hero-poster-meta { inset: auto 16px 16px; }
   .archive-hero-info { padding: 12px; }
   .archive-hero-copy { margin: 18px 0 14px; }.archive-hero-copy h2 { margin-bottom: 16px; font-size: clamp(32px, 12vw, 52px); }.archive-hero-description { display: none; }
-  .archive-poster-strip { grid-template-columns: repeat(8, 42vw); }
+  .archive-poster-strip { grid-template-columns: minmax(0, 1fr); }
   .archive-content-index { grid-template-columns: 1fr; }.archive-index-column { border-bottom: 1px solid; }
   .archive-record-list a { grid-template-columns: 24px minmax(0,1fr); }.archive-record-list time { grid-column: 2; }.archive-record-list small { grid-column: 2; }
   .archive-lower-grid { margin-top: 24px; }.exhibition-field { background: var(--ddf-paper-soft); }
